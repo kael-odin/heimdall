@@ -1148,6 +1148,69 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: accepts origin-bound external SEO/GEO outcome evidence', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-outcome-evidence-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://example.test', score: 100,
+      scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
+      summary: { pages: 1, issues: 0, bySeverity: {}, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
+      geo: { methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, actionPlan: [],
+        coverage: { pages: 1, pagesScored: 1, pagesUnavailable: 0, observedWeight: 96, totalWeight: 96, ratio: 1 } },
+    });
+    put(join(site, 'seo', 'outcome-evidence.json'), {
+      schema: 'heimdall.seo-geo-outcome-evidence/1', origin: 'https://example.test', generatedAt: '2026-11-15T00:00:00.000Z',
+      search: { status: 'observed', source: 'manual-search', samples: 10, hits: 4, indexedPages: 1, averagePosition: 3.5 },
+      modelCitation: { status: 'observed', source: 'manual-model', samples: 8, hits: 3, sourceMentions: 5 },
+    });
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const result = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(result.seo.outcomeEvidence.sourceStatus, 'observed');
+    assert.equal(result.seo.outcomeEvidence.search.hitRate, 0.4);
+    assert.equal(result.deliveryPlan.seoGeoTask.outcomeEvidence.modelCitation.sourceMentions, 5);
+    assert.equal(result.deliveryPlan.seoGeoTask.tasks.some(item => item.id === 'measure-search-outcomes'), false);
+    assert.equal(result.deliveryPlan.seoGeoTask.tasks.some(item => item.id === 'measure-model-citation-outcomes'), false);
+    assert.equal(result.unknowns.some(item => item.id === 'seo-search-outcome-unknown'), false);
+    assert.equal(result.unknowns.some(item => item.id === 'geo-model-citation-outcome-unknown'), false);
+    assert.equal(result.readiness.seo.status, 'ready');
+    assert.equal(result.readiness.geo.status, 'ready');
+
+    put(join(site, 'seo', 'outcome-evidence.json'), {
+      schema: 'heimdall.seo-geo-outcome-evidence/1', origin: 'https://other.test', generatedAt: '2026-11-15T00:00:00.000Z',
+      search: { status: 'observed', source: 'manual-search', samples: 10, hits: 4 },
+      modelCitation: { status: 'observed', source: 'manual-model', samples: 8, hits: 3 },
+    });
+    const mismatch = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(mismatch.status, 0, mismatch.stderr + mismatch.stdout);
+    const mismatchResult = JSON.parse(mismatch.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(mismatchResult.seo.outcomeEvidence.sourceStatus, 'origin_mismatch');
+    assert.equal(mismatchResult.deliveryPlan.seoGeoTask.outcomeEvidence.search.status, 'unknown');
+    assert.ok(mismatchResult.unknowns.some(item => item.id === 'seo-search-outcome-unknown'));
+    assert.ok(mismatchResult.unknowns.some(item => item.id === 'geo-model-citation-outcome-unknown'));
+
+    put(join(site, 'seo', 'outcome-evidence.json'), {
+      schema: 'heimdall.seo-geo-outcome-evidence/1', origin: 'https://example.test', generatedAt: '2026-11-15T00:00:00.000Z',
+      search: { status: 'observed', source: 'untrusted', samples: 10, hits: 4 },
+      modelCitation: { status: 'observed', source: 'manual-model', samples: 8, hits: 3 },
+    });
+    const invalidSource = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(invalidSource.status, 0, invalidSource.stderr + invalidSource.stdout);
+    const invalidSourceResult = JSON.parse(invalidSource.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.equal(invalidSourceResult.deliveryPlan.seoGeoTask.outcomeEvidence.search.status, 'unknown');
+    assert.equal(invalidSourceResult.deliveryPlan.seoGeoTask.outcomeEvidence.modelCitation.status, 'observed');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: clone AI task keeps capture, delivery, and deployment gates separate', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-clone-task-'));
   const site = join(root, 'workspace', 'example.test');

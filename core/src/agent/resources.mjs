@@ -9,7 +9,7 @@
  *   heimdall://site/{siteId}/page/{page}/brief{?detail,sectionId}
  *   heimdall://site/{siteId}/page/{page}/sections
  *   heimdall://site/{siteId}/page/{page}/ref/{viewport}.png{?y,h}
- *   heimdall://site/{siteId}/seo{?,/html,/csv,/diff}
+ *   heimdall://site/{siteId}/seo{?,/html,/csv,/diff,/outcomes}
  *   heimdall://site/{siteId}/watch{?,/html}
  *   heimdall://matrix/{slug}{?,/html,/csv}
  *   heimdall://run/{runId}/fixpacket          修复包 JSON
@@ -34,7 +34,7 @@ export const RESOURCE_TEMPLATES = Object.freeze([
   { uriTemplate: 'heimdall://site/{siteId}/page/{page}/brief{?detail,sectionId}', name: 'brief', title: '页面简报（默认 outline）', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://site/{siteId}/page/{page}/sections', name: 'sections', title: '分段计划', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://site/{siteId}/page/{page}/ref/{viewport}.png{?y,h}', name: 'ref-shot', title: '参考截图（可纵向裁剪）', mimeType: 'image/png' },
-  { uriTemplate: 'heimdall://site/{siteId}/seo/{format}', name: 'seo-report', title: 'SEO 审计报告（json / html / csv / diff）', mimeType: 'application/json' },
+  { uriTemplate: 'heimdall://site/{siteId}/seo/{format}', name: 'seo-report', title: 'SEO 审计报告（json / html / csv / diff / outcomes）', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://site/{siteId}/watch/{format}', name: 'watch-report', title: '站点变更报告（json / html）', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://matrix/{slug}/{format}', name: 'seo-matrix', title: '竞品 SEO 矩阵（json / html / csv）', mimeType: 'application/json' },
   { uriTemplate: 'heimdall://run/{runId}/fixpacket', name: 'fixpacket', title: '修复包', mimeType: 'application/json' },
@@ -79,6 +79,7 @@ export function resolveUri(uri) {
         html: ['seo.html', 'text/html; charset=utf-8'],
         csv: ['seo.csv', 'text/csv; charset=utf-8'],
         diff: ['diff.md', 'text/markdown; charset=utf-8'],
+        outcomes: ['outcome-evidence.json', 'application/json'],
       };
       const selected = files[format];
       if (selected) return { kind: 'seo-report', mime: selected[1], siteId, format, file: SAFE_FILE(DATA_ROOT, join(WORKSPACE, siteId, 'seo', selected[0])) };

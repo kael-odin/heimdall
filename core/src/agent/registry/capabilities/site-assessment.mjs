@@ -21,6 +21,7 @@ import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { readCurrentScore } from '../../../score-status.mjs';
 import { validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
 import { SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../../../seo/method.mjs';
+import { summarizeOutcomeEvidence } from '../../../seo/outcome-evidence.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -494,6 +495,7 @@ function seoSummary(siteId, root, expectedOrigin) {
     bySeverity,
     categories,
     geo: summarizeGeoReport(report.geo),
+    outcomeEvidence: summarizeOutcomeEvidence(root, siteId, expectedOrigin),
     sitemap: sitemapSummary(report),
     repairCandidates: repairCandidates.items,
     repairCandidatesMeta: { total: repairCandidates.total, returned: repairCandidates.items.length, truncated: repairCandidates.truncated },
@@ -974,21 +976,15 @@ function buildSeoGeoTask(siteId, origin, seo) {
     returned: advisoryActions.length,
     truncated: seo.advisoryCandidatesMeta?.truncated === true || advisoryCandidates.length > advisoryActions.length,
   };
-  const outcomeEvidence = {
-    search: {
-      status: 'unknown', basis: 'unknown', evidence: [],
-      reason: '没有授权的真实搜索结果、收录或排名实验。',
-    },
-    modelCitation: {
-      status: 'unknown', basis: 'unknown', evidence: [],
-      reason: '没有授权的真实模型检索和引用命中实验。',
-    },
+  const outcomeEvidence = seo.outcomeEvidence ?? {
+    search: { status: 'unknown', basis: 'unknown', evidence: [], reason: '没有授权的真实搜索结果、收录或排名实验。' },
+    modelCitation: { status: 'unknown', basis: 'unknown', evidence: [], reason: '没有授权的真实模型检索和引用命中实验。' },
   };
   const outcomeTasks = [
-    { id: 'measure-search-outcomes', basis: 'unknown', requiresHumanApproval: true,
-      instruction: '在固定且获授权的查询集合上记录搜索结果、收录状态和采集时间；不要把页面评分当作真实排名或收录结果。' },
-    { id: 'measure-model-citation-outcomes', basis: 'unknown', requiresHumanApproval: true,
-      instruction: '在固定且获授权的提示词、模型和时间窗口上记录回答与来源引用；不要把 GEO 准备度当作真实引用命中率。' },
+    ...(outcomeEvidence.search?.status === 'observed' ? [] : [{ id: 'measure-search-outcomes', basis: 'unknown', requiresHumanApproval: true,
+      instruction: '在固定且获授权的查询集合上记录搜索结果、收录状态和采集时间，并写入脱敏 outcome-evidence.json；不要把页面评分当作真实排名或收录结果。' }]),
+    ...(outcomeEvidence.modelCitation?.status === 'observed' ? [] : [{ id: 'measure-model-citation-outcomes', basis: 'unknown', requiresHumanApproval: true,
+      instruction: '在固定且获授权的提示词、模型和时间窗口上记录回答与来源引用，并写入脱敏 outcome-evidence.json；不要把 GEO 准备度当作真实引用命中率。' }]),
   ];
   const geoCoverage = geo.coverage && typeof geo.coverage === 'object' ? {
     pages: Number.isInteger(geo.coverage.pages) ? geo.coverage.pages : null,
@@ -1959,8 +1955,12 @@ export default {
       unknowns.push({ id: 'seo-sitemap-scope-limited', detail: `站点地图覆盖为 ${seo.completeness.sitemapCoverage}，站点范围仍需补采。${reasons}` });
     }
     if (seo.status === 'observed') {
-      unknowns.push({ id: 'seo-search-outcome-unknown', detail: '当前 SEO 证据没有真实搜索结果、收录或排名实验。' });
-      unknowns.push({ id: 'geo-model-citation-outcome-unknown', detail: '当前 GEO 证据没有真实模型检索和引用命中实验。' });
+      if (seo.outcomeEvidence?.search?.status !== 'observed') {
+        unknowns.push({ id: 'seo-search-outcome-unknown', detail: '当前 SEO 证据没有可用的真实搜索结果、收录或排名实验。' });
+      }
+      if (seo.outcomeEvidence?.modelCitation?.status !== 'observed') {
+        unknowns.push({ id: 'geo-model-citation-outcome-unknown', detail: '当前 GEO 证据没有可用的真实模型检索和引用命中实验。' });
+      }
     }
     for (const id of api.unknowns) unknowns.push({ id, detail: 'API 行为、认证、权限、状态机或副作用仍未被该摘要证明。' });
     if (qa.status === 'not_configured') unknowns.push({ id: 'qa-not-configured', detail: '没有提供 QA 工作区，最近一次 QA 运行未知。' });

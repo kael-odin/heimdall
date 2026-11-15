@@ -2,11 +2,13 @@ import { join } from 'node:path';
 import { WORKSPACE } from '../../../paths.mjs';
 import { nextAction } from '../../envelope.mjs';
 import { existingWorkspaceJson, runSourceJob, siteForTarget } from './source-job.mjs';
+import { summarizeOutcomeEvidence } from '../../../seo/outcome-evidence.mjs';
 
 function finishAudit(siteId) {
   return () => {
     const report = existingWorkspaceJson(join(WORKSPACE, siteId, 'seo', 'seo.json'))?.json;
     if (!report) throw new Error('SEO audit finished without seo.json');
+    const outcomeEvidence = summarizeOutcomeEvidence(join(WORKSPACE, siteId), siteId, report.origin);
     return {
       siteId,
       origin: report.origin,
@@ -17,12 +19,14 @@ function finishAudit(siteId) {
       summary: report.summary,
       categories: report.categories,
       geo: report.geo ?? null,
+      outcomeEvidence,
       field: report.field ?? null,
       reports: {
         json: `workspace/${siteId}/seo/seo.json`,
         html: `workspace/${siteId}/seo/seo.html`,
         csv: `workspace/${siteId}/seo/seo.csv`,
         diff: report.summary?.baselineCompared === true ? `workspace/${siteId}/seo/diff.md` : null,
+        outcomes: outcomeEvidence.sourceStatus === 'missing' ? null : outcomeEvidence.path,
         uri: `heimdall://site/${encodeURIComponent(siteId)}/seo`,
       },
     };
