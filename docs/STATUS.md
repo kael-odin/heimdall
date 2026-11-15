@@ -44,6 +44,8 @@
 
 2026-11-15 [公开案例摘要保留能力闭合状态]：`public_case_summary` 现在从脱敏 `site-assessment` 投影受限 closure 摘要到克隆、部署、后端、SEO/GEO 和 QA 能力卡片；公开案例不会只显示 `ready`，还会保留未关闭的义务和未知证据。
 
+2026-11-15 [公开案例 closure 一致性校验]：案例读取器现在只接受已知 closure schema，并核对义务 ID 唯一性、`verified/open/unknown/notApplicable` 计数与义务列表；损坏或伪造的 closure 被丢弃，不会进入公开能力摘要。
+
 2026-11-15 [公开案例摘要保留 SEO/GEO 效果证据]：同一摘要现在投影脱敏 `outcomeEvidence` 的搜索/收录与模型引用状态、样本数、命中数和命中率；缺少独立实验时继续显示 `unknown`，页面分数不会替代结果证据。
 
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。

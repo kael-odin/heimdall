@@ -68,21 +68,42 @@ test('public case summary projects a sanitized site-assessment capability envelo
         readiness: {
           clone: { status: 'ready', basis: 'verified', evidence: ['D:\\private\\clone'], closure: {
             schema: 'heimdall.rebuild-closure/1', state: 'open', counts: { required: 5, verified: 4, open: 1, unknown: 0 },
-            requiredObligations: [{ id: 'delivery-scope', state: 'open' }, { id: 'private-secret', state: 'verified' }],
+            requiredObligations: [
+              { id: 'mirror-coverage', state: 'verified' }, { id: 'visual-verification', state: 'verified' },
+              { id: 'strict-offline-delivery', state: 'verified' }, { id: 'delivery-scope', state: 'open' },
+              { id: 'private-secret', state: 'verified' },
+            ],
           } },
           independentDeployment: { status: 'verified', basis: 'verified' },
           backend: { status: 'needs_human_review', basis: 'observed', closure: {
             schema: 'heimdall.backend-closure/1', state: 'open', counts: { required: 8, verified: 3, open: 0, unknown: 5, notApplicable: 1 },
-            requiredObligations: [{ id: 'observed-contract', state: 'unknown' }],
+            requiredObligations: [
+              { id: 'observed-contract', state: 'verified' }, { id: 'response-shape-holdout', state: 'verified' },
+              { id: 'adapter-gap-ledger', state: 'unknown' }, { id: 'backend-scaffold-check', state: 'unknown' },
+              { id: 'business-rule-equivalence', state: 'unknown' }, { id: 'state-consistency', state: 'not_applicable' },
+              { id: 'offline-egress', state: 'unknown' }, { id: 'operation-probe', state: 'unknown' },
+              { id: 'authorized-business-journeys', state: 'verified' },
+            ],
           } },
           seo: { status: 'ready', basis: 'observed', closure: {
             schema: 'heimdall.seo-geo-closure/1', state: 'open', counts: { required: 5, verified: 4, open: 1, unknown: 0 },
-            requiredObligations: [{ id: 'optimization-actions', state: 'open' }],
+            requiredObligations: [
+              { id: 'method-versions', state: 'verified' }, { id: 'page-collection', state: 'verified' },
+              { id: 'sitemap-scope', state: 'verified' }, { id: 'geo-coverage', state: 'verified' },
+              { id: 'optimization-actions', state: 'open' },
+            ],
           } },
-          geo: { status: 'needs_follow_up', basis: 'observed' },
+          geo: { status: 'needs_follow_up', basis: 'observed', closure: {
+            schema: 'heimdall.seo-geo-closure/1', state: 'open', counts: { required: 1, verified: 1, open: 0, unknown: 0 },
+            requiredObligations: [{ id: 'geo-coverage', state: 'verified' }, { id: 'geo-coverage', state: 'verified' }],
+          } },
           qa: { status: 'ready', basis: 'verified', closure: {
             schema: 'heimdall.qa-closure/1', state: 'open', counts: { required: 6, verified: 4, open: 1, unknown: 1 },
-            requiredObligations: [{ id: 'business-checks', state: 'open' }],
+            requiredObligations: [
+              { id: 'qa-run-completeness', state: 'verified' }, { id: 'coverage-completeness', state: 'verified' },
+              { id: 'finding-evidence', state: 'verified' }, { id: 'human-verdicts', state: 'verified' },
+              { id: 'business-checks', state: 'open' }, { id: 'backend-completion', state: 'unknown' },
+            ],
           } },
         },
       },
@@ -95,9 +116,10 @@ test('public case summary projects a sanitized site-assessment capability envelo
     assert.equal(env.result.capabilities.independentDeployment.status, 'verified');
     assert.equal(env.result.capabilities.backendCompletion.status, 'needs_human_review');
     assert.deepEqual(env.result.capabilities.backendCompletion.closure.counts, { required: 8, verified: 3, open: 0, unknown: 5, notApplicable: 1 });
-    assert.deepEqual(env.result.capabilities.seo.closure.requiredObligations, [{ id: 'optimization-actions', state: 'open' }]);
-    assert.deepEqual(env.result.capabilities.bugDetection.closure.requiredObligations, [{ id: 'business-checks', state: 'open' }]);
+    assert.ok(env.result.capabilities.seo.closure.requiredObligations.some(item => item.id === 'optimization-actions' && item.state === 'open'));
+    assert.ok(env.result.capabilities.bugDetection.closure.requiredObligations.some(item => item.id === 'business-checks' && item.state === 'open'));
     assert.equal(env.result.capabilities.clone.closure.requiredObligations.some(item => item.id === 'private-secret'), true);
+    assert.equal(env.result.capabilities.geo.closure, undefined);
     assert.deepEqual(env.result.seo.outcomeEvidence.search, { status: 'observed', basis: 'observed', source: 'manual-search', samples: 4, hits: 2, indexedPages: 3, hitRate: 0.5 });
     assert.deepEqual(env.result.seo.outcomeEvidence.modelCitation, { status: 'observed', basis: 'observed', source: 'manual-model', samples: 5, hits: 1, sourceMentions: 1, hitRate: 0.2 });
     assert.equal(env.result.capabilities.bugDetection.status, 'ready');

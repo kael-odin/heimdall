@@ -137,6 +137,8 @@ function unknownCapability(reason) {
 
 function summarizeClosure(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const schemas = new Set(['heimdall.rebuild-closure/1', 'heimdall.backend-closure/1', 'heimdall.qa-closure/1', 'heimdall.seo-geo-closure/1']);
+  if (!schemas.has(value.schema)) return null;
   const state = ['ready', 'open', 'unknown', 'blocked', 'incomplete'].includes(value.state) ? value.state : null;
   const rawCounts = value.counts && typeof value.counts === 'object' && !Array.isArray(value.counts) ? value.counts : {};
   const counts = Object.fromEntries(['required', 'verified', 'open', 'unknown', 'notApplicable']
@@ -149,7 +151,18 @@ function summarizeClosure(value) {
       return id && obligationState ? { id, state: obligationState } : null;
     }).filter(Boolean)
     : [];
-  if (!state || !Object.keys(counts).length || !requiredObligations.length) return null;
+  const requiredStates = requiredObligations.filter(item => item.state !== 'not_applicable');
+  const duplicateIds = new Set(requiredObligations.map(item => item.id)).size !== requiredObligations.length;
+  const expectedCounts = {
+    required: requiredStates.length,
+    verified: requiredStates.filter(item => item.state === 'verified').length,
+    open: requiredStates.filter(item => item.state === 'open').length,
+    unknown: requiredStates.filter(item => item.state === 'unknown').length,
+    notApplicable: requiredObligations.filter(item => item.state === 'not_applicable').length,
+  };
+  if (!state || !Object.keys(counts).length || !requiredObligations.length || requiredObligations.length > 20 || duplicateIds
+    || Object.entries(expectedCounts).some(([key, expected]) => (rawCounts[key] ?? 0) !== expected)
+    || rawCounts.required !== expectedCounts.required) return null;
   return { schema: safeText(value.schema, 80), state, counts, requiredObligations };
 }
 
