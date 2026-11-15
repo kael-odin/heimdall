@@ -60,6 +60,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - QA 任务包会在 `qaTask.latest.findings.status` 保留详情证据状态；只有 `observed` 且详情数量与摘要 `fileable` 一致时才能进入 finding 裁决或 ready。详情缺失、不可用或数量不一致时进入 `blocked_on_qa_evidence`；即使摘要 `fileable=0`，也不能解释成零 bug 或 `readiness.qa=ready`。
 - `qaTask.latest.coverage` 会保留最多 50 个页面/视口和检查点的脱敏状态，并用 `pagesMeta`、`checksMeta` 区分总量、有效量、返回量和截断；它用于定位 QA 证据缺口，不替代 finding 的人工裁决。
 - `deliveryPlan.cloneTask` 是克隆、还原度和独立部署的 AI 任务包：它汇总页面/镜像覆盖、多视口验证、strict 离线交付、浏览器失败、动态数据、二进制缺口和断网部署状态。视觉分数不等于功能等价，strict 导出不等于独立部署；`provenance.invented` 必须保持为空。
+- `deliveryPlan.cloneTask.closure` 是重建闭环的 required obligation ledger：镜像覆盖、视觉验证、strict 离线交付、范围完整性和独立部署逐项返回 `verified/open/unknown`。只有全部义务为 `verified` 才能进入 `ready`；未知证据必须先补采或保留限制。
 - `deliveryPlan.cloneTask.scope.delivery.coverage.scopeLimited` 为真时，strict 结果只覆盖有界页面范围；任务会给出 `allDiscovered` 复测动作，不会把有限范围包装成整站克隆。
   `status` 依次用 `blocked_on_capture`、`blocked_on_visual_verification`、`blocked_on_offline_delivery`、`blocked_on_independent_deployment`、`ready_for_ai_review` 或 `ready` 表示当前门禁位置。
   `scope.visual.verificationGaps` 只列当前扫描得到的前 50 个 `missing`、`stale` 或 `incomplete` 页面；旧的验证摘要不能覆盖当前扫描状态。

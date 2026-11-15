@@ -1236,6 +1236,12 @@ test('site-assessment: clone AI task keeps capture, delivery, and deployment gat
     assert.equal(task.scope.pages, 2);
     assert.equal(task.scope.mirrors, 1);
     assert.equal(task.scope.mirrorCoverage, 0.5);
+    assert.equal(task.closure.schema, 'heimdall.rebuild-closure/1');
+    assert.equal(task.closure.state, 'open');
+    assert.deepEqual(task.closure.counts, { required: 5, verified: 0, open: 4, unknown: 1 });
+    assert.deepEqual(task.closure.requiredObligations.map(item => item.id), [
+      'mirror-coverage', 'visual-verification', 'strict-offline-delivery', 'delivery-scope', 'independent-deployment',
+    ]);
     assert.equal(task.scope.visual.verificationGaps.total, 2);
     assert.deepEqual(task.scope.visual.verificationGaps.items, [
       { page: 'about', status: 'missing' }, { page: 'home', status: 'missing' },

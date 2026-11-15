@@ -34,6 +34,7 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 
 **3.5 动态与后端补全**
 - 先运行 `heimdall site-assessment <siteId> --json`，读取 `deliveryPlan.backendCompletion`、`runtimeDataGaps` 和未知项。
+- 同时读取 `deliveryPlan.cloneTask.closure.requiredObligations`；`open` 或 `unknown` 的义务必须保留并按 `verify` 条件复测，不能只因页面看起来相似就关闭。
 - 存在 observed API 契约或运行时缺口时，运行 `heimdall backend scaffold <siteId> --out ./backend-scaffold`；只按 `backend-task.json` 的 observed 证据补写。
 - 在 `backend-scaffold` 中运行 `npm start` 与 `npm run check`。认证、权限、状态机、持久化、写入和外部副作用没有授权旅程时保持 unknown。
 - 前端视觉对比和匿名检查不能证明后端等价；独立交付前运行 `heimdall live-verify`，再回读最新 `site-assessment`。

@@ -1216,6 +1216,45 @@ function buildCloneTask(siteId, origin, clone, items) {
       ? [`heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`] : []),
     `heimdall site-assessment ${siteId} --json`,
   ];
+  const closureObligations = [
+    {
+      id: 'mirror-coverage',
+      status: captureBlocked ? (clone.pages ? 'open' : 'unknown') : 'verified',
+      basis: clone.pages ? 'observed' : 'unknown',
+      verify: 'clone.mirrors === clone.pages',
+    },
+    {
+      id: 'visual-verification',
+      status: clone.pages === 0 ? 'unknown' : visualBlocked ? 'open' : 'verified',
+      basis: clone.pages ? 'observed' : 'unknown',
+      verify: 'clone.unmeasured === 0 && clone.verificationStatus === "checked"',
+    },
+    {
+      id: 'strict-offline-delivery',
+      status: delivery.status === 'passed' ? 'verified' : delivery.status === 'not_recorded' ? 'unknown' : 'open',
+      basis: delivery.report ? 'observed' : 'unknown',
+      verify: 'clone.delivery.status === "passed"',
+    },
+    {
+      id: 'delivery-scope',
+      status: !delivery.coverage ? 'unknown'
+        : delivery.coverage.scope === 'recon-discovered' && delivery.coverage.scopeLimited === false ? 'verified' : 'open',
+      basis: delivery.coverage ? 'observed' : 'unknown',
+      verify: 'scope.delivery.coverage.scope === "recon-discovered" && scope.delivery.coverage.scopeLimited === false',
+    },
+    {
+      id: 'independent-deployment',
+      status: deployment.status === 'verified' ? 'verified' : deployment.status === 'unknown' ? 'unknown' : 'open',
+      basis: deployment.report ? 'observed' : 'unknown',
+      verify: 'scope.delivery.independentDeployment.status === "verified"',
+    },
+  ];
+  const closureCounts = {
+    required: closureObligations.length,
+    verified: closureObligations.filter(item => item.status === 'verified').length,
+    open: closureObligations.filter(item => item.status === 'open').length,
+    unknown: closureObligations.filter(item => item.status === 'unknown').length,
+  };
   const rebuild = rebuildPage ? {
     status: 'available', basis: 'observed', page: rebuildPage,
     workflow: ['study', 'build', 'check', 'refine', 'deliver'],
@@ -1263,6 +1302,12 @@ function buildCloneTask(siteId, origin, clone, items) {
         independentDeployment: { status: deployment.status, report: deployment.report },
       },
     },
+    closure: {
+      schema: 'heimdall.rebuild-closure/1',
+      state: closureCounts.verified === closureCounts.required ? 'ready' : 'open',
+      counts: closureCounts,
+      requiredObligations: closureObligations,
+    },
     rebuild,
     observedActions: actions.filter(item => item.basis === 'observed'),
     openActions: actions,
@@ -1282,6 +1327,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       '外部运行时、动态 API、WebSocket、登录、权限和写入行为不能由 AI 猜成已实现。',
       '前端重建只从当前镜像和脱敏证据开始；后端补全继续读取 deliveryPlan.backendCompletion。',
       'unknown、unmeasured、blocked 和未审核资源必须保留原状态，不能改写成通过。',
+      'closure.requiredObligations 是重建闭环的硬门槛；unknown 或 open 不能被 AI 改写成 ready。',
       '源站源码、凭据、Cookie、令牌、原始 HAR 和未脱敏响应不进入任务包。',
     ],
     verification: {
@@ -1299,6 +1345,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待验证工作。',
       '不要把视觉分数、strict 导出或静态页面通过解释成后端和业务功能完成。',
       '不要猜测动态 API、外部运行时、WebSocket、认证、权限或写入行为；遇到缺口先保留 unknown。',
+      '先处理 closure.requiredObligations，再按相同证据重新运行 site-assessment；所有必需义务 verified 后才可称为 ready。',
       '完成小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
     provenance: {

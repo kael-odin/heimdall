@@ -44,6 +44,7 @@
 2026-11-15 [SEO/GEO 外部效果证据写入能力]：新增 `heimdall_seo_outcomes` / `heimdall seo-outcomes`，从用户指定的脱敏 JSON 中只提取允许的计数和来源类型，按当前站点 origin 原子写入 sidecar；已有 sidecar 必须显式 `--force` 覆盖，秘密级输入和跨 origin 输入直接拒绝。
 
 2026-11-15 [克隆任务接通 AI 重建闭环]：`site-assessment.cloneTask` 现在复用已有 `rebuild init → status → deliver` 和正式门禁/回退语义，明确输出 `study/build/check/refine/deliver` 顺序；没有已捕获页面时保持 `blocked_on_capture`，后端补全仍由 `backendCompletion` 单独承接。
+2026-11-15 [重建闭环义务账本]：`site-assessment.cloneTask.closure` 现在把镜像覆盖、视觉验证、strict 离线交付、交付范围和独立部署列成五项 required obligations；只有全部为 `verified` 才能标为 `ready`，`open/unknown` 必须继续复测或保留限制。
 
 2026-11-15 [重建工作区接通后端补全入口]：生成的 `AGENTS.md` 和 `heimdall-rebuild` 技能现在会先读取 `site-assessment.backendCompletion`，再从脱敏 `backend-task.json` 生成 B3 后端起点；认证、权限、状态机、持久化、写入和外部副作用没有授权证据时继续保持 `unknown`。
 
