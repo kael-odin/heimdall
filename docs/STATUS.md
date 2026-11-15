@@ -18,7 +18,7 @@
 
 2026-11-15 [QA 聚合计入业务检查覆盖]：`qa.metrics.coverage.checks` 现在累计运行记录里的声明检查点；历史脱敏聚合没有该字段时保留为 0，避免 `site-assessment` 把已有业务检查误报为零覆盖。
 
-2026-11-15 [交付包页面复杂度信号]：离线浏览器探针现在在脱敏摘要中记录 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面信号，并投影到 `cloneTask.scope.delivery.browserCapabilities`；这些信号只指导复测类型，不自动判为缺陷或支持。
+2026-11-15 [交付包页面复杂度信号]：离线浏览器探针现在在脱敏摘要中记录 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面信号，并投影到 `cloneTask.scope.delivery.browserCapabilities`；`deliveryPlan` 同时生成 `clone-page-complexity` 专项复测项。这些信号只指导复测类型，不自动判为缺陷或支持。
 
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 

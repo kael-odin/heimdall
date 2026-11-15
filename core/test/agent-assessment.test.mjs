@@ -940,6 +940,8 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
       { iframes: 1, externalIframes: 0, shadowRoots: 1, canvases: 1, tallPages: 0 });
     assert.deepEqual(blocked.deliveryPlan.cloneTask.scope.delivery.browserCapabilities.pages,
       [{ page: '/library/', iframeCount: 1, shadowRootCount: 1, canvasCount: 1 }]);
+    assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-page-complexity').status, 'open');
+    assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-page-complexity').detail, /shadowRoots=1/);
     assert.equal(blocked.clone.delivery.runtimeDataGaps[0].target, '/api/search');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-runtime-data-gaps').repairTasks.length, 1);
     assert.equal(blocked.deliveryPlan.backendCompletion.runtimeDataGaps[0].failureKind, 'http');

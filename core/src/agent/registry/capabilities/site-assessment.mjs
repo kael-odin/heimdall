@@ -31,7 +31,7 @@ const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'reque
 const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 const SITEMAP_REASONS = new Set(['budget-exhausted', 'time-limit', 'total-byte-limit', 'cross-origin-sitemap', 'robots-unavailable', 'sitemap-request-failed', 'unknown-sitemap-format', 'depth-limit', 'file-limit', 'url-limit', 'document-byte-limit']);
-const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-scope-limited', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
+const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-scope-limited', 'clone-page-complexity', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
 const DEPLOYMENT_ATTEMPT_SCHEMA = 'heimdall.deployment-verification-attempt/1';
 
 function readJson(file) {
@@ -942,6 +942,27 @@ function planVerification(siteId, condition) {
   return { tool: 'heimdall_site_assessment', args: { siteId }, condition };
 }
 
+function browserComplexitySummary(capabilities) {
+  if (!capabilities || typeof capabilities !== 'object' || Array.isArray(capabilities)) return null;
+  const totals = capabilities.totals;
+  if (!totals || typeof totals !== 'object' || Array.isArray(totals)) return null;
+  const count = key => Number.isSafeInteger(totals[key]) && totals[key] >= 0 ? totals[key] : 0;
+  const signals = [
+    ['iframes', count('iframes')],
+    ['externalIframes', count('externalIframes')],
+    ['shadowRoots', count('shadowRoots')],
+    ['canvases', count('canvases')],
+    ['tallPages', count('tallPages')],
+  ].filter(([, value]) => value > 0);
+  if (!signals.length) return null;
+  return {
+    pagesObserved: Number.isSafeInteger(capabilities.pagesObserved) && capabilities.pagesObserved >= 0 ? capabilities.pagesObserved : null,
+    signalPages: Number.isSafeInteger(capabilities.signalPages) && capabilities.signalPages >= 0 ? capabilities.signalPages : null,
+    pagesTruncated: capabilities.pagesTruncated === true,
+    signals,
+  };
+}
+
 function qaRepairTask(finding, qa, qaWorkspace) {
   const id = String(finding?.id ?? finding?.fingerprint ?? 'finding').replace(/[^a-z0-9_-]/gi, '-').slice(0, 64) || 'finding';
   const target = typeof finding?.target === 'string' && finding.target ? finding.target : finding?.path || '/';
@@ -1716,6 +1737,19 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       action: plannedAction('cli:shell', { command: `heimdall live ${siteId} --offline --strict --heal --materialize-har${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}` },
         '按已审核的资源策略修复候选包 health.json 阻断，再用同一根路径严格导出', { canAutoRun: true, requiresHumanApproval: false }),
       verify: planVerification(siteId, 'rerun strict offline export for current inputs; clone.delivery.status === "passed"'),
+    });
+  }
+  const complexity = browserComplexitySummary(clone.delivery.browserCapabilities);
+  if (complexity) {
+    const signalText = complexity.signals.map(([name, count]) => `${name}=${count}`).join('、');
+    const scopeText = complexity.signalPages !== null && complexity.pagesObserved !== null
+      ? `${complexity.signalPages}/${complexity.pagesObserved} 个已观察页面` : '部分已观察页面';
+    add({
+      id: 'clone-page-complexity', kind: 'page_complexity_signal', basis: 'observed', status: 'open',
+      title: '页面复杂度需要专项复测',
+      detail: `离线浏览器在 ${scopeText} 观察到 ${signalText}${complexity.pagesTruncated ? '；页面样本已截断' : ''}。这些信号只说明需要按页复测 Shadow DOM、画布、嵌入内容或超长滚动，不代表缺陷或已支持。`,
+      evidence: [clone.delivery.healthReport, `browserCapabilities:${signalText}`].filter(Boolean),
+      verify: { method: 'human_authorized_complexity_review', condition: '按页面信号完成对应专项复测，并把结果分别记录为 verified、observed 或 unknown' },
     });
   }
   if (clone.delivery.browserFailures?.length) {
