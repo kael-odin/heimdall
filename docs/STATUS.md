@@ -41,6 +41,7 @@
 2026-11-15 [过期 GEO 置信度隔离]：GEO 方法版本缺失、过期或状态非法时，摘要会把 `confidence` 保留为 `null`；旧分数可以追溯，但不会带着 `high` 置信度进入 AI 任务包。
 2026-11-15 [QA finding 详情进入就绪门禁]：`deliveryPlan.qaTask`、`deliveryPlan.items` 和 `readiness.qa` 现在都要求 `findings.status=observed`；详情缺失、不可用或返回为空时进入 `blocked_on_qa_evidence`，即使摘要 `fileable=0` 也不能解释成零 bug 或 QA ready。
 2026-11-15 [QA 证据输入路径收紧]：站点评估只把实际存在的脱敏 `report.md`、`bugs.md` 放进 `qaTask.inputs` 和修复证据；缺失文件保持 `null` 或省略，不能用推测路径冒充可读取证据。
+2026-11-15 [QA finding 摘要一致性门禁]：当 `run.json.summary.fileable` 与存在的 `findings.json` 脱敏详情数量不一致时，finding 状态标为 `inconsistent`，QA 任务和交付计划继续阻断，不把空详情解释成零 bug。
 
 2026-11-15 [SEO 行动截断进入 AI 任务元数据]：`deliveryPlan.seoGeoTask` 现在同时暴露 `observedActionsMeta` 与 `observedAdvisoriesMeta`；SEO 与 GEO 合并超过 20 条时明确标记 `truncated`，避免 AI 把被裁掉的行动误读成完整列表。medium 线索仍不会单独改变 readiness。
 

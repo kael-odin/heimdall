@@ -150,6 +150,23 @@ test('site-assessment: blocks QA readiness when finding details are unavailable'
     assert.equal(emptySummary.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
     assert.equal(emptySummary.readiness.qa.status, 'needs_human_review');
     assert.equal(emptySummary.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').status, 'blocked');
+
+    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-summary-20261115-abcd', 'findings.json'), []);
+    put(runPath, {
+      runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
+      summary: { total: 1, fileable: 1, environment: 0, checkNeedsFix: 0 },
+      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
+    });
+    const inconsistentRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(inconsistentRun.status, 0, inconsistentRun.stderr + inconsistentRun.stdout);
+    const { result: inconsistent } = JSON.parse(inconsistentRun.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(inconsistent.qa.latest.findings.status, 'inconsistent');
+    assert.equal(inconsistent.qa.latest.findings.reportedTotal, 1);
+    assert.equal(inconsistent.qa.latest.findings.total, 0);
+    assert.equal(inconsistent.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
+    assert.equal(inconsistent.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').title, 'QA finding 摘要与详情不一致');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -317,7 +334,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     put(join(qa, '.heimdall', 'qa', 'runs', runId, 'run.json'), {
       runId, site: 'web', startedAt: '2026-11-11T01:00:00.000Z', endedAt: '2026-11-11T01:00:12.500Z',
       coverage: { pages: [{ path: '/', viewport: '1440x900' }], viewports: ['1440x900'], checks: [] },
-      summary: { total: 2, fileable: 1, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 1 },
+      summary: { total: 2, fileable: 2, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 0 },
     });
     put(join(qa, '.heimdall', 'qa', 'runs', runId, 'findings.json'), [
       {

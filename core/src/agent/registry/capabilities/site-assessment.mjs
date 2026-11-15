@@ -740,7 +740,15 @@ function runSummary(run) {
 
 function readQaFindingDigest(runDir, run) {
   const source = readJson(join(runDir, 'findings.json'));
-  return qaFindingDigest(source, run.runId, { reportedTotal: run?.summary?.fileable ?? null });
+  const reportedTotal = Number.isSafeInteger(run?.summary?.fileable) && run.summary.fileable >= 0
+    ? run.summary.fileable : null;
+  const digest = qaFindingDigest(source, run.runId, { reportedTotal });
+  const inconsistent = digest.status === 'observed' && reportedTotal !== null && digest.total !== reportedTotal;
+  return {
+    ...digest,
+    ...(reportedTotal !== null ? { reportedTotal } : {}),
+    ...(inconsistent ? { status: 'inconsistent' } : {}),
+  };
 }
 
 function qaSummary(args, ctx, siteId, origin) {
@@ -1105,7 +1113,11 @@ function buildQaTask(siteId, origin, qa, api) {
     latest: latest ? {
       runId: latest.runId, summary: latest.summary, completeness: latest.completeness,
       coverage: latest.coverage,
-      findings: { status: latest.findings.status, total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings },
+      findings: {
+        status: latest.findings.status,
+        ...(Number.isSafeInteger(latest.findings.reportedTotal) ? { reportedTotal: latest.findings.reportedTotal } : {}),
+        total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings,
+      },
     } : null,
     metrics, tasks,
     inputs: observed && latest ? [
@@ -1750,9 +1762,13 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
   if (qaFindingEvidenceUnavailable) {
+    const findingsStatus = qa.latest.findings.status;
     add({
       id: 'qa-finding-evidence', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'blocked',
-      title: 'QA finding 详情不可用', detail: '运行摘要无法替代逐条 finding 证据；先恢复脱敏详情或重新运行 QA。',
+      title: findingsStatus === 'inconsistent' ? 'QA finding 摘要与详情不一致' : 'QA finding 详情不可用',
+      detail: findingsStatus === 'inconsistent'
+        ? '运行摘要的 fileable 数量与脱敏 finding 详情不一致；先恢复完整详情或重新运行 QA。'
+        : '运行摘要无法替代逐条 finding 证据；先恢复脱敏详情或重新运行 QA。',
       evidence: [qa.latest?.report].filter(Boolean),
       action: plannedAction('heimdall_qa_findings', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), action: 'show', runId: qa.latest.runId }, '恢复逐条 QA finding 证据'),
       verify: { tool: 'heimdall_qa_findings', condition: 'qa.latest.findings.status === "observed"' },
