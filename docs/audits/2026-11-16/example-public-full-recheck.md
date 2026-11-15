@@ -7,6 +7,7 @@
 ```powershell
 node core/src/cli.mjs handoff https://example.com/ --max-pages 5 --all-discovered --strict
 node core/src/cli.mjs seo-audit https://example.com/ --max-pages 1
+node core/src/cli.mjs probe contract --site example.com --json
 node core/src/cli.mjs site-assessment example.com --limit 5 --json
 ```
 
@@ -36,6 +37,8 @@ node core/src/cli.mjs site-assessment example.com --limit 5 --json
 | 真实搜索/收录 | unknown |
 | 真实模型引用 | unknown |
 
+后端观察型契约为 B0：0 个接口、0 个响应 schema，唯一未知项为 `no-observed-api`。这表示本次公开页面没有可判定的同源 API 证据，不表示源站没有后端。
+
 主要整改证据包括缺少 meta description、缺少 H1、正文依赖客户端渲染，以及 GEO 的服务端正文、标题、分段、实体和结构化数据线索。分数只代表本次方法版本和采集范围。
 
 ## 站点评估结论
@@ -44,7 +47,7 @@ node core/src/cli.mjs site-assessment example.com --limit 5 --json
 
 - clone：多视口和独立部署 `verified`；
 - SEO/GEO：报告可用，但有 3 条 high SEO 问题和 11 条 GEO 行动；
-- backend：`api-contract-missing`，认证、权限、状态机、写入和副作用保持 unknown；
+- backend：观察型契约为 B0，`no_observed_api`；认证、权限、状态机、写入和副作用保持 unknown；
 - QA：`not_configured`，不能从页面无报错推断前后端没有缺陷。
 
 证据位置：`core/workspace/example.com/handoff/README.md`、`core/workspace/example.com/live-export.json`、`core/workspace/example.com/deployment-verification.json`、`core/workspace/example.com/seo/seo.json`。这些运行产物被忽略，不进入提交。

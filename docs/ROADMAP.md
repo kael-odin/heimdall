@@ -130,7 +130,7 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 
 2026-11-16 [W3C 空页面 handoff 修复](audits/2026-11-16/w3-public-empty-handoff.md)：公开站点返回 403、侦察为 0 页时，`build_live` 现在生成可诊断的空结果，strict 以 4 个阻断计数退出，handoff 不再因缺失 `pages` 目录抛 `ENOENT`。该案例提升了被防护或不可达站点的 fail-closed 能力，不代表站点内容或后端已被检测。
 
-2026-11-16 [`example.com` 三能力公开复测](audits/2026-11-16/example-public-full-recheck.md)：在 `maxPages=5` 和 `allDiscovered` 下，1 页公开站点完成克隆、三视口 100% A、strict 0 阻断和 Docker `network none` 独立部署，交付范围明确为 `scopeLimited=false`；SEO 52、GEO 28.1，后端契约和 QA 仍未知。
+2026-11-16 [`example.com` 三能力公开复测](audits/2026-11-16/example-public-full-recheck.md)：在 `maxPages=5` 和 `allDiscovered` 下，1 页公开站点完成克隆、三视口 100% A、strict 0 阻断和 Docker `network none` 独立部署，交付范围明确为 `scopeLimited=false`；SEO 52、GEO 28.1，后端观察型契约为 B0，QA、认证、权限和写入仍未知。
 
 2026-11-16 [视觉验证优先于辅助分数]：`site-assessment` 不再因为缺少当前单页 `score.json` 而覆盖已有多视口验证的还原度证据；只有没有有效视觉验证时才生成辅助分数 unknown。IANA 真实复测确认 `averageOverall=100%` 保留，`scoreStatuses` 仍展示 3 页 stale，避免把“辅助分数不可用”误报为“还原度未知”。
 
