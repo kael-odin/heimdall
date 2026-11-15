@@ -899,6 +899,11 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
     put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
       browserProbe: {
+        capabilities: {
+          pagesObserved: 1, signalPages: 1, pagesTruncated: false,
+          totals: { iframes: 1, externalIframes: 0, shadowRoots: 1, canvases: 1, tallPages: 0 },
+          pages: [{ page: '/library/', iframeCount: 1, shadowRootCount: 1, canvasCount: 1 }],
+        },
         failures: [
           { page: '/library/', kind: 'pageError', error: 'ReferenceError', message: 'CodeMirror is not defined' },
           { page: '/library/', kind: 'http', status: 404, resourceType: 'script', target: '/missing.js' },
@@ -931,6 +936,10 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.clone.delivery.adapter.serverEgress, 'not-tested');
     assert.equal(blocked.clone.delivery.browserFailures[0].message, 'CodeMirror is not defined');
     assert.equal(blocked.clone.delivery.browserFailures[1].resourceType, 'script');
+    assert.deepEqual(blocked.clone.delivery.browserCapabilities.totals,
+      { iframes: 1, externalIframes: 0, shadowRoots: 1, canvases: 1, tallPages: 0 });
+    assert.deepEqual(blocked.deliveryPlan.cloneTask.scope.delivery.browserCapabilities.pages,
+      [{ page: '/library/', iframeCount: 1, shadowRootCount: 1, canvasCount: 1 }]);
     assert.equal(blocked.clone.delivery.runtimeDataGaps[0].target, '/api/search');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-runtime-data-gaps').repairTasks.length, 1);
     assert.equal(blocked.deliveryPlan.backendCompletion.runtimeDataGaps[0].failureKind, 'http');

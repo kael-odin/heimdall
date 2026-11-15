@@ -412,6 +412,26 @@ function liveExportSummary(root, siteId) {
     ? health.browserProbe.failures.slice(0, 50).map(safeBrowserFailure).filter(Boolean) : [];
   const runtimeDataGaps = Array.isArray(health?.runtimeDataGaps)
     ? health.runtimeDataGaps.slice(0, 100).map(safeRuntimeDataGap).filter(Boolean) : [];
+  const rawCapabilities = health?.browserProbe?.capabilities;
+  const browserCapabilities = rawCapabilities && typeof rawCapabilities === 'object' && !Array.isArray(rawCapabilities)
+    && Number.isSafeInteger(rawCapabilities.pagesObserved) && rawCapabilities.pagesObserved >= 0
+    && Number.isSafeInteger(rawCapabilities.signalPages) && rawCapabilities.signalPages >= 0
+    && rawCapabilities.totals && typeof rawCapabilities.totals === 'object' && !Array.isArray(rawCapabilities.totals)
+    ? {
+      pagesObserved: rawCapabilities.pagesObserved,
+      signalPages: rawCapabilities.signalPages,
+      pagesTruncated: rawCapabilities.pagesTruncated === true || (Array.isArray(rawCapabilities.pages) && rawCapabilities.pages.length > 50),
+      totals: Object.fromEntries(['iframes', 'externalIframes', 'shadowRoots', 'canvases', 'tallPages']
+        .map(key => [key, Number.isSafeInteger(rawCapabilities.totals[key]) && rawCapabilities.totals[key] >= 0 ? rawCapabilities.totals[key] : 0])),
+      pages: Array.isArray(rawCapabilities.pages) ? rawCapabilities.pages.slice(0, 50).map(item => {
+        if (!item || typeof item !== 'object' || typeof item.page !== 'string') return null;
+        const page = redactText(item.page, { profile: 'strict' }).text.slice(0, 240);
+        if (!page.startsWith('/')) return null;
+        return { page, ...Object.fromEntries(['iframeCount', 'externalIframeCount', 'shadowRootCount', 'canvasCount']
+          .filter(key => Number.isSafeInteger(item[key]) && item[key] > 0).map(key => [key, item[key]])),
+          ...(item.tallPage === true ? { tallPage: true } : {}) };
+      }).filter(Boolean) : [],
+    } : null;
   const binaryDownloadGaps = Array.isArray(health?.missingLinkDetails)
     ? health.missingLinkDetails.slice(0, 100).map(safeBinaryDownloadGap).filter(Boolean) : [];
   const rawReadOnlyData = health?.readOnlyData;
@@ -449,7 +469,7 @@ function liveExportSummary(root, siteId) {
     deploymentVerification, deploymentVerificationAttempt,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
-    browser, browserFailures, runtimeDataGaps,
+    browser, browserFailures, ...(browserCapabilities ? { browserCapabilities } : {}), runtimeDataGaps,
     ...(health?.runtimeDataGapsTruncated === true ? { runtimeDataGapsTruncated: true } : {}),
     binaryDownloadGaps, readOnlyData, coverage: {
       scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(source.coverage?.scope) ? source.coverage.scope : 'unknown',
@@ -1350,6 +1370,7 @@ function buildCloneTask(siteId, origin, clone, items) {
         offline: delivery.offline ?? null, strict: delivery.strict ?? null,
         blockingCount: delivery.blockingCount ?? null,
         browser: delivery.browser ?? null,
+        browserCapabilities: delivery.browserCapabilities ?? null,
         browserFailures: delivery.browserFailures?.length ?? 0,
         runtimeDataGaps: delivery.runtimeDataGaps?.length ?? 0,
         binaryDownloadGaps: delivery.binaryDownloadGaps?.length ?? 0,
@@ -1384,6 +1405,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       'strict 离线导出通过不等于独立部署通过；必须有当前校验和绑定的断网部署报告。',
       'scope.delivery.coverage.scopeLimited 为 true 时，当前包只代表有界页面范围；先用 allDiscovered 扩大范围并重新验证。',
       '外部运行时、动态 API、WebSocket、登录、权限和写入行为不能由 AI 猜成已实现。',
+      'browserCapabilities 只是页面复杂度信号；iframe、Shadow DOM、Canvas 或长页需要按实际证据复测，不能直接当成缺陷或已支持。',
       '前端重建只从当前镜像和脱敏证据开始；后端补全继续读取 deliveryPlan.backendCompletion。',
       'unknown、unmeasured、blocked 和未审核资源必须保留原状态，不能改写成通过。',
       'closure.requiredObligations 是重建闭环的硬门槛；unknown 或 open 不能被 AI 改写成 ready。',
@@ -1404,6 +1426,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待验证工作。',
       '不要把视觉分数、strict 导出或静态页面通过解释成后端和业务功能完成。',
       '不要猜测动态 API、外部运行时、WebSocket、认证、权限或写入行为；遇到缺口先保留 unknown。',
+      '如果 scope.delivery.browserCapabilities 存在，先按其信号决定复测类型，再把结果写回同一交付证据。',
       '先处理 closure.requiredObligations，再按相同证据重新运行 site-assessment；所有必需义务 verified 后才可称为 ready。',
       '完成小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),

@@ -118,6 +118,57 @@ export function runtimeDataGapsOfBrowserProbe(report, max = 100) {
   };
 }
 
+function pageCapabilitySnapshot() {
+  const frames = [...document.querySelectorAll('iframe')];
+  let externalIframeCount = 0;
+  for (const frame of frames) {
+    const source = frame.getAttribute('src');
+    if (!source) continue;
+    try {
+      const url = new URL(source, location.href);
+      if (['http:', 'https:'].includes(url.protocol) && url.origin !== location.origin) externalIframeCount++;
+    } catch { /* an invalid iframe source is handled by the normal browser probe */ }
+  }
+  let shadowRootCount = 0;
+  for (const element of document.querySelectorAll('*')) if (element.shadowRoot) shadowRootCount++;
+  const canvasCount = document.querySelectorAll('canvas').length;
+  const scrollHeight = Math.max(document.documentElement?.scrollHeight ?? 0, document.body?.scrollHeight ?? 0);
+  return {
+    iframeCount: frames.length,
+    externalIframeCount,
+    shadowRootCount,
+    canvasCount,
+    tallPage: scrollHeight > 100_000,
+  };
+}
+
+function recordPageCapabilities(report, page, snapshot) {
+  if (!report.capabilities || !snapshot || typeof snapshot !== 'object') return;
+  report.capabilities.pagesObserved++;
+  const values = ['iframeCount', 'externalIframeCount', 'shadowRootCount', 'canvasCount']
+    .map(key => Number.isSafeInteger(snapshot[key]) && snapshot[key] >= 0 ? snapshot[key] : 0);
+  const [iframeCount, externalIframeCount, shadowRootCount, canvasCount] = values;
+  const tallPage = snapshot.tallPage === true;
+  if (!iframeCount && !externalIframeCount && !shadowRootCount && !canvasCount && !tallPage) return;
+  report.capabilities.signalPages++;
+  report.capabilities.totals.iframes += iframeCount;
+  report.capabilities.totals.externalIframes += externalIframeCount;
+  report.capabilities.totals.shadowRoots += shadowRootCount;
+  report.capabilities.totals.canvases += canvasCount;
+  report.capabilities.totals.tallPages += tallPage ? 1 : 0;
+  if (report.capabilities.pages.length >= 100) {
+    report.capabilities.pagesTruncated = true;
+    return;
+  }
+  report.capabilities.pages.push({ page,
+    ...(iframeCount ? { iframeCount } : {}),
+    ...(externalIframeCount ? { externalIframeCount } : {}),
+    ...(shadowRootCount ? { shadowRootCount } : {}),
+    ...(canvasCount ? { canvasCount } : {}),
+    ...(tallPage ? { tallPage: true } : {}),
+  });
+}
+
 function publicErrorMessage(error) {
   let message = String(error?.message ?? '').replace(/\s+/g, ' ').trim();
   if (!message) return null;
@@ -216,6 +267,10 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
     untested: routes.length - selected.length,
     truncated: routes.length > selected.length,
     runtimeOrigins: [],
+    capabilities: {
+      pagesObserved: 0, signalPages: 0, pagesTruncated: false,
+      totals: { iframes: 0, externalIframes: 0, shadowRoots: 0, canvases: 0, tallPages: 0 }, pages: [],
+    },
     observationMs: settleMs,
     observation: {
       minimumMs: settleMs, maximumMs: maxObservationMs, quietMs,
@@ -337,6 +392,7 @@ export async function probeOfflineBrowserBundle(bundleDir, pageRoutes, options =
           report.observation.deadlinePages++;
           addFailure({ kind: 'observationDeadline', pendingRequests: pending.size });
         }
+        try { recordPageCapabilities(report, pagePath, await page.evaluate(pageCapabilitySnapshot)); } catch { /* signals are advisory */ }
       } catch (error) {
         addFailure({ kind: 'probeError', error: publicErrorType(error) });
       } finally {

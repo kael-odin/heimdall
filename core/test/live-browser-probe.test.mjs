@@ -21,7 +21,9 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
   try {
     mkdirSync(join(dir, 'site', 'live', 'good'), { recursive: true });
     mkdirSync(join(dir, 'site', 'live', 'api'), { recursive: true });
-    writeFileSync(join(dir, 'site', 'live', 'good', 'index.html'), '<!doctype html><script src="/app.js"></script>');
+    writeFileSync(join(dir, 'site', 'live', 'good', 'index.html'), '<!doctype html><iframe src="/frame/"></iframe><canvas></canvas><x-widget></x-widget><script>customElements.define("x-widget", class extends HTMLElement { connectedCallback() { this.attachShadow({ mode: "open" }).innerHTML = "<b>widget</b>"; } });</script><script src="/app.js"></script>');
+    mkdirSync(join(dir, 'site', 'live', 'frame'), { recursive: true });
+    writeFileSync(join(dir, 'site', 'live', 'frame', 'index.html'), '<!doctype html><title>frame</title>');
     writeFileSync(join(dir, 'site', 'live', 'app.js'), "fetch('/api/data').then(r => { if (!r.ok) throw Error('local data unavailable'); });");
     writeFileSync(join(dir, 'site', 'live', 'api', 'data'), 'ok');
     writeFileSync(join(dir, 'heimdall-live.json'), JSON.stringify({ host: 'fixture.test', origin: 'https://fixture.test', root: 'mirror', offline: true }));
@@ -38,6 +40,8 @@ test('browser probe executes local JS and reports uncovered pages', { timeout: 3
     assert.equal(report.totalPages, 2);
     assert.equal(report.untested, 1);
     assert.equal(report.truncated, true);
+    assert.deepEqual(report.capabilities.totals, { iframes: 1, externalIframes: 0, shadowRoots: 1, canvases: 1, tallPages: 0 });
+    assert.deepEqual(report.capabilities.pages, [{ page: '/good/', iframeCount: 1, shadowRootCount: 1, canvasCount: 1 }]);
 
     mkdirSync(join(dir, 'site', 'live', 'bad'), { recursive: true });
     writeFileSync(join(dir, 'site', 'live', 'bad', 'index.html'), `<!doctype html><script>
