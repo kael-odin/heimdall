@@ -1742,6 +1742,19 @@ function runtimeDataRepairTasks(siteId, gaps, delivery) {
   }));
 }
 
+function readOnlyDataRepairTask(siteId, data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const conflicts = Number.isSafeInteger(data.conflicts) && data.conflicts >= 0 ? data.conflicts : 0;
+  if (data.status !== 'invalid' && conflicts === 0) return null;
+  return {
+    id: 'repair-readonly-data-evidence', kind: 'readonly-data-evidence', target: 'read-data-plan.json', status: 'blocked_on_observation',
+    instruction: '先用无认证的干净匿名上下文重新捕获精确许可的公开 GET，或补充明确授权的只读证据；确认 read-data-plan.json 与 HAR 响应逐条一致后再回放。不要把带 Cookie、冲突或被清洗拒绝的响应正文交给 AI，也不要从失败状态猜测业务数据。',
+    requiresHumanApproval: true,
+    evidence: { status: data.status, declared: data.declared ?? 0, included: data.included ?? 0, missing: data.missing ?? 0, conflicts },
+    verification: planVerification(siteId, 'clone.delivery.readOnlyData.status === "ok" && (clone.delivery.readOnlyData.conflicts ?? 0) === 0 && clone.delivery.readOnlyData.missing === 0'),
+  };
+}
+
 function buildBackendCompletionTask(siteId, api, delivery = null) {
   const observed = api.contract.status === 'observed';
   const endpoints = api.contract.observedEndpoints ?? [];
@@ -1771,6 +1784,8 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   for (const task of runtimeDataRepairTasks(siteId, runtimeGaps, delivery)) {
     if (!repairTasks.some(item => item?.id === task.id)) repairTasks.push(task);
   }
+  const readOnlyData = readOnlyDataRepairTask(siteId, delivery?.readOnlyData);
+  if (readOnlyData && !repairTasks.some(item => item?.id === readOnlyData.id)) repairTasks.push(readOnlyData);
   for (const task of businessRuleComparison.repairTasks ?? []) {
     if (!repairTasks.some(item => item?.id === task.id)) repairTasks.push(task);
   }
@@ -1862,6 +1877,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
     businessRuleComparison,
     runtimeDataGaps: runtimeGaps,
     runtimeDataGapsTruncated: delivery?.runtimeDataGapsTruncated === true,
+    readOnlyData: delivery?.readOnlyData ?? null,
     repairTasks,
     adapterEgress: {
       status: adapterServerEgress,

@@ -1011,7 +1011,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
         { path: '/library.db', kind: 'resource-link', references: 1, pages: ['/library/'] },
         { path: '/legacy.doc', kind: 'resource-link', references: 1, pages: ['/library/'] },
       ],
-      readOnlyData: { status: 'ok', declared: 2, included: 1, missing: 1, binaryDeclared: 1, binaryIncluded: 0 },
+      readOnlyData: { status: 'ok', declared: 2, included: 1, missing: 1, conflicts: 2, binaryDeclared: 1, binaryIncluded: 0 },
       adapter: { serverEgress: 'not-tested', declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
     });
     assert.equal(assess().readiness.delivery.status, 'needs_export');
@@ -1056,8 +1056,13 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.clone.delivery.binaryDownloadGaps[0].path, '/library.db');
     assert.equal(blocked.clone.delivery.binaryDownloadGaps[1].path, '/legacy.doc');
     assert.deepEqual(blocked.clone.delivery.readOnlyData, {
-      status: 'ok', declared: 2, included: 1, missing: 1, binaryDeclared: 1, binaryIncluded: 0,
+      status: 'ok', declared: 2, included: 1, missing: 1, conflicts: 2, binaryDeclared: 1, binaryIncluded: 0,
     });
+    const readOnlyTask = blocked.deliveryPlan.backendCompletion.repairTasks.find(item => item.kind === 'readonly-data-evidence');
+    assert.ok(readOnlyTask);
+    assert.equal(readOnlyTask.requiresHumanApproval, true);
+    assert.equal(readOnlyTask.evidence.conflicts, 2);
+    assert.match(readOnlyTask.instruction, /干净匿名上下文/);
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').status, 'blocked');
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /library\.db/);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /--include-readonly-binaries/);
