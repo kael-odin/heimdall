@@ -82,6 +82,7 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
         assert.deepEqual(result.qa.latest.coverage.pagesMeta, { total: 51, valid: 51, returned: 50, truncated: true });
         assert.equal(result.qa.latest.coverage.checks.length, 50);
         assert.deepEqual(result.qa.latest.coverage.checksMeta, { total: 51, returned: 50, truncated: true });
+        assert.equal(result.deliveryPlan.qaTask.closure.requiredObligations.find(item => item.id === 'coverage-completeness').state, 'open');
         assert.match(result.deliveryPlan.qaTask.prompt, /pagesMeta/);
       }
       if (name === 'malformed business check') {
@@ -451,6 +452,14 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.qa.metrics.decision.primaryAction, 'collect-more-evidence');
     assert.equal(env.result.deliveryPlan.qaTask.schema, 'heimdall.qa-bug-ai-task/1');
     assert.equal(env.result.deliveryPlan.qaTask.status, 'human_review');
+    assert.equal(env.result.deliveryPlan.qaTask.closure.schema, 'heimdall.qa-closure/1');
+    assert.deepEqual(env.result.deliveryPlan.qaTask.closure.counts, { required: 6, verified: 3, open: 3, unknown: 0 });
+    assert.equal(env.result.deliveryPlan.qaTask.closure.state, 'open');
+    assert.deepEqual(env.result.deliveryPlan.qaTask.closure.requiredObligations.map(item => item.id), [
+      'qa-run-completeness', 'coverage-completeness', 'finding-evidence', 'human-verdicts', 'business-checks', 'backend-completion',
+    ]);
+    assert.equal(env.result.deliveryPlan.qaTask.closure.requiredObligations.find(item => item.id === 'human-verdicts').state, 'open');
+    assert.equal(env.result.deliveryPlan.qaTask.closure.requiredObligations.find(item => item.id === 'backend-completion').state, 'open');
     assert.equal(env.result.deliveryPlan.qaTask.scope.frontend.pages, 1);
     assert.equal(env.result.deliveryPlan.qaTask.scope.backend.contract, 'observed');
     assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.status, 'needs_human_journey');

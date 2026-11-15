@@ -1398,6 +1398,38 @@ function buildQaTask(siteId, origin, qa, api, backendCompletion = null) {
       secondaryActions: Array.isArray(qa.metrics.decision.secondaryActions) ? qa.metrics.decision.secondaryActions.slice(0, 4) : [],
     },
   } : null;
+  const qaClosureState = state => state === 'passed' ? 'verified'
+    : ['failed', 'incomplete', 'blocked', 'open', 'invalid'].includes(state) ? 'open' : 'unknown';
+  const pagesMeta = latest?.coverage?.pagesMeta;
+  const coverageState = !latest ? 'unknown'
+    : pagesMeta?.truncated === true ? 'open'
+      : Number.isSafeInteger(pagesMeta?.total) && Number.isSafeInteger(pagesMeta?.valid)
+        ? pagesMeta.total > 0 && pagesMeta.valid === pagesMeta.total ? 'verified' : 'open' : 'unknown';
+  const findingEvidenceState = !latest ? 'unknown'
+    : latest.findings.truncated === true || ['unavailable', 'inconsistent'].includes(latest.findings.status) ? 'open'
+      : latest.findings.status === 'observed' ? 'verified' : 'unknown';
+  const humanVerdictState = !latest || !findingsObserved ? 'unknown'
+    : latest.findings.truncated === true ? 'open'
+      : !hasFindings || findings.every(item => item.triage === 'known-bug') ? 'verified' : 'open';
+  const businessChecksState = businessChecks.status === 'not_declared' ? 'open' : qaClosureState(businessChecks.status === 'observed' ? 'passed' : businessChecks.status);
+  const backendClosureCounts = backendCompletion?.closure?.counts;
+  const backendClosureState = !backendClosureCounts ? 'unknown'
+    : backendClosureCounts.open > 0 ? 'open' : backendClosureCounts.unknown > 0 ? 'unknown' : 'verified';
+  const closureObligations = [
+    { id: 'qa-run-completeness', state: qaClosureState(completeness === 'complete' ? 'passed' : completeness), basis: completeness === 'complete' || completeness === 'incomplete' ? 'observed' : 'unknown' },
+    { id: 'coverage-completeness', state: coverageState, basis: coverageState === 'unknown' ? 'unknown' : 'observed' },
+    { id: 'finding-evidence', state: findingEvidenceState, basis: latest?.findings?.status === 'observed' ? 'observed' : 'unknown' },
+    { id: 'human-verdicts', state: humanVerdictState, basis: humanVerdictState === 'unknown' ? 'unknown' : 'observed' },
+    { id: 'business-checks', state: businessChecksState, basis: businessChecks.status === 'unknown' || businessChecks.status === 'not_declared' ? 'unknown' : 'observed' },
+    { id: 'backend-completion', state: backendClosureState, basis: backendClosureState === 'unknown' ? 'unknown' : 'observed' },
+  ];
+  const closureCounts = Object.fromEntries(['verified', 'open', 'unknown'].map(state => [state, closureObligations.filter(item => item.state === state).length]));
+  const closure = {
+    schema: 'heimdall.qa-closure/1',
+    state: closureCounts.open === 0 && closureCounts.unknown === 0 ? 'ready' : 'open',
+    counts: { required: closureObligations.length, ...closureCounts },
+    requiredObligations: closureObligations,
+  };
   return {
     schema: 'heimdall.qa-bug-ai-task/1', siteId, status,
     objective: '让 AI 在完整、脱敏的 QA 证据上定位前端和后端缺陷候选，并在人工裁决后用同一检查点复测。',
@@ -1405,6 +1437,7 @@ function buildQaTask(siteId, origin, qa, api, backendCompletion = null) {
       frontend: { pages: qa.site?.pages ?? null, latestRun: latest?.runId ?? null, basis: observed ? 'observed' : 'unknown' },
       backend: backendScope,
     },
+    closure,
     latest: latest ? {
       runId: latest.runId, summary: latest.summary, completeness: latest.completeness,
       coverage: latest.coverage,
@@ -1437,7 +1470,7 @@ function buildQaTask(siteId, origin, qa, api, backendCompletion = null) {
       ],
     },
     prompt: [
-      '先读取 deliveryPlan.qaTask 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
+      '先读取 deliveryPlan.qaTask、closure 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
       '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
       '先读取 scope.backend.completion 的后端缺口、修复任务和人工旅程，再回读 deliveryPlan.backendCompletion 的完整脱敏证据。',
       '如果 latest.coverage.pagesMeta 或 latest.coverage.checksMeta 的 truncated 为 true，或 pagesMeta.valid 小于 total，先补齐 QA 覆盖证据。',
