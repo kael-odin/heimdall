@@ -69,6 +69,9 @@ test('seo: duplicate titles and descriptions are optional only within one valid 
   }
   assert.ok(!evaluatePage(page({ url: 'https://example.com/blog?page=2', meta: { noindex: true } }), { ...site, noindexIntent: true })
     .some(issue => issue.id === 'index-pagination-noindex'));
+  const siteIssues = evaluateSite({ duplicates: { description: { shared: ['https://s.test/a', 'https://s.test/b'] } } });
+  assert.deepEqual(siteIssues.find(issue => issue.id === 'content-description-duplicate').pages,
+    ['https://s.test/a', 'https://s.test/b']);
 });
 
 test('seo: a healthy page has no high/critical issues and scores high', () => {

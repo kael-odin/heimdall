@@ -22,8 +22,10 @@ export const CATEGORIES = {
 export const SEVERITY_PENALTY = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
 export const SEVERITY_LABEL = { critical: '严重', high: '高', medium: '中', low: '低', info: '提示' };
 
-const mk = (page, id, category, severity, title, message, evidence, suggestion) =>
-  ({ page, id, category, severity, title, message, evidence: evidence ?? '', suggestion: suggestion ?? '' });
+const mk = (page, id, category, severity, title, message, evidence, suggestion, pages = null) => ({
+  page, id, category, severity, title, message, evidence: evidence ?? '', suggestion: suggestion ?? '',
+  ...(Array.isArray(pages) && pages.length ? { pages: pages.slice(0, 20) } : {}),
+});
 
 const trim = (s, n = 90) => (s == null ? '' : String(s).replace(/\s+/g, ' ').slice(0, n));
 
@@ -179,20 +181,20 @@ export function evaluatePage(page, site = {}) {
 /** 站点级规则：site = { pages, host, duplicates, orphans, sitemapUrls, robots } */
 export function evaluateSite(site = {}) {
   const out = [];
-  const S = (id, category, severity, title, message, evidence, suggestion) =>
-    out.push(mk(null, id, category, severity, title, message, evidence, suggestion));
+  const S = (id, category, severity, title, message, evidence, suggestion, pages = null) =>
+    out.push(mk(null, id, category, severity, title, message, evidence, suggestion, pages));
 
   const dupTitle = Object.entries(site.duplicates?.title ?? {}).filter(([, urls]) => urls.length > 1);
   for (const [value, urls] of dupTitle) {
     const pagination = samePaginationSeries(urls);
     S('content-title-duplicate', 'content', pagination ? 'info' : 'medium', 'title 重复', `${urls.length} 个页面使用同一 title`, `${trim(value, 70)}\n${urls.slice(0, 5).join('\n')}`,
-      pagination ? '同一分页序列允许共用标题；可按读者区分页码的需求调整，不作为强制 SEO 修复' : '为每个页面编写独立 title');
+      pagination ? '同一分页序列允许共用标题；可按读者区分页码的需求调整，不作为强制 SEO 修复' : '为每个页面编写独立 title', urls);
   }
   const dupDesc = Object.entries(site.duplicates?.description ?? {}).filter(([, urls]) => urls.length > 1);
   for (const [, urls] of dupDesc) {
     const pagination = samePaginationSeries(urls);
     S('content-description-duplicate', 'content', pagination ? 'info' : 'medium', 'description 重复', `${urls.length} 个页面使用同一 description`, urls.slice(0, 5).join('\n'),
-      pagination ? '同一分页序列允许共用描述；按内容和展示需求决定是否细分' : '为每个页面编写独立描述');
+      pagination ? '同一分页序列允许共用描述；按内容和展示需求决定是否细分' : '为每个页面编写独立描述', urls);
   }
 
   const pagesWithoutSitemap = site.sitemapCoverage === 'complete'

@@ -237,10 +237,11 @@ function seoRepairCandidates(report, severities = ['critical', 'high']) {
       affectedPages: 0, pages: [],
     };
     if (issue.severity === 'critical') current.severity = 'critical';
-    if (page) {
+    const issuePages = [...new Set(page ? [page] : Array.isArray(issue.pages) ? issue.pages : [])];
+    for (const issuePage of issuePages) {
       current.affectedPages++;
-      const path = safeSeoIssuePath(page);
-      if (path !== '/' && current.pages.length < 20 && !current.pages.includes(path)) current.pages.push(path);
+      const path = safeSeoIssuePath(issuePage);
+      if (current.pages.length < 20 && !current.pages.includes(path)) current.pages.push(path);
     }
     groups.set(issue.id, current);
   };

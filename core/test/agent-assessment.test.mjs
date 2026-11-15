@@ -583,6 +583,30 @@ test('site-assessment: marks combined SEO/GEO action truncation explicitly', () 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: site SEO advisories retain affected pages', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-seo-site-pages-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'seo', 'seo.json'), {
+      origin: 'https://example.test', score: 92,
+      scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
+      summary: { pages: 2, issues: 1, bySeverity: { medium: 1 }, sitemapCoverage: 'complete', failedPages: 0, initialHtmlUnchecked: 0 },
+      siteIssues: [{ id: 'content-description-duplicate', category: 'content', severity: 'medium', title: 'description 重复', suggestion: '为每个页面编写独立描述', pages: ['https://example.test/', 'https://example.test/about'] }],
+      geo: { methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, actionPlan: [] },
+    });
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    const advisory = result.deliveryPlan.seoGeoTask.observedAdvisories.find(item => item.id === 'content-description-duplicate');
+    assert.equal(advisory.affectedPages, 2);
+    assert.deepEqual(advisory.pages, ['/', '/about']);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: truncated observed actions cannot become ready', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-seo-truncated-ready-'));
   const site = join(root, 'workspace', 'example.test');
