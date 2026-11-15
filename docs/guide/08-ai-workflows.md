@@ -56,7 +56,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 `qa.latest.completeness.status` 区分 `complete`、`incomplete` 和 `unknown`，`incompleteReasonCount` 只给原因类别数，不返回原始错误。站点评估复用默认 QA CI 的完整性判断：环境、检查点、导航、检测器、资源拦截或已有基线未完成时，QA 不能就绪；旧记录缺少覆盖或必要计数时保留未知并建议重跑。只有完整且可提单数为 0 才标 `readiness.qa=ready`。这不强制视觉基线，也不证明未声明业务规则正确。
 
 当最近一次运行有可提单问题时，`qa.latest.findings` 会从 `findings.json` 提供最多 12 条脱敏摘要，包含 `id`、`tier`、`basis`、`kind`、`path`、`title`、定位、实测描述和 `verification.status=pending_human_verdict`。`total`、`returned`、`truncated` 表示摘要是否完整；截图、原始证据、请求体、Cookie 和令牌不会进入站点评估结果。摘要用于让 AI 先判断问题类型和下一步，最终仍需通过 `heimdall_qa_findings` 逐条查看并由人裁决。
-- `deliveryPlan.qaTask` 是前后端缺陷检测的 AI 任务包：它把前端页面覆盖、后端契约/适配器范围、后端缺口与人工旅程摘要、完整性状态、脱敏 findings、人工裁决和复测条件放在一起。`scope.backend.completion` 只保留后端完成状态、观察端点数、缺口计数、修复任务类别、人工旅程和未知项索引；完整证据仍从同一份 `deliveryPlan.backendCompletion` 读取。`inputs` 只列真实存在的脱敏报告文件，零可提单问题不等于零 bug，页面视觉通过也不等于后端业务通过；`provenance.invented` 必须保持为空。
+- `deliveryPlan.qaTask` 是前后端缺陷检测的 AI 任务包：它把前端页面覆盖、后端契约/适配器范围、后端缺口与人工旅程摘要、业务规则/等价对比/外联操作状态、完整性状态、脱敏 findings、人工裁决和复测条件放在一起。`scope.backend.completion` 只保留后端完成状态、观察端点数、缺口计数、业务规则和部署复测状态、修复任务类别、人工旅程和未知项索引；完整证据仍从同一份 `deliveryPlan.backendCompletion` 读取。`inputs` 只列真实存在的脱敏报告文件，零可提单问题不等于零 bug，页面视觉通过也不等于后端业务通过；`provenance.invented` 必须保持为空。
 - QA 任务包会在 `qaTask.latest.findings.status` 保留详情证据状态；只有 `observed` 且详情数量与摘要 `fileable` 一致时才能进入 finding 裁决或 ready。详情缺失、不可用或数量不一致时进入 `blocked_on_qa_evidence`；即使摘要 `fileable=0`，也不能解释成零 bug 或 `readiness.qa=ready`。
 - `qaTask.latest.coverage` 会保留最多 50 个页面/视口和检查点的脱敏状态，并用 `pagesMeta`、`checksMeta` 区分总量、有效量、返回量和截断；它用于定位 QA 证据缺口，不替代 finding 的人工裁决。
 - `deliveryPlan.cloneTask` 是克隆、还原度和独立部署的 AI 任务包：它汇总页面/镜像覆盖、多视口验证、strict 离线交付、浏览器失败、动态数据、二进制缺口和断网部署状态。视觉分数不等于功能等价，strict 导出不等于独立部署；`provenance.invented` 必须保持为空。

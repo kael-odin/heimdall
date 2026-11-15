@@ -1282,6 +1282,16 @@ function qaBackendScope(origin, api, backendCompletion) {
       currentLevel: backendCompletion?.target?.currentLevel ?? 'unknown',
       observedEndpoints: Array.isArray(backendCompletion?.observedEndpoints) ? backendCompletion.observedEndpoints.length : 0,
       gapLedger,
+      businessRules: typeof backendCompletion?.businessRules?.status === 'string'
+        ? backendCompletion.businessRules.status : 'not-tested',
+      businessRuleComparison: typeof backendCompletion?.businessRuleComparison?.overall === 'string'
+        ? backendCompletion.businessRuleComparison.overall
+        : typeof backendCompletion?.businessRuleComparison?.status === 'string'
+          ? backendCompletion.businessRuleComparison.status : 'not_run',
+      adapterEgress: typeof backendCompletion?.adapterEgress?.status === 'string'
+        ? backendCompletion.adapterEgress.status : 'unknown',
+      operationProbe: typeof backendCompletion?.adapterEgress?.operationProbe?.status === 'string'
+        ? backendCompletion.adapterEgress.operationProbe.status : 'not-tested',
       repairTasks: {
         total: Number.isSafeInteger(backendCompletion?.repairTasksMeta?.total)
           ? backendCompletion.repairTasksMeta.total : repairTasks.length,

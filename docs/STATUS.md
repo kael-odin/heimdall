@@ -20,6 +20,8 @@
 
 2026-11-15 [QA 任务关联后端完成摘要]：`qaTask.scope.backend.completion` 现在直接索引后端完成状态、当前层级、观察端点数、缺口计数、修复任务类别、认证/权限/状态等人工旅程和未知项；完整契约、适配器和业务规则证据仍由 `deliveryPlan.backendCompletion` 单独承载，避免 QA 页面结果被误读成后端等价。
 
+2026-11-15 [QA 任务关联后端复测状态]：同一摘要新增 `businessRules`、`businessRuleComparison`、`adapterEgress` 和 `operationProbe`，帮助 AI 区分业务规则未测、候选等价未对照、服务端外联未验和浏览器操作未测；这些状态仍不替代完整后端证据。
+
 2026-11-15 [QA 聚合计入业务检查覆盖]：`qa.metrics.coverage.checks` 现在累计运行记录里的声明检查点；历史脱敏聚合没有该字段时保留为 0，避免 `site-assessment` 把已有业务检查误报为零覆盖。
 
 2026-11-15 [交付包页面复杂度信号]：离线浏览器探针现在在脱敏摘要中记录 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面信号，并投影到 `cloneTask.scope.delivery.browserCapabilities`；`deliveryPlan` 同时生成 `clone-page-complexity` 专项复测项。这些信号只指导复测类型，不自动判为缺陷或支持。

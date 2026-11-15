@@ -32,6 +32,8 @@ node core/src/cli.mjs site-assessment example.com --qa-workspace $env:HEIMDALL_Q
 
 本次复验还返回 `qaTask.scope.backend.completion.status=blocked_on_observation`、`currentLevel=B0_or_lower`、`observedEndpoints=0`，并保留 authentication、permissions、state-machine、business-rules 和 side-effects 五类未知；页面 QA 因此没有升级为后端完成。
 
+后端复测摘要同时为 `businessRules=not-tested`、`businessRuleComparison=not_run`、`adapterEgress=unknown`、`operationProbe=not-tested`；这些状态让 AI 能直接选择补业务规则、候选等价对照、服务端外联验收或浏览器操作计划。
+
 由于本次 QA 没有声明业务检查点，任务包还要求补充 PRD、业务流程和接口响应断言。页面 QA 的 `ready` 只表示已声明的页面检查完成，不表示业务后端已验收。
 
 这次结果只证明公开页面的导航和无参照物检测链路完成。它不证明认证、权限、API、状态机、写入、持久化、外部副作用或完整站点没有缺陷。
