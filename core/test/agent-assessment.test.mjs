@@ -749,6 +749,33 @@ test('probe contract persists one sanitized contract so site-assessment can read
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment does not repeat contract probing after a B0 contract is persisted', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-b0-action-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'api-contract.json'), {
+      schema: 'heimdall.contract/1', siteId: 'example.test', tier: 'B0', origin: 'https://example.test',
+      openapi: { openapi: '3.1.0', servers: [{ url: 'https://example.test' }], paths: {} },
+      observations: [], fixtures: [], unknowns: [{ kind: 'no-observed-api' }],
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const envelope = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    const { result } = envelope;
+    const apiItem = result.deliveryPlan.items.find(item => item.id === 'api-contract');
+    assert.equal(result.api.contract.status, 'no_observed_api');
+    assert.equal(apiItem.action.tool, 'human_authorized_test');
+    assert.equal(apiItem.action.args.evidence, 'authorized-journey-network-capture');
+    assert.match(apiItem.action.reason, /录制获授权旅程/);
+    assert.equal(envelope.nextActions.some(item => item.args?.command?.includes('probe contract')), false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: recognizes a complete default B3 scaffold', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-scaffold-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');

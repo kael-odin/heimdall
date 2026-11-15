@@ -2181,6 +2181,10 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   }
 
   if (api.contract.status === 'missing' || api.contract.status === 'invalid' || api.contract.status === 'no_observed_api') {
+    const noObservedApi = api.contract.status === 'no_observed_api';
+    const action = noObservedApi
+      ? plannedAction('human_authorized_test', { siteId, evidence: 'authorized-journey-network-capture' }, '契约已存在但没有业务 API 证据；先由人在可见浏览器中录制获授权旅程，再重新生成契约。')
+      : plannedAction('cli:shell', { command: `heimdall probe contract --site ${siteId}` }, '先生成观察型 API 契约草稿', { requiresHumanApproval: false });
     add({
       id: 'api-contract', kind: 'api_contract_gap', basis: 'unknown', status: 'open',
       title: 'API 契约证据不足', detail: api.contract.status === 'missing'
@@ -2191,7 +2195,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
             : '契约来源与当前站点页面来源不一致，已拒绝把它当作本站 API 证据。'
         : '契约文件存在，但没有可用的端点观察摘要。',
       evidence: api.contract.path ? [api.contract.path] : [],
-      action: plannedAction('cli:shell', { command: `heimdall probe contract --site ${siteId}` }, '先生成观察型 API 契约草稿', { requiresHumanApproval: false }),
+      action,
       verify: planVerification(siteId, 'api.contract.status === "observed"'),
     });
   }
