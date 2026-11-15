@@ -855,6 +855,7 @@ function qaSummary(args, ctx, siteId, origin) {
     pagesMeta: { total: pages.length, valid: pageCoverage.length, returned: returnedPages.length, truncated: pages.length > 50 },
     checks: returnedChecks, checksTotal: checks.length, checksReturned: returnedChecks.length, checksTruncated: checks.length > 50,
     checksMeta: { total: checks.length, returned: returnedChecks.length, truncated: checks.length > 50 },
+    businessChecks: { status: checks.length ? 'observed' : 'not_declared', total: checks.length },
     detection,
     baselineStatus: typeof coverage?.baseline?.status === 'string' ? coverage.baseline.status.slice(0, 32) : null,
   };
@@ -1139,6 +1140,7 @@ function buildQaTask(siteId, origin, qa, api) {
   const hasFindings = findingsTotal > 0;
   const findingsObserved = latest?.findings?.status === 'observed';
   const completeness = latest?.completeness?.status ?? 'unknown';
+  const businessChecks = latest?.coverage?.businessChecks ?? { status: 'unknown', total: null };
   const observed = qa.status === 'observed';
   const backendScope = {
     origin: origin ?? null,
@@ -1160,6 +1162,7 @@ function buildQaTask(siteId, origin, qa, api) {
     ...(!findingsObserved ? [{ id: 'obtain-finding-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先恢复或重新生成脱敏 finding 详情；摘要总量不能替代逐条证据。' }] : []),
     ...(findingsObserved && hasFindings ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
     ...(findings.some(item => item.triage === 'known-bug') ? [{ id: 'fix-confirmed-findings', basis: 'observed', requiresHumanApproval: false, instruction: '修复已经标记为 known-bug 的问题，再用同一站点和检查点重跑 QA。' }] : []),
+    ...(businessChecks.status === 'not_declared' ? [{ id: 'add-business-checks', basis: 'unknown', requiresHumanApproval: true, instruction: '把已确认的 PRD、业务流程和接口响应期望写成声明检查点，再用同一站点重跑 QA；页面 detector 不能替代业务检查。' }] : []),
     ...(qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
       ? [{ id: 'follow-up-qa-metrics', basis: 'inferred', requiresHumanApproval: true, instruction: '按 QA 指标决策补证据、修已有检测器或增加业务检查点；不以指标不足为由新增通用检测器。' }] : []),
   ] : [{ id: 'obtain-qa-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先准备匹配站点的 QA 工作区并完成一次只读 QA；没有运行证据时不要猜测缺陷。' }];
@@ -1218,6 +1221,7 @@ function buildQaTask(siteId, origin, qa, api) {
       '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
       '如果 latest.coverage.pagesMeta 或 latest.coverage.checksMeta 的 truncated 为 true，或 pagesMeta.valid 小于 total，先补齐 QA 覆盖证据。',
       '读取 latest.coverage.detection 的数量和 detector 列表；检测器发现不能直接当作已确认 bug，仍须读取 finding 证据并完成人工裁决。',
+      '如果 latest.coverage.businessChecks.status 为 not_declared，先补充已确认的业务检查点；页面巡检不能证明后端和业务规则。',
       '完成修复后用同一站点、检查点和 fingerprint 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
     provenance: {
@@ -1919,6 +1923,16 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       evidence: [qa.latest?.report].filter(Boolean),
       action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '修复未完成原因并重跑 QA'),
       verify: { tool: 'heimdall_qa_run', condition: 'matching run has complete QA evidence' },
+    });
+  }
+  if (qa.status === 'observed' && qa.latest?.completeness?.status === 'complete'
+    && qa.latest.coverage?.businessChecks?.status === 'not_declared') {
+    add({
+      id: 'qa-business-checks', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'open',
+      title: '没有声明业务检查点', detail: '当前运行只覆盖页面导航和无参照物检测；认证、权限、接口响应、状态转换和业务规则仍没有可核对的检查点。',
+      evidence: [qa.latest.report].filter(Boolean),
+      action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '把已确认的业务流程和接口期望写入 checks 后重跑 QA', { requiresHumanApproval: true }),
+      verify: { tool: 'heimdall_site_assessment', condition: 'qa.latest.coverage.businessChecks.status === "observed"' },
     });
   }
   if (qaFindingEvidenceUnavailable) {

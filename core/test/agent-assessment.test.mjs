@@ -67,7 +67,11 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
         assert.deepEqual(result.qa.latest.coverage.detection, {
           enabled: true, pages: 1, findings: 2, failedPages: 0, detectors: ['a11y-heading'],
         });
+        assert.deepEqual(result.qa.latest.coverage.businessChecks, { status: 'not_declared', total: 0 });
         assert.match(result.deliveryPlan.qaTask.prompt, /latest\.coverage\.detection/);
+        assert.match(result.deliveryPlan.qaTask.prompt, /latest\.coverage\.businessChecks/);
+        assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'add-business-checks'));
+        assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-business-checks' && item.status === 'open'));
       }
       if (name === 'bounded coverage') {
         assert.equal(result.qa.latest.coverage.pages.length, 50);
