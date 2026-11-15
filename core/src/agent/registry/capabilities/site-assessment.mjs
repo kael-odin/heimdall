@@ -618,7 +618,8 @@ function backendScaffoldSummary(root, siteId) {
     }
     return value;
   };
-  const issueRows = checkResults.filter(item => ['failed', 'incomplete', 'not_implemented', 'skipped'].includes(item?.status)).slice(0, 50).map(item => {
+  const issueCandidates = checkResults.filter(item => ['failed', 'incomplete', 'not_implemented', 'skipped'].includes(item?.status));
+  const issueRows = issueCandidates.slice(0, 50).map(item => {
     const repairTask = safeRepairTask(item?.repairTask);
     return {
       id: typeof item?.id === 'string' ? item.id.slice(0, 128) : 'unknown',
@@ -634,6 +635,7 @@ function backendScaffoldSummary(root, siteId) {
       ...(repairTask ? { repairTask } : {}),
     };
   });
+  const repairTasks = issueCandidates.map(item => safeRepairTask(item?.repairTask)).filter(Boolean);
   const check = {
     status: checkStatus,
     mode: checkMode,
@@ -643,16 +645,18 @@ function backendScaffoldSummary(root, siteId) {
     failed: checkResults.filter(item => item?.status === 'failed').length,
     incomplete: checkResults.filter(item => ['incomplete', 'not_implemented', 'skipped'].includes(item?.status)).length,
     businessRules,
+    issuesMeta: { total: issueCandidates.length, returned: issueRows.length, truncated: issueCandidates.length > 50 },
     issues: issueRows,
-    repairTasks: issueRows.map(item => item.repairTask).filter(Boolean),
+    repairTasks: repairTasks.slice(0, 50),
+    repairTasksMeta: { total: repairTasks.length, returned: Math.min(repairTasks.length, 50), truncated: repairTasks.length > 50 },
     path: existsSync(checkFile) ? reportPath(siteId, 'backend-scaffold/backend-check.json') : null,
   };
   const comparisonFile = join(dir, 'backend-compare.json');
   const comparisonReport = existsSync(comparisonFile) ? readJson(comparisonFile) : null;
   const comparisonValid = comparisonReport?.schema === 'heimdall.backend-comparison/1'
     && comparisonReport?.mode === 'business-rules-only';
-  const comparisonRows = comparisonValid && Array.isArray(comparisonReport.comparisons)
-    ? comparisonReport.comparisons.slice(0, 100).map(item => {
+  const comparisonCandidates = comparisonValid && Array.isArray(comparisonReport.comparisons) ? comparisonReport.comparisons : [];
+  const comparisonRows = comparisonCandidates.slice(0, 100).map(item => {
       if (!item || typeof item !== 'object' || typeof item.id !== 'string') return null;
       return {
         id: item.id.slice(0, 128),
@@ -663,9 +667,11 @@ function backendScaffoldSummary(root, siteId) {
         ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
         ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
       };
-    }).filter(Boolean) : [];
+    }).filter(Boolean);
   const comparisonOverall = comparisonValid && ['passed', 'failed', 'incomplete'].includes(comparisonReport.overall)
     ? comparisonReport.overall : null;
+  const comparisonRepairTaskCandidates = comparisonValid && Array.isArray(comparisonReport.repairTasks)
+    ? comparisonReport.repairTasks.map(safeRepairTask).filter(Boolean) : [];
   const comparison = {
     status: !existsSync(comparisonFile) ? 'not_run' : !comparisonValid ? 'invalid' : comparisonOverall ?? 'incomplete',
     overall: comparisonOverall,
@@ -675,9 +681,10 @@ function backendScaffoldSummary(root, siteId) {
     summary: comparisonValid && comparisonReport.summary && typeof comparisonReport.summary === 'object' ? Object.fromEntries(
       ['compared', 'passed', 'failed', 'incomplete'].map(key => [key, Number.isInteger(comparisonReport.summary[key]) ? comparisonReport.summary[key] : 0]),
     ) : { compared: 0, passed: 0, failed: 0, incomplete: 0 },
+    comparisonsMeta: { total: comparisonCandidates.length, returned: comparisonRows.length, truncated: comparisonCandidates.length > 100 },
     comparisons: comparisonRows,
-    repairTasks: comparisonValid && Array.isArray(comparisonReport.repairTasks)
-      ? comparisonReport.repairTasks.slice(0, 50).map(safeRepairTask).filter(Boolean) : [],
+    repairTasks: comparisonRepairTaskCandidates.slice(0, 50),
+    repairTasksMeta: { total: comparisonRepairTaskCandidates.length, returned: Math.min(comparisonRepairTaskCandidates.length, 50), truncated: comparisonRepairTaskCandidates.length > 50 },
     path: existsSync(comparisonFile) ? reportPath(siteId, 'backend-scaffold/backend-compare.json') : null,
   };
   check.businessRuleComparison = comparison;

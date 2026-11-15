@@ -88,6 +88,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.backendCompletion.scaffold` 会直接说明默认 B3 脚手架是 `present`、`incomplete` 还是还可生成，并给出对应的 CLI 动作；动作会写本地文件，所以仍需人工确认。
 - B3 脚手架会额外生成 `backend-task.json`：它是脱敏的 AI 任务包，列出 observed 端点、当前适配器、未知边界、修复护栏、验证命令和可直接粘贴给模型的提示；它的 `provenance.invented` 必须保持为空。运行后以最新 `backend-check.json` 和 `heimdall_site_assessment` 为准。
 - `deliveryPlan.backendCompletion.repairTasks` 会把 `backend-check.json` 的失败项映射成目标文件、修复类型、脱敏证据和人工授权边界；先按任务修复，再运行 `npm run check`。
+- `api.scaffold.check.issuesMeta`、`repairTasksMeta`、`businessRuleComparison.comparisonsMeta` 和 `repairTasksMeta` 标明后端检查与规则对比摘要是否截断；`truncated=true` 时继续读取同一份脱敏报告，不要把返回列表当成全部失败项。
 - `deliveryPlan.backendCompletion.adapterEgress.operationProbe` 只表示最终镜像文件系统上的授权操作计划复测；`passed` 证明声明的点击、输入、导航和断言通过，`not-tested` 表示没有计划，不能替代认证、权限、状态机或业务副作用旅程。
 - B3 脚手架生成后，可把经过人工确认的业务流程写入 `state-rules.json`：先将 `status` 设为 `reviewed`，再用 `rules[].steps` 声明 HTTP 方法、路径和 `expect.status`；可增加 `expect.contentType` 与 `expect.json` 的 JSON Pointer 断言。`POST`、`PUT`、`PATCH`、`DELETE` 只有在本地设置 `HEIMDALL_ALLOW_WRITES=1` 时才执行，Authorization、Cookie 和请求体使用环境变量引用。
 - `backend-check.json` 中的 `business-rule:<id>` 失败会进入 `deliveryPlan.backendCompletion.repairTasks`；报告只保留规则 ID、步骤、状态和断言位置，不能把该结果解释为源站后端等价。

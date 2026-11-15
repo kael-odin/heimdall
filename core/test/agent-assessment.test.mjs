@@ -673,11 +673,15 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[3].kind, 'business-rule-equivalence');
     assert.equal(tasks[3].evidence.ruleId, 'business-rule:create-item');
     assert.equal(tasks[3].evidence.candidateStatus, 'failed');
+    assert.deepEqual(env.result.api.scaffold.check.issuesMeta, { total: 3, returned: 3, truncated: false });
+    assert.deepEqual(env.result.api.scaffold.check.repairTasksMeta, { total: 3, returned: 3, truncated: false });
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.status, 'failed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRules.mode, 'business-rules-only');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'not-tested');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rules').status, 'failed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRuleComparison.overall, 'failed');
+    assert.deepEqual(env.result.api.scaffold.check.businessRuleComparison.comparisonsMeta, { total: 1, returned: 1, truncated: false });
+    assert.deepEqual(env.result.api.scaffold.check.businessRuleComparison.repairTasksMeta, { total: 1, returned: 1, truncated: false });
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'business-rule-equivalence').status, 'failed');
     assert.doesNotMatch(run.stdout, /private-value/);
   } finally { rmSync(root, { recursive: true, force: true }); }
