@@ -44,6 +44,8 @@
 
 2026-11-15 [克隆任务接通 AI 重建闭环]：`site-assessment.cloneTask` 现在复用已有 `rebuild init → status → deliver` 和正式门禁/回退语义，明确输出 `study/build/check/refine/deliver` 顺序；没有已捕获页面时保持 `blocked_on_capture`，后端补全仍由 `backendCompletion` 单独承接。
 
+2026-11-15 [重建工作区接通后端补全入口]：生成的 `AGENTS.md` 和 `heimdall-rebuild` 技能现在会先读取 `site-assessment.backendCompletion`，再从脱敏 `backend-task.json` 生成 B3 后端起点；认证、权限、状态机、持久化、写入和外部副作用没有授权证据时继续保持 `unknown`。
+
 2026-11-15 [过期 GEO 置信度隔离]：GEO 方法版本缺失、过期或状态非法时，摘要会把 `confidence` 保留为 `null`；旧分数可以追溯，但不会带着 `high` 置信度进入 AI 任务包。
 2026-11-15 [QA finding 详情进入就绪门禁]：`deliveryPlan.qaTask`、`deliveryPlan.items` 和 `readiness.qa` 现在都要求 `findings.status=observed`；详情缺失、不可用或返回为空时进入 `blocked_on_qa_evidence`，即使摘要 `fileable=0` 也不能解释成零 bug 或 QA ready。
 2026-11-15 [QA 证据输入路径收紧]：站点评估只把实际存在的脱敏 `report.md`、`bugs.md` 放进 `qaTask.inputs` 和修复证据；缺失文件保持 `null` 或省略，不能用推测路径冒充可读取证据。

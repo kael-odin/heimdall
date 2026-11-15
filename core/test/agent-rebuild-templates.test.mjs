@@ -4,6 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stackFiles } from '../src/agent/rebuild/templates.mjs';
+import { renderAgentsMd } from '../src/agent/rebuild/agents-md.mjs';
 
 const ctx = {
   siteId: 'demo.test', page: 'home', port: 5199, title: 't', lang: 'zh-CN', effectiveBg: '#ffffff', tokensCss: ':root{--a:1}',
@@ -20,4 +21,16 @@ test('rebuild scaffold: one stylesheet per section, overlays skipped', () => {
     'section sheets load after the global ones so they can override');
   assert.match(files['styles.css'], /全局样式/);
   assert.deepEqual(stackFiles('html-css', { ...ctx, sections: [] })['sections/sec-hero-aaaaaa.css'], undefined, 'no sections, no files');
+});
+
+test('rebuild contract routes AI to observed backend completion before guessing', () => {
+  const agents = renderAgentsMd({
+    ...ctx, url: 'https://demo.test/', fidelity: 'balanced', gate: { level: 'silver' }, budget: { maxIterationsPerSection: 4 },
+    cli: 'node /heimdall/src/cli.mjs', devCommand: 'node serve.mjs', devUrl: 'http://127.0.0.1:5199',
+    sections: ctx.sections.map(section => ({ ...section, boxes: { 1440: { y: 0, h: 100 } } })), gaps: [], overlays: [],
+  });
+  assert.match(agents, /site-assessment demo\.test --json/);
+  assert.match(agents, /backend scaffold demo\.test --out \.\/backend-scaffold/);
+  assert.match(agents, /backend-task\.json/);
+  assert.match(agents, /保持 unknown/);
 });

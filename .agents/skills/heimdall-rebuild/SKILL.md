@@ -2,7 +2,7 @@
 name: heimdall-rebuild
 description: "Rebuild a captured web page as a maintainable project (plain HTML/CSS or Vite+React) and prove it matches the original at 375/768/1440 using Heimdall's measured Fix Packets, section by section. Falls back to honest residual reports when the gate is not reached. 把网页重建成可维护的 HTML/CSS 或 React 项目，用 Heimdall 的修复包逐段迭代到三个视口收敛；做不到时如实汇报残差。"
 when_to_use: "克隆并重写页面、把某页做成 React 项目、像素级还原、还原度达到 97%、按原站重建前端; rebuild this page as React, recreate this landing page, match the original design, fix visual differences against a reference."
-allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_site mcp__plugin_heimdall_heimdall__heimdall_brief mcp__plugin_heimdall_heimdall__heimdall_artifact mcp__plugin_heimdall_heimdall__heimdall_compare mcp__plugin_heimdall_heimdall__heimdall_jobs mcp__plugin_heimdall_heimdall__heimdall_clone mcp__plugin_heimdall_heimdall__heimdall_doctor Read Edit Write Glob Grep Bash(heimdall *) Bash(pnpm install *) Bash(pnpm dev *) Bash(pnpm build *) Bash(pnpm lint *) Bash(node *) Bash(git status *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git restore *)"
+allowed-tools: "mcp__plugin_heimdall_heimdall__heimdall_overview mcp__plugin_heimdall_heimdall__heimdall_site mcp__plugin_heimdall_heimdall__heimdall_brief mcp__plugin_heimdall_heimdall__heimdall_artifact mcp__plugin_heimdall_heimdall__heimdall_compare mcp__plugin_heimdall_heimdall__heimdall_jobs mcp__plugin_heimdall_heimdall__heimdall_clone mcp__plugin_heimdall_heimdall__heimdall_doctor mcp__plugin_heimdall_heimdall__heimdall_site_assessment Read Edit Write Glob Grep Bash(heimdall *) Bash(heimdall site-assessment *) Bash(heimdall backend scaffold *) Bash(heimdall live-verify *) Bash(pnpm install *) Bash(pnpm dev *) Bash(pnpm build *) Bash(pnpm lint *) Bash(node *) Bash(git status *) Bash(git diff *) Bash(git add *) Bash(git commit *) Bash(git restore *)"
 argument-hint: "<url> [stack] [fidelity] [gate]"
 ---
 
@@ -31,6 +31,12 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 - `heimdall rebuild init <url|siteId> --page <page> --stack <stack> --fidelity <f> --gate <g> --dir <dir> --json`。
 - 进入目录，读 `AGENTS.md` 与 `heimdall.config.json`（**只读**：不改 `gate`、预算）。
 - `init` 会初始化 git 并做第一次提交：每次迭代一次提交，变差就能回退。
+
+**3.5 动态与后端补全**
+- 先运行 `heimdall site-assessment <siteId> --json`，读取 `deliveryPlan.backendCompletion`、`runtimeDataGaps` 和未知项。
+- 存在 observed API 契约或运行时缺口时，运行 `heimdall backend scaffold <siteId> --out ./backend-scaffold`；只按 `backend-task.json` 的 observed 证据补写。
+- 在 `backend-scaffold` 中运行 `npm start` 与 `npm run check`。认证、权限、状态机、持久化、写入和外部副作用没有授权旅程时保持 unknown。
+- 前端视觉对比和匿名检查不能证明后端等价；独立交付前运行 `heimdall live-verify`，再回读最新 `site-assessment`。
 
 **4. 定计划（写给人看，5–10 行）**
 - `heimdall brief <siteId> <page> --detail sections --json`：分段清单（`id`、角色、三视口外接框）、覆盖、缺口。

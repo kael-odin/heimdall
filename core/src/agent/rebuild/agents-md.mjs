@@ -38,6 +38,13 @@ export function renderAgentsMd(ctx) {
 - 配置：\`heimdall.config.json\`（门禁、视口、预算——**只读**）
 - 每次对比的修复包：\`.heimdall/runs/<runId>/packet.txt\`（文本）、\`fixpacket.json\`、\`crops/*.png\`（上 / 左参考，中候选，下 / 右差异）
 
+## 后端与动态缺口
+
+页面还原和后端补全分开验收。先运行 ${cli} site-assessment ${siteId} --json，读取 deliveryPlan.backendCompletion。
+如果存在 observed API 契约或运行时缺口，再运行 ${cli} backend scaffold ${siteId} --out ./backend-scaffold，只按其中的 backend-task.json 补写 observed 路由。
+在 backend-scaffold 内运行 npm start 和 npm run check；认证、权限、状态机、持久化、写入和外部副作用没有授权证据时保持 unknown。
+前端视觉分数、静态导出和匿名接口检查都不能证明后端等价；最终独立交付还要按站点评估和 live-verify 的当前报告复测。
+
 ## 分段计划（自上而下）
 
 | # | sectionId | 角色 | 1440 下的纵向范围 |
