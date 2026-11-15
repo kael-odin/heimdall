@@ -821,6 +821,44 @@ test('site-assessment: keeps write verification open when the runtime has no new
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: keeps query gaps open when unique path gaps are zero', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-query-gap-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'api-contract.json'), {
+      schema: 'heimdall.contract/1',
+      openapi: { paths: { '/api/items': { get: { responses: { '200': {} } } } } },
+    });
+    put(join(site, 'runtime-adapter', 'manifest.json'), { version: 1, routes: [{ method: 'GET', path: '/api/items' }] });
+    put(join(site, 'runtime-adapter', 'index.mjs'), 'export async function handle() { return new Response("{}", { headers: { "content-type": "application/json" } }); }');
+    put(join(site, 'adapter-report.json'), {
+      results: { status: 'passed', equivalence: 1, heldout: 1, passed: 1, failed: 0, unverified: 0 },
+      gapLedger: {
+        schema: 'heimdall.adapter-gap-ledger/1', source: 'offline-observation', status: 'offline-observed',
+        summary: { runtimeRequests: 0, uniqueGaps: 0, unobservedPaths: 0, unobservedQueryVariants: 1, uncoveredQueryParameters: 1, missingResponseBodies: 0, unverifiedWrites: 0 },
+        knownRoutes: [{ method: 'GET', path: '/api/items', queryParams: ['page'], responseBody: 'observed', writeVerification: 'not_applicable' }],
+        gaps: [{ method: 'GET', path: '/api/items', queryParams: ['cursor'], count: 1, categories: ['uncovered-query-parameter'] }],
+        unknowns: ['query-variant-gap', 'uncovered-query-parameter'],
+      },
+    });
+
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const result = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1)).result;
+    assert.ok(result.api.unknowns.includes('adapter-query-gaps'));
+    assert.equal(result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'adapter-gap-ledger').status, 'open');
+    assert.ok(result.deliveryPlan.backendCompletion.repairTasks.some(item => item.kind === 'query-variant-gap'));
+    assert.ok(result.deliveryPlan.backendCompletion.repairTasks.some(item => item.kind === 'query-parameter-gap'));
+    const gapItem = result.deliveryPlan.items.find(item => item.id === 'api-adapter-gap-ledger');
+    assert.equal(gapItem.status, 'open');
+    assert.match(gapItem.detail, /未覆盖查询参数 1 个/);
+    assert.match(gapItem.verify.condition, /unobservedQueryVariants === 0/);
+    assert.match(gapItem.verify.condition, /uncoveredQueryParameters === 0/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: keeps offline delivery outcomes separate from visual and business evidence', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-assessment-delivery-'));
   const site = join(root, 'workspace', 'example.test');

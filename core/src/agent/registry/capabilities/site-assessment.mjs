@@ -713,6 +713,9 @@ function apiSummary(root, siteId, expectedOrigin = null) {
   if (adapter.present && !adapter.validation) unknowns.push('adapter-validation-missing');
   if (adapter.present && adapter.validation?.status !== 'passed') unknowns.push('adapter-not-validated');
   if (adapter.gapLedger?.summary?.uniqueGaps > 0) unknowns.push(`adapter-runtime-gaps:${adapter.gapLedger.summary.uniqueGaps}`);
+  if (adapter.gapLedger?.summary?.unobservedQueryVariants > 0 || adapter.gapLedger?.summary?.uncoveredQueryParameters > 0) {
+    unknowns.push('adapter-query-gaps');
+  }
   if (adapter.gapLedger?.summary?.missingResponseBodies > 0) unknowns.push('adapter-response-body-missing');
   if (adapter.gapLedger?.summary?.unverifiedWrites > 0) unknowns.push('adapter-writes-unverified');
   if (scaffold.present && scaffold.check.status === 'not_run') unknowns.push('backend-check-not-run');
@@ -1329,6 +1332,11 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   const businessRuleComparison = api.scaffold?.check?.businessRuleComparison ?? { status: 'not_run', overall: null, summary: { compared: 0, passed: 0, failed: 0, incomplete: 0 }, repairTasks: [] };
   const scaffoldCheckStatus = api.scaffold?.check?.mode === 'business-rules-only' ? 'not-tested' : api.scaffold?.check?.status ?? 'not_run';
   const gapLedger = api.adapter.gapLedger;
+  const gapLedgerHasOpenItems = Boolean(gapLedger?.summary && (
+    gapLedger.summary.uniqueGaps > 0 || gapLedger.summary.unobservedQueryVariants > 0
+    || gapLedger.summary.uncoveredQueryParameters > 0 || gapLedger.summary.missingResponseBodies > 0
+    || gapLedger.summary.unverifiedWrites > 0
+  ));
   const scaffold = api.scaffold ?? { status: 'missing', present: false, path: null };
   const repairTasks = Array.isArray(scaffold.check?.repairTasks) ? [...scaffold.check.repairTasks] : [];
   for (const gapRepairTask of repairTasksFromGapLedger(siteId, gapLedger)) {
@@ -1455,7 +1463,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       deterministicChecks: [
         { id: 'response-shape', status: observed ? 'observed' : 'blocked', basis: observed ? 'observed' : 'unknown', condition: '契约中的响应状态码、MIME 和脱敏 JSON 形状可被本地适配器复现。' },
         { id: 'adapter-holdout', status: validationStatus, basis: validationStatus === 'passed' ? 'verified' : 'unknown', condition: 'adapter-report.json 的留出集等价度达到阈值且无未验证项。' },
-        { id: 'adapter-gap-ledger', status: gapLedger ? (gapLedger.summary.uniqueGaps ? 'open' : 'observed') : 'blocked', basis: gapLedger ? 'observed' : 'unknown', condition: '运行适配器并读取 /__heimdall/adapter-gaps，确认没有新的未声明路径或未覆盖查询参数。' },
+        { id: 'adapter-gap-ledger', status: gapLedger ? (gapLedgerHasOpenItems ? 'open' : 'observed') : 'blocked', basis: gapLedger ? 'observed' : 'unknown', condition: '运行适配器并读取 /__heimdall/adapter-gaps，确认没有新的未声明路径、未观察查询变体或未覆盖查询参数。' },
         { id: 'backend-scaffold-check', status: scaffoldCheckStatus, basis: scaffoldCheckStatus !== 'not_run' && scaffoldCheckStatus !== 'not-tested' ? 'observed' : 'unknown', condition: '运行完整脚手架 npm run check，确认服务健康、观察路由覆盖、状态码、MIME、响应结构和缺口账本都没有未完成项。' },
         { id: 'business-rules', status: businessRuleCheck.status,
           basis: businessRuleCheck.status === 'passed' || businessRuleCheck.status === 'failed' || businessRuleCheck.status === 'incomplete' ? 'observed' : 'unknown',
@@ -1717,15 +1725,17 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
   if (api.adapter.gapLedger && (api.adapter.gapLedger.summary.uniqueGaps > 0
+    || api.adapter.gapLedger.summary.unobservedQueryVariants > 0
+    || api.adapter.gapLedger.summary.uncoveredQueryParameters > 0
     || api.adapter.gapLedger.summary.missingResponseBodies > 0
     || api.adapter.gapLedger.summary.unverifiedWrites > 0)) {
     add({
       id: 'api-adapter-gap-ledger', kind: 'b2_adapter_gap', basis: 'observed', status: 'open',
       title: '适配器缺口账本还有待处理项',
-      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；未观察查询变体 ${api.adapter.gapLedger.summary.unobservedQueryVariants ?? 0} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条；未验证写入 ${api.adapter.gapLedger.summary.unverifiedWrites ?? 0} 条。`,
+      detail: `未声明/未覆盖请求 ${api.adapter.gapLedger.summary.uniqueGaps} 个；未观察查询变体 ${api.adapter.gapLedger.summary.unobservedQueryVariants ?? 0} 个；未覆盖查询参数 ${api.adapter.gapLedger.summary.uncoveredQueryParameters ?? 0} 个；缺响应体 ${api.adapter.gapLedger.summary.missingResponseBodies} 条；未验证写入 ${api.adapter.gapLedger.summary.unverifiedWrites ?? 0} 条。`,
       evidence: [api.adapter.gapLedger.report].filter(Boolean),
       action: plannedAction('cli:shell', { command: `heimdall probe adapter --site ${siteId} --include-api-bodies --force` }, '按最新脱敏观察重新生成适配器，再复核缺口账本', { requiresHumanApproval: false }),
-      verify: planVerification(siteId, 'api.adapter.gapLedger.summary.uniqueGaps === 0 && api.adapter.gapLedger.summary.missingResponseBodies === 0 && api.adapter.gapLedger.summary.unverifiedWrites === 0'),
+      verify: planVerification(siteId, 'api.adapter.gapLedger.summary.uniqueGaps === 0 && api.adapter.gapLedger.summary.unobservedQueryVariants === 0 && api.adapter.gapLedger.summary.uncoveredQueryParameters === 0 && api.adapter.gapLedger.summary.missingResponseBodies === 0 && api.adapter.gapLedger.summary.unverifiedWrites === 0'),
     });
   }
 

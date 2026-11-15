@@ -100,7 +100,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - 两份 `business-rules-only` 报告可用 `heimdall backend compare <source-check.json> <candidate-check.json> --out backend-compare.json` 自动对照；退出码 1 表示候选规则失败或缺失，`incomplete` 表示源站证据未通过、规则集为空、源站缺规则或候选多出规则。比较结果只保留规则 ID、状态、步骤和 JSON Pointer。
 - 如果把 `backend-compare.json` 写入候选的 `backend-scaffold/`，`heimdall_site_assessment` 会在 `deliveryPlan.backendCompletion.businessRuleComparison` 暴露安全摘要，并把 `business-rule-equivalence` 修复任务合并到交付计划；它不会打开源站原始 HAR、认证材料或响应正文。
 - 由适配器缺口账本直接生成的任务还带 `verification`：查询变体、查询参数和运行时路由可用 `site-assessment` 的条件复测；写入任务仍要求人工授权，复测条件不会替代业务旅程。
-- 如果存在 `api.adapter.gapLedger`，先看 `summary`、`gaps` 和 `*Meta`：`gapsMeta.truncated`、`knownRoutesMeta.truncated` 或 `unknownsMeta.truncated` 为真时，当前列表不完整，必须继续读取同一份脱敏报告；`nearestRoutes` 只是排查线索，不是路由等价证明。
+- 如果存在 `api.adapter.gapLedger`，先看 `summary`、`gaps` 和 `*Meta`：`uniqueGaps`、`unobservedQueryVariants`、`uncoveredQueryParameters`、`missingResponseBodies` 和 `unverifiedWrites` 都属于未完成证据；`gapsMeta.truncated`、`knownRoutesMeta.truncated` 或 `unknownsMeta.truncated` 为真时，当前列表不完整，必须继续读取同一份脱敏报告；`nearestRoutes` 只是排查线索，不是路由等价证明。
 - AI 可以按 `suggestedLocalFiles` 生成本地适配器、状态规则和检查脚本，但最终要按 `verification.commands` 重跑；认证、权限、状态机、写入和副作用仍要人工授权后验证。
 
 如果已经有脱敏契约，想先得到一个能启动的后端起点，可以让 AI 执行：
