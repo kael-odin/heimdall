@@ -1103,7 +1103,7 @@ function buildQaTask(siteId, origin, qa, api) {
     latest: latest ? {
       runId: latest.runId, summary: latest.summary, completeness: latest.completeness,
       coverage: latest.coverage,
-      findings: { total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings },
+      findings: { status: latest.findings.status, total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings },
     } : null,
     metrics, tasks,
     inputs: observed && latest ? [

@@ -126,6 +126,7 @@ test('site-assessment: blocks QA readiness when finding details are unavailable'
     assert.equal(result.qa.latest.completeness.status, 'complete');
     assert.equal(result.qa.latest.findings.status, 'unavailable');
     assert.equal(result.qa.latest.findings.total, 1);
+    assert.equal(result.deliveryPlan.qaTask.latest.findings.status, 'unavailable');
     assert.equal(result.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
     assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'obtain-finding-evidence'));
     assert.equal(result.readiness.qa.status, 'needs_human_review');
@@ -402,6 +403,7 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
       { path: '/', viewport: '1440x900', navigation: 'observed', clientBlocked: 0 },
     ]);
     assert.equal(env.result.deliveryPlan.qaTask.latest.coverage.checksTotal, 0);
+    assert.equal(env.result.deliveryPlan.qaTask.latest.findings.status, 'observed');
     assert.equal(env.result.deliveryPlan.qaTask.latest.findings.total, 2);
     assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'review-findings'));
     assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'fix-confirmed-findings'));
