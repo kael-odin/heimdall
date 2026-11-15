@@ -289,6 +289,7 @@ test('site-assessment: preserves bounded sitemap reasons for SEO follow-up', () 
       coverage: 'partial', reasons: ['budget-exhausted'], truncated: ['url-limit'],
       stats: { urlCount: 10000, filesAttempted: 3, filesRead: 3, filesFailed: 0, maxUrls: 10000, maxFiles: 100 },
     });
+    assert.equal(result.deliveryPlan.seoGeoTask.closure.requiredObligations.find(item => item.id === 'sitemap-scope').state, 'open');
     assert.match(result.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up').detail, /budget-exhausted/);
     assert.ok(result.unknowns.some(item => item.id === 'seo-sitemap-scope-limited' && /budget-exhausted/.test(item.detail)));
     assert.doesNotMatch(run.stdout, /private-value/);
@@ -402,6 +403,10 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.seo.geo.actionPlanMeta.truncated, false);
     assert.equal(env.result.deliveryPlan.seoGeoTask.schema, 'heimdall.seo-geo-ai-task/1');
     assert.equal(env.result.deliveryPlan.seoGeoTask.status, 'ready_for_ai_review');
+    assert.equal(env.result.deliveryPlan.seoGeoTask.closure.schema, 'heimdall.seo-geo-closure/1');
+    assert.deepEqual(env.result.deliveryPlan.seoGeoTask.closure.counts, { required: 5, verified: 3, open: 1, unknown: 1 });
+    assert.deepEqual(env.result.readiness.seo.closure, env.result.deliveryPlan.seoGeoTask.closure);
+    assert.deepEqual(env.result.readiness.geo.closure, env.result.deliveryPlan.seoGeoTask.closure);
     assert.equal(env.result.deliveryPlan.seoGeoTask.scores.seo, 92.8);
     assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geo, 80);
     assert.equal(env.result.seo.geo.dimensions.answerability.score, 70);

@@ -36,7 +36,9 @@
 
 2026-11-15 [Vitest SEO/GEO 行动页面证据]：同一公开三页样本当前 SEO 91.3、GEO 62.2；站点级重复 description advisory 现在带出 `affectedPages=3` 和 `/`、`/api/test`、`/blog`，AI 能定位优化范围。搜索排名、收录和模型引用效果仍为 unknown，分数与行动包口径未改变。
 
-2026-11-15 [Vite 公开 SEO/GEO 新案例]：对 `vite.dev` 的公开 GET 审计覆盖 3 页，SEO 90、GEO 68.4，sitemap `complete`，0 个失败页和 0 个初始 HTML 未核查页；任务包返回 5 条未截断的 GEO P1 行动与 3 条 medium advisory，并保留 `ready_for_ai_review` 与真实排名、收录、模型引用未知边界。
+2026-11-15 [Vite 公开 SEO/GEO 新案例]：对 `vite.dev` 的公开 GET 审计覆盖 3 页，首次 SEO 90，随后同范围复跑 SEO 88、GEO 68.4；sitemap `complete`，失败页和初始 HTML 未核查页均为 0。最新任务包返回 5 条未截断的 GEO P1 行动、4 条 medium advisory，SEO/GEO 账本为 `4 verified / 1 open / 0 unknown`；该漂移要求比较时绑定同一采集证据，真实排名、收录和模型引用仍未知。
+
+2026-11-15 [SEO/GEO 优化义务账本]：`deliveryPlan.seoGeoTask.closure` 现在统一汇总口径版本、页面采集、sitemap 范围、GEO 覆盖和优化行动，并投影到 `readiness.seo.closure` 与 `readiness.geo.closure`；它区分“评分证据完整”和“优化行动已处理”，真实搜索与模型引用仍由 `outcomeEvidence` 单独表示。
 
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 

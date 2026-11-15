@@ -65,14 +65,15 @@ node core/src/cli.mjs site-assessment vite.dev --json
 
 | 项目 | 结果 |
 | --- | --- |
-| SEO/GEO | SEO 90；GEO 68.4 |
+| SEO/GEO | 首次 SEO 90；复跑 SEO 88；GEO 68.4 |
 | 页面完整性 | 3 页；失败页 0；初始 HTML 未核查 0 |
 | sitemap | `complete`；无受限原因和截断原因 |
 | observed 行动 | 5 条 GEO P1；返回 5 条；`truncated=false` |
-| advisory | 3 条 medium；description 重复、图片 alt、CLS |
+| advisory | 最新复跑 4 条 medium；description 重复、图片 alt、CLS 等 |
+| SEO/GEO 账本 | `4 verified / 1 open / 0 unknown`；open 为待处理优化行动 |
 | 任务状态 | `ready_for_ai_review`；真实排名、收录和模型引用仍未知 |
 
-该案例验证了任务包可以同时给出 GEO 维度、优先级、受影响页和中等严重度提示。它仍只证明三页公开样本，不证明整站业务或真实搜索效果。
+该案例验证了任务包可以同时给出 GEO 维度、优先级、受影响页和中等严重度提示。两次同范围复跑的 SEO 90→88 说明分数必须绑定采集证据，不能直接比较裸数字。它仍只证明三页公开样本，不证明整站业务或真实搜索效果。
 
 ## 结论与边界
 

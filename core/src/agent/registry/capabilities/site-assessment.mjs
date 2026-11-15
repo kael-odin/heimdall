@@ -1234,6 +1234,25 @@ function buildSeoGeoTask(siteId, origin, seo) {
     && coverage.geoStatus === 'complete' && !observedActionsMeta.truncated && actions.length === 0;
   const status = !observed ? 'blocked_on_observation'
     : !methodsCurrent ? 'blocked_on_measurement' : complete ? 'ready' : 'ready_for_ai_review';
+  const seoGeoClosureState = state => state === 'verified' ? 'verified'
+    : ['open', 'blocked', 'failed', 'incomplete', 'invalid'].includes(state) ? 'open' : 'unknown';
+  const closureObligations = [
+    { id: 'method-versions', state: seoGeoClosureState(!observed ? 'unknown' : methodsCurrent ? 'verified' : 'open'), basis: observed ? 'observed' : 'unknown' },
+    { id: 'page-collection', state: seoGeoClosureState(!observed ? 'unknown'
+      : Number.isInteger(coverage.pages) && coverage.pages > 0 && coverage.failedPages === 0 && coverage.initialHtmlUnchecked === 0 ? 'verified' : 'open'), basis: observed ? 'observed' : 'unknown' },
+    { id: 'sitemap-scope', state: seoGeoClosureState(!observed ? 'unknown'
+      : !coverage.sitemapCoverage ? 'unknown' : ['partial', 'unavailable'].includes(coverage.sitemapCoverage) ? 'open' : 'verified'), basis: observed ? 'observed' : 'unknown' },
+    { id: 'geo-coverage', state: seoGeoClosureState(!observed ? 'unknown' : geo.status === 'complete' ? 'verified' : geo.status === 'unknown' ? 'unknown' : 'open'), basis: observed ? 'observed' : 'unknown' },
+    { id: 'optimization-actions', state: seoGeoClosureState(!observed ? 'unknown'
+      : observedActionsMeta.truncated || observedAdvisoriesMeta.truncated || actions.length > 0 || advisoryActions.length > 0 ? 'open' : 'verified'), basis: observed ? 'observed' : 'unknown' },
+  ];
+  const closureCounts = Object.fromEntries(['verified', 'open', 'unknown'].map(state => [state, closureObligations.filter(item => item.state === state).length]));
+  const closure = {
+    schema: 'heimdall.seo-geo-closure/1',
+    state: closureCounts.open === 0 && closureCounts.unknown === 0 ? 'ready' : 'open',
+    counts: { required: closureObligations.length, ...closureCounts },
+    requiredObligations: closureObligations,
+  };
   return {
     schema: 'heimdall.seo-geo-ai-task/1', siteId, status,
     objective: '让 AI 在当前 SEO/GEO 证据范围内提出可执行优化，并用同一套确定性审计复测结果。',
@@ -1254,6 +1273,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     observedAdvisories: advisoryActions,
     observedAdvisoriesMeta,
     outcomeEvidence,
+    closure,
     inputs: observed ? [{ path: seo.reports.json, role: 'deterministic SEO/GEO report', basis: 'observed', required: true }] : [],
     tasks: observed ? [
       { id: 'fix-observed-seo', basis: 'observed', requiresHumanApproval: true, instruction: '按 observedActions 中的 SEO 项修复页面、模板或结构化信息；不要改评分公式来消除问题。' },
@@ -1284,7 +1304,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
       ],
     },
     prompt: [
-      '先读取 deliveryPlan.seoGeoTask 和其 inputs 指向的脱敏报告。',
+      '先读取 deliveryPlan.seoGeoTask、closure 和其 inputs 指向的脱敏报告。',
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待人工核实的建议。',
       '如果 observedActionsMeta.truncated 为 true，或 returnedByKind 不等于 totalByKind，继续读取同一份脱敏报告；列表不是全部问题。',
       '不要把分数解释为排名或模型引用成功，也不要用改评分公式的方式消除问题。',
@@ -2361,8 +2381,14 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
       : clone.delivery.deploymentVerification?.status === 'invalid' ? 'invalid' : 'needs_verification',
       clone.delivery.deploymentVerification || clone.delivery.deploymentVerificationAttempt ? 'observed' : 'unknown',
       [clone.delivery.deploymentVerification?.report, clone.delivery.deploymentVerificationAttempt?.report], item('independent-deployment')),
-    seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
-    geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
+    seo: {
+      ...entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
+      closure: deliveryPlan.seoGeoTask?.closure ?? null,
+    },
+    geo: {
+      ...entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
+      closure: deliveryPlan.seoGeoTask?.closure ?? null,
+    },
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
       [api.contract.path, api.adapter.report, api.scaffold?.path], backendItem),
     qa: {
