@@ -27,6 +27,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CORE = join(dirname(fileURLToPath(import.meta.url)), '..');
+const INVOKE_CWD = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd();
 
 export const COMMANDS = {
   recon:   { script: 'src/crawler/recon.mjs', usage: 'recon <url> [maxPages] [maxDepth]', desc: '全站侦察 → atlas.json + 缩略图' },
@@ -109,7 +110,7 @@ if (isMain) {
   const legacyMcp = argv[0] === 'mcp' && argv.includes('--legacy');
   if (argv[0] === 'mcp' && !legacyMcp) {
     const v2 = join(CORE, '..', 'packages', 'mcp', 'bin', 'heimdall-mcp.mjs');
-    const child = spawn(process.execPath, [v2, ...argv.slice(1)], { cwd: CORE, stdio: 'inherit', env: { ...process.env, HEIMDALL_INVOKE_CWD: process.cwd() } });
+    const child = spawn(process.execPath, [v2, ...argv.slice(1)], { cwd: CORE, stdio: 'inherit', env: { ...process.env, HEIMDALL_INVOKE_CWD: INVOKE_CWD } });
     child.on('exit', (code) => process.exit(code ?? 1));
     child.on('error', (e) => { console.error('[cli] failed to spawn MCP v2:', e.message); process.exit(1); });
   } else {
@@ -122,7 +123,7 @@ if (isMain) {
     const child = spawn(process.execPath, [join(CORE, cmd.script), ...cmd.args], {
       cwd: CORE,
       stdio: 'inherit',
-      env: { ...process.env, HEIMDALL_INVOKE_CWD: process.cwd() },
+      env: { ...process.env, HEIMDALL_INVOKE_CWD: INVOKE_CWD },
     });
     child.on('exit', (code) => process.exit(code ?? 1));
     child.on('error', (e) => { console.error('[cli] failed to spawn:', e.message); process.exit(1); });

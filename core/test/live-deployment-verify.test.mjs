@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { formatHttpCheckFailure, readHttpChecks, summarizeBrowserProbeFailures, validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums, verifyDeploymentBundle, verifyStaticDeploymentBundle } from '../src/live/deployment-verify.mjs';
 
 test('deployment evidence requires network-none, runtime checks, and the current bundle checksum', () => {
@@ -76,6 +78,59 @@ test('browser deployment failures summarize safe causes without exposing request
   ] });
   assert.equal(summary, 'externalRequest@analytics.ietf.org×2、http:404×1');
   assert.doesNotMatch(summary, /private|token|secret/i);
+});
+
+test('static deployment failures persist a sanitized attempt without creating pass evidence', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-static-deployment-attempt-verify-'));
+  try {
+    mkdirSync(join(root, 'site', 'live'), { recursive: true });
+    const files = {
+      'health.json': JSON.stringify({ adapter: { status: 'not-included' }, offline: true }),
+      'Dockerfile': 'FROM node:22-alpine',
+      'serve.mjs': 'console.log(1)',
+      'heimdall-live.json': JSON.stringify({ siteId: 'example.test', port: 8080 }),
+      'site/live/index.html': '<!doctype html><h1>Example</h1>',
+    };
+    for (const [name, body] of Object.entries(files)) {
+      const file = join(root, name); mkdirSync(join(file, '..'), { recursive: true }); writeFileSync(file, body);
+    }
+    writeFileSync(join(root, 'checksums.json'), JSON.stringify({ files: Object.entries(files).map(([p, body]) => ({
+      p, s: Buffer.byteLength(body), h: createHash('sha256').update(body).digest('hex'),
+    })) }));
+    const reportPath = join(root, 'deployment-verification.json');
+    const runDocker = args => {
+      if (args[0] === 'inspect') return 'none';
+      if (args[0] === 'exec') return JSON.stringify({ health: 'passed', root: 'passed', routes: ['/'], routesChecked: 1, sourceWorkspace: 'passed' });
+      return '';
+    };
+    await assert.rejects(verifyStaticDeploymentBundle({ bundleDir: root, siteId: 'example.test', reportPath, runDocker, observeMs: 1,
+      copySnapshot: ({ destination }) => cpSync(root, destination, { recursive: true }),
+      probeBrowser: async () => ({ checked: 1, failed: 1, untested: 0, truncated: false, failureCount: 2, failures: [
+        { kind: 'externalRequest', target: 'https://analytics.ietf.org/private?token=secret' },
+        { kind: 'http', target: '/_nuxt/private?token=secret', status: 404 },
+      ] }),
+    }), /最终镜像浏览器验收失败/);
+    const attempt = JSON.parse(readFileSync(`${reportPath}.attempt.json`, 'utf8'));
+    assert.equal(attempt.schema, 'heimdall.deployment-verification-attempt/1');
+    assert.equal(attempt.status, 'failed');
+    assert.equal(attempt.stage, 'browser-probe');
+    assert.equal(attempt.browserProbe.causes, 'externalRequest@analytics.ietf.org×1、http:404×1');
+    assert.ok(!existsSync(reportPath), 'failed verification must not create a passing report');
+    assert.doesNotMatch(JSON.stringify(attempt), /private|token|secret/i);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('live-verify CLI resolves relative bundle paths from the invoking directory', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-live-verify-cli-path-'));
+  try {
+    mkdirSync(join(root, 'bundle'), { recursive: true });
+    const result = spawnSync(process.execPath, [
+      fileURLToPath(new URL('../src/cli.mjs', import.meta.url)), 'live-verify', 'bundle', '--static', '--site-id', 'example.test',
+    ], { cwd: join(root, '..'), env: { ...process.env, HEIMDALL_INVOKE_CWD: root }, encoding: 'utf8', windowsHide: true });
+    assert.notEqual(result.status, 0);
+    assert.match(`${result.stdout}\n${result.stderr}`, /health\.json/);
+    assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /交付包 必须是普通目录/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('adapter deployment verification can replay an authorized operation plan from the final image filesystem', async () => {

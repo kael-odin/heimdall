@@ -1049,6 +1049,54 @@ test('site-assessment: accepts current static deployment evidence only when the 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: exposes a failed deployment attempt without treating it as pass evidence', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-deployment-attempt-'));
+  const site = join(root, 'workspace', 'example.test');
+  const bundle = join(root, 'deliverable', 'example.test-live-2026-11-15');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<html>mirror</html>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'live-export.json'), {
+      schema: 'heimdall.live-export/1', siteId: 'example.test', generatedAt: '2026-11-15T01:00:00.000Z',
+      status: 'blocked', published: false, offline: true, strict: true, root: 'mirror', pages: 1,
+      blockingCount: 1, blockers: { browserFailed: 1 }, browser: { checked: 1, failed: 1, untested: 0, totalPages: 1 },
+      coverage: { scope: 'recon-discovered', scopeLimited: true },
+    });
+    const files = {
+      'health.json': JSON.stringify({ adapter: { status: 'not-included' }, offline: true }),
+      'Dockerfile': 'FROM node:22-alpine',
+      'serve.mjs': 'console.log(1)',
+      'heimdall-live.json': JSON.stringify({ siteId: 'example.test', port: 8080 }),
+      'site/live/index.html': '<!doctype html><h1>Example</h1>',
+    };
+    for (const [name, body] of Object.entries(files)) put(join(bundle, name), body);
+    put(join(bundle, 'checksums.json'), { files: Object.entries(files).map(([p, body]) => ({
+      p, s: Buffer.byteLength(body), h: createHash('sha256').update(body).digest('hex'),
+    })) });
+    const checksumsSha256 = createHash('sha256').update(readFileSync(join(bundle, 'checksums.json'))).digest('hex');
+    put(join(site, 'deployment-verification-attempt.json'), {
+      schema: 'heimdall.deployment-verification-attempt/1', siteId: 'example.test', mode: 'static',
+      generatedAt: '2026-11-15T02:00:00.000Z', status: 'failed', stage: 'browser-probe',
+      bundle: 'deliverable/example.test-live-2026-11-15', bundleChecksumsSha256: checksumsSha256,
+      error: { code: 'failed' }, browserProbe: {
+        checked: 1, failed: 1, untested: 0, truncated: false, failureCount: 2,
+        causes: 'externalRequest@analytics.ietf.org×1、http:404×1',
+      },
+    });
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.clone.delivery.deploymentVerificationAttempt.status, 'failed');
+    assert.equal(result.clone.delivery.deploymentVerificationAttempt.browserProbe.causes, 'externalRequest@analytics.ietf.org×1、http:404×1');
+    assert.equal(result.readiness.independentDeployment.status, 'needs_verification');
+    assert.ok(result.deliveryPlan.items.some(item => item.id === 'independent-deployment' && item.status === 'blocked'));
+    assert.ok(result.deliveryPlan.cloneTask.inputs.some(input => input.path.endsWith('/deployment-verification-attempt.json')));
+    assert.equal(result.claims.verified.includes('clone.independent_deployment:network_none'), false);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: exposes AI-ready status when only non-blocking actions remain', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-ai-review-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');

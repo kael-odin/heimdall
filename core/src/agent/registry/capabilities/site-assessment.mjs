@@ -32,6 +32,7 @@ const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'medi
 const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 const SITEMAP_REASONS = new Set(['budget-exhausted', 'time-limit', 'total-byte-limit', 'cross-origin-sitemap', 'robots-unavailable', 'sitemap-request-failed', 'unknown-sitemap-format', 'depth-limit', 'file-limit', 'url-limit', 'document-byte-limit']);
 const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-scope-limited', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
+const DEPLOYMENT_ATTEMPT_SCHEMA = 'heimdall.deployment-verification-attempt/1';
 
 function readJson(file) {
   try {
@@ -332,6 +333,46 @@ function staticDeploymentVerification(root, siteId) {
   };
 }
 
+function readDeploymentVerificationAttempt(root, siteId) {
+  const candidates = [
+    { file: join(root, 'deployment-verification-attempt.json'), report: reportPath(siteId, 'deployment-verification-attempt.json'), mode: 'static' },
+    { file: join(root, 'adapter-egress-verification-attempt.json'), report: reportPath(siteId, 'adapter-egress-verification-attempt.json'), mode: 'adapter' },
+  ];
+  const records = candidates.filter(item => existsSync(item.file)).map(item => {
+    const source = readJson(item.file);
+    const invalid = { status: 'invalid', report: item.report, mode: item.mode };
+    if (source?.schema !== DEPLOYMENT_ATTEMPT_SCHEMA || source.siteId !== siteId
+      || source.mode !== item.mode || !['failed', 'incomplete', 'unavailable', 'invalid'].includes(source.status)
+      || typeof source.generatedAt !== 'string' || !Number.isFinite(Date.parse(source.generatedAt))) return invalid;
+    const dataRoot = resolve(root, '..', '..');
+    const bundle = typeof source.bundle === 'string' ? source.bundle : null;
+    const bundlePath = bundle ? resolve(dataRoot, bundle) : null;
+    const bundleRel = bundlePath ? relative(dataRoot, bundlePath).replaceAll('\\', '/') : null;
+    if (bundle && (bundleRel !== bundle || !bundle.startsWith('deliverable/'))) return invalid;
+    let bundleCurrent = null;
+    if (bundlePath && /^[a-f0-9]{64}$/i.test(source.bundleChecksumsSha256 ?? '')) {
+      try { bundleCurrent = verifyBundleChecksums(bundlePath) === source.bundleChecksumsSha256; } catch { bundleCurrent = false; }
+    }
+    const count = key => Number.isSafeInteger(source.browserProbe?.[key]) && source.browserProbe[key] >= 0 ? source.browserProbe[key] : null;
+    const causes = typeof source.browserProbe?.causes === 'string'
+      && /^[A-Za-z0-9_.:@×、…,-]{1,240}$/.test(source.browserProbe.causes) ? source.browserProbe.causes : null;
+    const browserProbe = source.browserProbe && typeof source.browserProbe === 'object' ? {
+      checked: count('checked'), failed: count('failed'), untested: count('untested'),
+      truncated: source.browserProbe.truncated === true, failureCount: count('failureCount'),
+      ...(causes ? { causes } : {}),
+    } : null;
+    return {
+      status: source.status, mode: item.mode, report: item.report, generatedAt: source.generatedAt,
+      stage: typeof source.stage === 'string' ? source.stage.slice(0, 32) : 'unknown',
+      errorCode: typeof source.error?.code === 'string' ? source.error.code.slice(0, 32) : 'failed',
+      ...(source.phase === 'beforeRestart' || source.phase === 'afterRestart' ? { phase: source.phase } : {}),
+      ...(bundle ? { bundle: bundleRel, bundleChecksumsSha256: source.bundleChecksumsSha256, bundleCurrent } : {}),
+      ...(browserProbe ? { browserProbe } : {}),
+    };
+  });
+  return records.sort((a, b) => (Date.parse(b.generatedAt ?? '') || 0) - (Date.parse(a.generatedAt ?? '') || 0))[0] ?? null;
+}
+
 function liveExportSummary(root, siteId) {
   const file = join(root, 'live-export.json');
   if (!existsSync(file)) return { status: 'not_recorded', report: null };
@@ -386,6 +427,7 @@ function liveExportSummary(root, siteId) {
     } : null;
   const egressVerification = adapterEgressVerification(root, siteId);
   const deploymentVerification = staticDeploymentVerification(root, siteId);
+  const deploymentVerificationAttempt = readDeploymentVerificationAttempt(root, siteId);
   const rawAdapter = health?.adapter;
   const adapterSource = rawAdapter ?? egressVerification?.adapter;
   const adapter = adapterSource && typeof adapterSource === 'object' && !Array.isArray(adapterSource)
@@ -404,7 +446,7 @@ function liveExportSummary(root, siteId) {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
     published: source.published, pages: source.pages, adapter, adapterEgressVerification: egressVerification,
-    deploymentVerification,
+    deploymentVerification, deploymentVerificationAttempt,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
     browser, browserFailures, runtimeDataGaps,
@@ -1195,7 +1237,7 @@ function buildCloneTask(siteId, origin, clone, items) {
   const captureBlocked = !clone.pages || clone.mirrors < clone.pages;
   const visualBlocked = clone.pages > 0 && (clone.unmeasured > 0 || clone.verificationStatus !== 'checked');
   const deliveryBlocked = clone.mirrors > 0 && delivery.status !== 'passed';
-  const deploymentBlocked = delivery.status === 'passed' && deployment.status !== 'verified';
+  const deploymentBlocked = (delivery.status === 'passed' || delivery.deploymentVerificationAttempt) && deployment.status !== 'verified';
   const status = captureBlocked ? 'blocked_on_capture'
     : visualBlocked ? 'blocked_on_visual_verification'
       : deliveryBlocked ? 'blocked_on_offline_delivery'
@@ -1204,6 +1246,7 @@ function buildCloneTask(siteId, origin, clone, items) {
   const reportInputs = [
     delivery.report ? { path: delivery.report, role: 'strict offline delivery summary', basis: 'observed', required: true } : null,
     deployment.report ? { path: deployment.report, role: 'independent deployment verification', basis: 'observed', required: false } : null,
+    delivery.deploymentVerificationAttempt?.report ? { path: delivery.deploymentVerificationAttempt.report, role: 'independent deployment failure attempt', basis: 'observed', required: false } : null,
   ].filter(Boolean);
   const cloneCommand = origin
     ? `heimdall clone ${origin}/ --scope site --level verified${delivery.coverage?.scopeLimited === true ? ' --all-discovered' : ''}`
@@ -1212,7 +1255,7 @@ function buildCloneTask(siteId, origin, clone, items) {
   const verificationCommands = [
     ...(cloneCommand ? [cloneCommand] : []),
     exportCommand,
-    ...(delivery.status === 'passed' && deployment.status !== 'verified'
+    ...((delivery.status === 'passed' || delivery.deploymentVerificationAttempt) && deployment.status !== 'verified'
       ? [`heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`] : []),
     `heimdall site-assessment ${siteId} --json`,
   ];
@@ -1300,6 +1343,7 @@ function buildCloneTask(siteId, origin, clone, items) {
           scopeLimited: delivery.coverage?.scopeLimited === false ? false : true,
         },
         independentDeployment: { status: deployment.status, report: deployment.report },
+        independentDeploymentAttempt: delivery.deploymentVerificationAttempt ?? null,
       },
     },
     closure: {
@@ -1688,18 +1732,25 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       verify: { method: 'human_authorized_binary_review', condition: '确认公开权限、内容安全和分发策略后，再用支持该类型的导出路径复测' },
     });
   }
-  if (clone.delivery.status === 'passed' && clone.delivery.deploymentVerification?.status !== 'verified') {
+  const deploymentAttempt = clone.delivery.deploymentVerificationAttempt;
+  if ((clone.delivery.status === 'passed' || deploymentAttempt) && clone.delivery.deploymentVerification?.status !== 'verified') {
+    const failedAttempt = deploymentAttempt && deploymentAttempt.status !== 'invalid';
+    const attemptDetail = failedAttempt
+      ? `最近一次 ${deploymentAttempt.mode} 断网验收在 ${deploymentAttempt.stage} 阶段${deploymentAttempt.browserProbe?.causes ? `失败原因：${deploymentAttempt.browserProbe.causes}` : `结束为 ${deploymentAttempt.status}`}；该证据只用于定位，修复后仍须重新验证。`
+      : 'strict 导出通过只证明候选包门禁通过；还需要在不含原工作区的 Docker network none 中启动两次并检查页面路由。';
     add({
       id: 'independent-deployment', kind: 'independent_deployment_gap',
-      basis: clone.delivery.deploymentVerification ? 'observed' : 'unknown', status: 'open',
-      title: '最终包还没有独立断网部署证据',
+      basis: clone.delivery.deploymentVerification || failedAttempt ? 'observed' : 'unknown', status: failedAttempt ? 'blocked' : 'open',
+      title: failedAttempt ? '最近一次独立断网部署验收失败' : '最终包还没有独立断网部署证据',
       detail: clone.delivery.deploymentVerification?.status === 'invalid'
         ? '已有部署报告，但报告、包校验和或声明不再匹配。'
-        : 'strict 导出通过只证明候选包门禁通过；还需要在不含原工作区的 Docker network none 中启动两次并检查页面路由。',
-      evidence: [clone.delivery.report, clone.delivery.deploymentVerification?.report].filter(Boolean),
+        : attemptDetail,
+      evidence: [clone.delivery.report, clone.delivery.deploymentVerification?.report, deploymentAttempt?.report].filter(Boolean),
       action: plannedAction('cli:shell', {
-        command: `heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`,
-      }, '在最终静态交付包中执行两次断网启动和页面路由检查', { requiresHumanApproval: true }),
+        command: clone.delivery.status === 'passed'
+          ? `heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`
+          : `heimdall live ${siteId} --offline --strict --heal --materialize-har${clone.delivery.root === 'mirror' ? ' --root mirror' : ''}`,
+      }, clone.delivery.status === 'passed' ? '在最终静态交付包中执行两次断网启动和页面路由检查' : '先修复严格离线交付，再重跑独立部署验收', { requiresHumanApproval: true }),
       verify: planVerification(siteId, 'clone.delivery.deploymentVerification.status === "verified"'),
     });
   }
@@ -1968,7 +2019,8 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
       clone.delivery.report ? 'observed' : 'unknown', [clone.delivery.report, clone.delivery.healthReport], item('clone-offline-delivery')),
     independentDeployment: entry(clone.delivery.deploymentVerification?.status === 'verified' ? 'verified'
       : clone.delivery.deploymentVerification?.status === 'invalid' ? 'invalid' : 'needs_verification',
-      clone.delivery.deploymentVerification ? 'observed' : 'unknown', [clone.delivery.deploymentVerification?.report], item('independent-deployment')),
+      clone.delivery.deploymentVerification || clone.delivery.deploymentVerificationAttempt ? 'observed' : 'unknown',
+      [clone.delivery.deploymentVerification?.report, clone.delivery.deploymentVerificationAttempt?.report], item('independent-deployment')),
     seo: entry(seoStatus, seo.status === 'observed' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
@@ -2013,8 +2065,11 @@ export default {
     if (unavailableScores > 0) unknowns.push({ id: 'clone-score-not-current', detail: `${unavailableScores} 页没有当前克隆输入的已核实单页辅助分数，当前平均分已排除。` });
     if (clone.delivery.status !== 'passed') unknowns.push({ id: 'offline-delivery-' + clone.delivery.status,
       detail: '严格离线交付尚未通过；旧版本缺少结果记录时须重新导出。' });
-    if (clone.delivery.status === 'passed' && clone.delivery.deploymentVerification?.status !== 'verified') {
-      unknowns.push({ id: 'independent-deployment-not-verified', detail: '最终包还没有当前校验和绑定的 Docker network none 独立部署证据。' });
+    if ((clone.delivery.status === 'passed' || clone.delivery.deploymentVerificationAttempt) && clone.delivery.deploymentVerification?.status !== 'verified') {
+      const attempt = clone.delivery.deploymentVerificationAttempt;
+      unknowns.push({ id: 'independent-deployment-not-verified', detail: attempt?.status === 'failed'
+        ? `最近一次独立部署验收在 ${attempt.stage} 阶段失败；修复后仍需用当前包校验和重新复测。`
+        : '最终包还没有当前校验和绑定的 Docker network none 独立部署证据。' });
     }
     if (seo.status === 'missing') unknowns.push({ id: 'seo-report-missing', detail: '没有本地 SEO/GEO 报告。' });
     if (seo.status === 'invalid') unknowns.push({ id: 'seo-report-invalid', detail: 'SEO 报告存在但无法读取。' });

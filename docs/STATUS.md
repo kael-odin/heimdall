@@ -8,6 +8,8 @@
 
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
+2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。
+
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 
 2026-11-15 [真实重建交付验收]：使用 `example.com/a/b` 的现有捕获完成一次仓库外 `html-css` 重建；首轮空脚手架被 compare 正确识别为缺失正文，补写后 375/768/1440 三视口均为 100% 像素相似度，正式 `silver` 门禁三视口 6/6 通过并生成 18 个项目文件、3 个镜像文件的 `passed` 交付包。正式验收还拦住了外部绝对链接，改为本地 `/help/example-domains` 后才通过；该案例只证明当前页面的视觉、结构、资源和健康闭环，不证明后端、认证、业务状态或整站范围等价。

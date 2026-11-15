@@ -20,6 +20,7 @@ import { probeOfflineBrowserBundle, probeOfflineOperations } from './probe.mjs';
 
 const VERIFY_SCHEMA = 'heimdall.adapter-egress-verification/1';
 const STATIC_VERIFY_SCHEMA = 'heimdall.static-deployment-verification/1';
+const ATTEMPT_SCHEMA = 'heimdall.deployment-verification-attempt/1';
 const DEFAULT_TIMEOUT_MS = 90_000;
 const DEFAULT_OBSERVE_MS = 3_000;
 const MAX_TIMEOUT_MS = 600_000;
@@ -476,6 +477,63 @@ function writeReport(path, report) {
   renameSync(temp, path);
 }
 
+function attemptReportTarget({ siteId, reportPath, kind }) {
+  if (reportPath) return `${resolve(reportPath)}.attempt.json`;
+  if (!siteId || !HOST_RE.test(siteId)) return null;
+  return join(WORKSPACE, siteId, kind === 'static' ? 'deployment-verification-attempt.json' : 'adapter-egress-verification-attempt.json');
+}
+
+function attemptStatus(code) {
+  if (code === 'unavailable') return 'unavailable';
+  if (code === 'incomplete') return 'incomplete';
+  if (code === 'invalid_args' || code === 'invalid_bundle') return 'invalid';
+  return 'failed';
+}
+
+function attemptStage(value) {
+  return ['bundle', 'docker-build', 'container-start', 'container-check', 'browser-probe', 'operation-probe', 'restart', 'report'].includes(value)
+    ? value : 'unknown';
+}
+
+function safeAttemptBrowserProbe(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return {
+    checked: Number.isSafeInteger(value.checked) && value.checked >= 0 ? value.checked : 0,
+    failed: Number.isSafeInteger(value.failed) && value.failed >= 0 ? value.failed : 0,
+    untested: Number.isSafeInteger(value.untested) && value.untested >= 0 ? value.untested : 0,
+    truncated: value.truncated === true,
+    failureCount: Number.isSafeInteger(value.failureCount) && value.failureCount >= 0 ? value.failureCount
+      : Array.isArray(value.failures) ? value.failures.length : 0,
+    ...(summarizeBrowserProbeFailures(value) ? { causes: summarizeBrowserProbeFailures(value) } : {}),
+  };
+}
+
+function writeAttemptReport({ siteId, reportPath, kind, bundleDir, stage, error, browserProbe, phase }) {
+  const target = attemptReportTarget({ siteId, reportPath, kind });
+  if (!target) return null;
+  const bundle = safeRelativeBundle(resolve(bundleDir));
+  const report = {
+    schema: ATTEMPT_SCHEMA, siteId, mode: kind === 'static' ? 'static' : 'adapter',
+    generatedAt: new Date().toISOString(), status: attemptStatus(error?.code), stage: attemptStage(stage),
+    ...(bundle ? { bundle } : {}),
+    error: { code: typeof error?.code === 'string' ? error.code.slice(0, 32) : 'failed' },
+    ...(phase === 'afterRestart' || phase === 'beforeRestart' ? { phase } : {}),
+    ...(browserProbe ? { browserProbe: safeAttemptBrowserProbe(browserProbe) } : {}),
+  };
+  try {
+    const bundlePath = resolve(bundleDir);
+    const checksums = join(bundlePath, 'checksums.json');
+    if (existsSync(checksums)) report.bundleChecksumsSha256 = sha256File(checksums);
+  } catch {}
+  try { writeReport(target, report); } catch { return null; }
+  return target;
+}
+
+function clearAttemptReport({ siteId, reportPath, kind }) {
+  const target = attemptReportTarget({ siteId, reportPath, kind });
+  if (target) rmSync(target, { force: true });
+}
+
 export function validateDeploymentReport(report, { siteId, checksumsSha256 } = {}) {
   return report?.schema === VERIFY_SCHEMA
     && (!siteId || report.siteId === siteId)
@@ -521,18 +579,25 @@ export async function verifyDeploymentBundle({ bundleDir, siteId, reportPath, ht
   let first;
   let second;
   let operationProbe;
+  let stage = 'bundle';
+  let phase = null;
   try {
+    stage = 'docker-build';
     runDocker(['build', '--pull=false', '--tag', image, bundle], timeoutMs);
     built = true;
     runDocker(['volume', 'create', volume], timeoutMs);
+    stage = 'container-start';
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container,
       '--mount', `type=volume,source=${volume},target=/data`, image], timeoutMs);
     started = true;
     const network = runDocker(['inspect', '--format', '{{.HostConfig.NetworkMode}}', container], timeoutMs);
     if (network !== 'none') throw new DeploymentVerificationError('failed', '容器没有使用 network none');
+    stage = 'container-check';
+    phase = 'beforeRestart';
     first = runContainerCheck({ container, port, observeMs, timeoutMs, runDocker,
       httpChecksPath: httpChecks?.path, phase: 'beforeRestart' });
     if (operationPlanFile) {
+      stage = 'operation-probe';
       copySnapshot({ container, destination: snapshot, timeoutMs, runDocker });
       const snapshotChecksumsSha256 = verifyBundleChecksums(snapshot);
       if (snapshotChecksumsSha256 !== metadata.checksumsSha256) {
@@ -547,13 +612,17 @@ export async function verifyDeploymentBundle({ bundleDir, siteId, reportPath, ht
         throw new DeploymentVerificationError('failed', `最终镜像操作验收失败：${operationProbe?.failed ?? 'unknown'} 个失败，${operationProbe?.untested ?? 'unknown'} 条未测`);
       }
     }
+    stage = 'restart';
     runDocker(['rm', '--force', container], timeoutMs);
     started = false;
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container,
       '--mount', `type=volume,source=${volume},target=/data`, image], timeoutMs);
     started = true;
+    stage = 'container-check';
+    phase = 'afterRestart';
     second = runContainerCheck({ container, port, observeMs: Math.min(observeMs, 1_000), timeoutMs, runDocker,
       httpChecksPath: httpChecks?.path, phase: 'afterRestart' });
+    stage = 'report';
     const report = {
       schema: VERIFY_SCHEMA, siteId: siteId ?? metadata.config.siteId,
       generatedAt: new Date().toISOString(), serverEgress: 'verified',
@@ -584,7 +653,13 @@ export async function verifyDeploymentBundle({ bundleDir, siteId, reportPath, ht
       throw new DeploymentVerificationError('failed', '生成的无外联证据未通过自校验');
     }
     writeReport(target, report);
+    clearAttemptReport({ siteId: report.siteId, reportPath, kind: 'adapter' });
     return { report, reportPath: target };
+  } catch (error) {
+    const attempt = writeAttemptReport({ siteId: siteId ?? metadata.config.siteId, reportPath, kind: 'adapter',
+      bundleDir: bundle, stage, error, phase });
+    if (attempt && error && typeof error === 'object') error.attemptReportPath = attempt;
+    throw error;
   } finally {
     if (started) { try { runDocker(['rm', '--force', container], timeoutMs); } catch {} }
     if (built) { try { runDocker(['image', 'rm', image], timeoutMs); } catch {} }
@@ -613,13 +688,17 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
   let built = false;
   let first;
   let browserProbe;
+  let stage = 'bundle';
   try {
+    stage = 'docker-build';
     runDocker(['build', '--pull=false', '--tag', image, bundle], timeoutMs);
     built = true;
+    stage = 'container-start';
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container, image], timeoutMs);
     started = true;
     const network = runDocker(['inspect', '--format', '{{.HostConfig.NetworkMode}}', container], timeoutMs);
     if (network !== 'none') throw new DeploymentVerificationError('failed', '容器没有使用 network none');
+    stage = 'container-check';
     first = runStaticContainerCheck({ container, port, observeMs, timeoutMs, runDocker });
     if (!Array.isArray(first.routes) || first.routes.length !== first.routesChecked) {
       throw new DeploymentVerificationError('failed', '容器验收没有返回完整页面路由清单');
@@ -629,6 +708,7 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
     if (snapshotChecksumsSha256 !== metadata.checksumsSha256) {
       throw new DeploymentVerificationError('failed', '最终镜像 /app 快照与交付包校验和不一致');
     }
+    stage = 'browser-probe';
     browserProbe = await probeBrowser(snapshot, first.routes, observeMs);
     if (!browserProbe || browserProbe.failed !== 0 || browserProbe.untested !== 0
       || browserProbe.truncated || browserProbe.checked !== first.routesChecked) {
@@ -637,8 +717,10 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
     }
     runDocker(['rm', '--force', container], timeoutMs);
     started = false;
+    stage = 'restart';
     runDocker(['run', '--detach', '--rm', '--network', 'none', '--name', container, image], timeoutMs);
     started = true;
+    stage = 'container-check';
     const second = runStaticContainerCheck({ container, port, observeMs: Math.min(observeMs, 1_000), timeoutMs, runDocker });
     const report = {
       schema: STATIC_VERIFY_SCHEMA, siteId: siteId ?? metadata.config.siteId,
@@ -663,7 +745,13 @@ export async function verifyStaticDeploymentBundle({ bundleDir, siteId, reportPa
       throw new DeploymentVerificationError('failed', '生成的静态无外联证据未通过自校验');
     }
     writeReport(target, report);
+    clearAttemptReport({ siteId: report.siteId, reportPath, kind: 'static' });
     return { report, reportPath: target };
+  } catch (error) {
+    const attempt = writeAttemptReport({ siteId: siteId ?? metadata.config.siteId, reportPath, kind: 'static',
+      bundleDir: bundle, stage, error, browserProbe });
+    if (attempt && error && typeof error === 'object') error.attemptReportPath = attempt;
+    throw error;
   } finally {
     if (started) { try { runDocker(['rm', '--force', container], timeoutMs); } catch {} }
     if (built) { try { runDocker(['image', 'rm', image], timeoutMs); } catch {} }
@@ -678,12 +766,14 @@ function usage() {
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   const { argOf, has, positional } = makeArgs();
-  const bundleDir = positional()[0];
+  const invokeCwd = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd();
+  const fromInvokeCwd = value => value === undefined ? undefined : resolve(invokeCwd, value);
+  const bundleDir = fromInvokeCwd(positional()[0]);
   if (!bundleDir) { usage(); process.exit(2); }
   try {
     const common = {
-      bundleDir, siteId: argOf('site-id', undefined), reportPath: argOf('report', undefined),
-      operationPlanPath: argOf('operation-plan', undefined),
+      bundleDir, siteId: argOf('site-id', undefined), reportPath: fromInvokeCwd(argOf('report', undefined)),
+      operationPlanPath: fromInvokeCwd(argOf('operation-plan', undefined)),
       timeoutMs: boundedNumber(argOf('timeout-ms', DEFAULT_TIMEOUT_MS), DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS),
       observeMs: boundedNumber(argOf('observe-ms', DEFAULT_OBSERVE_MS), DEFAULT_OBSERVE_MS, MAX_OBSERVE_MS),
     };
@@ -694,7 +784,7 @@ if (isMain) {
       const result = await verifyStaticDeploymentBundle(common);
       console.log(`[live-verify] deployment=verified routes=${result.report.checks.routes.checked} report=${result.reportPath}`);
     } else {
-      const result = await verifyDeploymentBundle({ ...common, httpChecksPath: argOf('http-checks', undefined) });
+      const result = await verifyDeploymentBundle({ ...common, httpChecksPath: fromInvokeCwd(argOf('http-checks', undefined)) });
       console.log(`[live-verify] serverEgress=verified routes=${result.report.adapter.exercisedRoutes}/${result.report.adapter.declaredRoutes} report=${result.reportPath}`);
     }
   } catch (error) {

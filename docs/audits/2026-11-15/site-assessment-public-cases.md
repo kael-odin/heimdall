@@ -36,6 +36,8 @@ node core/src/cli.mjs site-assessment rfc-editor.org --qa-workspace D:\Github-St
 
 运行 `qa-20261115-140620-39f2` 打开 6 个公开页面的 12 个页面/视口组合，导航和检测器全部完成；报告有 61 条可容忍观察、0 条可提单问题、0 个业务检查点。无参照物检测报告为 47 条，CLI 和 `run.json` 现在使用同一个去重后计数。该结果证明页面层巡检链路可供 AI 读取，但不证明后端、认证、权限、业务状态或未声明流程没有缺陷。
 
+同日用统一 CLI 复验候选包的 `live-verify --static`，在最终镜像浏览器阶段因 `externalRequest@analytics.ietf.org×6` 失败。失败摘要已写入 `workspace/rfc-editor.org/deployment-verification-attempt.json`；`site-assessment` 将它投影为独立部署阻断任务，仍保持 `independentDeployment=needs_verification`。
+
 这次复核证明 `site-assessment` 能把视觉、离线交付、SEO/GEO 范围、二进制分发、API 和 QA 缺口放在同一份交付计划中。它没有把 6 页视觉验证解释成后端完成，也没有把页面级 GEO 证据解释成完整站点覆盖。
 
 ## Xspark 公开案例
