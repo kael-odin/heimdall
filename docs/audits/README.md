@@ -67,6 +67,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-15 | **[`example.com` 当前 handoff 全链路复验](2026-11-15/public-handoff-example-full-20261115.md)** | 当前代码真实运行普通与 `--all-discovered` 两条 handoff 路径；侦察、克隆、三视口、资产扫描、strict 离线导出和独立部署均通过，但 `scopeLimited=true` 仍被保留 |
 | 2026-11-15 | **[`example.com` 公开 SEO/GEO 任务包实测](2026-11-15/public-seo-example-20261115.md)** | SEO 52、GEO 28.1；GEO 检查权重 96/96、1/1 页、置信度 high；AI 任务包保留证据覆盖与 14 条行动的截断元数据，排名和模型引用效果仍未证明 |
 | 2026-11-15 | **[B3 AI 后端任务包公开 API 实测](2026-11-15/backend-ai-task-dummyjson.md)** | DummyJSON 公开商品接口生成 `backend-task.json`；观察端点、有限响应结构和 0 个 invented 证据进入 AI 上下文，本地独立服务 4/4 检查通过；业务后端等价仍未知 |
+| 2026-11-15 | **[`vitest.dev` 当前 handoff 与页面复杂度专项复验](2026-11-15/vitest-public-handoff-followup.md)** | 3 页克隆与多视口还原完成，平均 99.6%；strict 被 96 个阻断卡住；真实首页观察到 2 个 Canvas，`clone-page-complexity=open` 正确进入 AI 任务，博客页缺少 measurement proof 保持 2/3 verified |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 
