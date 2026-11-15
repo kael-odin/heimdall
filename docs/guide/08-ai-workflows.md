@@ -99,6 +99,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - B3 脚手架生成后，可把经过人工确认的业务流程写入 `state-rules.json`：先将 `status` 设为 `reviewed`，再用 `rules[].steps` 声明 HTTP 方法、路径和 `expect.status`；可增加 `expect.contentType` 与 `expect.json` 的 JSON Pointer 断言。路径支持完整段参数，例如 `/items/{id}` 配合 `pathParams.id={response:0,path:["id"]}` 引用较早响应里的标量 ID；引用值只在内存中解析并按 URL 段编码，缺失或非标量会标为 `incomplete`。规则可用 `actor` 标记匿名、所有者或其他测试身份，`backend-check.json` 与 `site-assessment` 会按身份保留和汇总通过、失败、未完成状态。`POST`、`PUT`、`PATCH`、`DELETE` 只有在本地设置 `HEIMDALL_ALLOW_WRITES=1` 时才执行，Authorization、Cookie 和请求体使用环境变量引用。
 - `backend-check.json` 中的 `business-rule:<id>` 失败会进入 `deliveryPlan.backendCompletion.repairTasks`；报告只保留规则 ID、步骤、状态和断言位置，不能把该结果解释为源站后端等价。
 - `deliveryPlan.backendCompletion.businessRules` 汇总已声明规则的 `passed`、`failed`、`incomplete` 和 `not-tested`；即使为 `passed`，未声明的状态机、幂等、清理和外部副作用仍属于未知。
+- `deliveryPlan.backendCompletion.stateConsistency` 只汇总已声明的写入后读取流程；`passed` 证明该规则的操作响应和后续读取通过，`incomplete` 表示没有读回或缺少授权，`failed` 表示声明流程违约。它不证明重启持久化、回滚、并发、幂等或外部副作用。
 - 要比较源站与候选后端，可对同一份规则运行 `node checks.mjs <base> --business-rules-only`；先看报告的 `mode`，只有 `scaffold` 才包含健康、路由覆盖和适配器缺口检查，`business-rules-only` 只覆盖声明的业务流程。
 - 两份 `business-rules-only` 报告可用 `heimdall backend compare <source-check.json> <candidate-check.json> --out backend-compare.json` 自动对照；退出码 1 表示候选规则失败或缺失，`incomplete` 表示源站证据未通过、规则集为空、源站缺规则或候选多出规则。比较结果只保留规则 ID、状态、步骤和 JSON Pointer。
 - 如果把 `backend-compare.json` 写入候选的 `backend-scaffold/`，`heimdall_site_assessment` 会在 `deliveryPlan.backendCompletion.businessRuleComparison` 暴露安全摘要，并把 `business-rule-equivalence` 修复任务合并到交付计划；它不会打开源站原始 HAR、认证材料或响应正文。

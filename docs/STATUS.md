@@ -39,6 +39,8 @@
 
 2026-11-15 [B3 认证与权限矩阵标签进入复测]：已审核业务规则现在可用安全的 `actor` 标签区分匿名、所有者、非所有者和无效凭据；认证头仍只能从环境变量读取，报告只保留标签、规则 ID、步骤和状态。受控本地授权夹具验证匿名 401、所有者 200、非所有者 403、无效凭据 401，`site-assessment` 会输出每个身份的通过、失败和未完成计数；这仍是授权夹具能力证据，不代表任意生产站点的权限模型已完成。
 
+2026-11-15 [B3 写入后读回进入状态一致性摘要]：业务规则报告现在会识别声明的写入后读取流程，并输出 `stateConsistency`；现有受控夹具中写入后动态 ID 读回通过，写入但没有读回的规则保持 `incomplete`。`site-assessment.backendCompletion` 和 QA 后端摘要会传递这一有界状态证据，重启持久化、回滚、并发、幂等和外部副作用仍未知。
+
 2026-11-14 [动态数据缺口进入 AI 后端任务]：strict 浏览器探针现在把同源 XHR/fetch 的 4xx 或请求失败单独写入 `health.runtimeDataGaps`，保留页面、脱敏路径、资源类型和状态；`site-assessment` 会去重后生成 `runtime-data-observation` 修复任务，要求先授权观察响应再补本地适配器或只读数据，不把动态 JSON 404 伪造成静态资源或成功回放。
 
 2026-11-15 [外部运行时与本地浏览器错误分流]：`site-assessment` 现在把 `externalRequest` 单独投影为 `clone-external-runtime` 人工审核任务；本地 page error、HTTP 和 request failure 继续进入 `clone-browser-failures` 修复任务。两类证据不再共享一个 heal 动作，避免把外链服务误读成站内后端缺口。

@@ -39,6 +39,7 @@ function businessRuleResults(file, label) {
     if (map.has(id)) throw new CapabilityError('invalid_args', `${label} 包含重复业务规则：${id}`);
     map.set(id, {
       ...(typeof item.actor === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(item.actor) ? { actor: item.actor } : {}),
+      ...(['passed', 'failed', 'incomplete'].includes(item.stateConsistency) ? { stateConsistency: item.stateConsistency } : {}),
       status: ['passed', 'failed', 'incomplete', 'skipped'].includes(item.status) ? item.status : 'unknown',
       ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
       ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
@@ -58,6 +59,7 @@ function comparisonRepairTask(ruleId, source, candidate, index) {
     evidence: {
       ruleId, sourceStatus: source?.status ?? 'missing', candidateStatus: candidate?.status ?? 'missing',
       ...(candidate?.actor ? { actor: candidate.actor } : source?.actor ? { actor: source.actor } : {}),
+      ...(candidate?.stateConsistency ? { stateConsistency: candidate.stateConsistency } : source?.stateConsistency ? { stateConsistency: source.stateConsistency } : {}),
       ...(candidate?.step ? { step: candidate.step } : {}),
       ...(candidate?.pointer ? { pointer: candidate.pointer } : {}),
     },
@@ -86,6 +88,8 @@ function compareReports(flags, positional) {
       id, status, reason,
       ...(sourceResult?.actor ? { sourceActor: sourceResult.actor } : {}),
       ...(candidateResult?.actor ? { candidateActor: candidateResult.actor } : {}),
+      ...(sourceResult?.stateConsistency ? { sourceStateConsistency: sourceResult.stateConsistency } : {}),
+      ...(candidateResult?.stateConsistency ? { candidateStateConsistency: candidateResult.stateConsistency } : {}),
       sourceStatus: sourceResult?.status ?? 'missing', candidateStatus: candidateResult?.status ?? 'missing',
       ...(candidateResult?.step ? { step: candidateResult.step } : {}),
       ...(candidateResult?.pointer ? { pointer: candidateResult.pointer } : {}),
@@ -721,7 +725,24 @@ const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-a
 const JSON_TYPES = new Set(['null', 'boolean', 'object', 'array', 'number', 'integer', 'string']);
 function envName(value) { return typeof value === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(value) ? value : null; }
 function actorLabel(value) { return typeof value === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/i.test(value) ? value : null; }
-function withActor(actor, value) { return actor ? { actor, ...value } : value; }
+function stateConsistencyKind(steps) {
+  if (!Array.isArray(steps)) return null;
+  let lastWrite = -1;
+  for (let index = 0; index < steps.length; index += 1) {
+    if (WRITE_METHODS.has(String(steps[index]?.method || '').toUpperCase())) lastWrite = index;
+  }
+  if (lastWrite < 0) return null;
+  return steps.slice(lastWrite + 1).some(step => ['GET', 'HEAD'].includes(String(step?.method || '').toUpperCase()))
+    ? 'write-read' : 'write-only';
+}
+function stateConsistencyStatus(kind, status) {
+  if (!kind) return null;
+  if (kind === 'write-only') return 'incomplete';
+  return status === 'passed' ? 'passed' : status === 'failed' ? 'failed' : 'incomplete';
+}
+function withRuleMetadata(actor, stateStatus, value) {
+  return { ...(actor ? { actor } : {}), ...(stateStatus ? { stateConsistency: stateStatus } : {}), ...value };
+}
 function headerValue(value) {
   if (typeof value === 'string') return { value, missing: false };
   const name = envName(value?.env);
@@ -839,14 +860,16 @@ async function runBusinessRule(rule) {
   const rawId = typeof rule?.id === 'string' ? rule.id : 'unknown';
   const rawIdSafe = /^[a-z0-9][a-z0-9._-]{0,63}$/.test(rawId) ? rawId : 'unknown';
   const rawActor = actorLabel(rule?.actor);
+  const rawStateKind = stateConsistencyKind(rule?.steps);
   const rawHasWrite = Array.isArray(rule?.steps) && rule.steps.some(step => WRITE_METHODS.has(String(step?.method || '').toUpperCase()));
   if (rawHasWrite && process.env.HEIMDALL_ALLOW_WRITES !== '1') {
-    return withActor(rawActor, { id: 'business-rule:' + rawIdSafe, status: 'skipped', reason: 'write_requires_explicit_local_authorization', requiresHumanApproval: true });
+    return withRuleMetadata(rawActor, stateConsistencyStatus(rawStateKind, 'skipped'), { id: 'business-rule:' + rawIdSafe, status: 'skipped', reason: 'write_requires_explicit_local_authorization', requiresHumanApproval: true });
   }
   const prepared = prepareRule(rule);
   const id = 'business-rule:' + String(prepared.id || 'unknown').slice(0, 80);
   const actor = prepared.actor || rawActor;
-  const report = value => withActor(actor, value);
+  const stateKind = stateConsistencyKind(prepared.steps ?? rule?.steps);
+  const report = value => withRuleMetadata(actor, stateConsistencyStatus(stateKind, value.status), value);
   if (prepared.error) return report({ id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' });
   const responses = [];
   const pointerFor = path => '/' + path.map(part => String(part).replaceAll('~', '~0').replaceAll('/', '~1')).join('/');
@@ -1029,6 +1052,16 @@ function overallOf(items) {
   if (items.some(item => ['incomplete', 'not_implemented', 'skipped'].includes(item.status))) return 'incomplete';
   return 'passed';
 }
+function stateConsistencyOf(items) {
+  const rows = items.filter(item => ['passed', 'failed', 'incomplete'].includes(item?.stateConsistency));
+  const passed = rows.filter(item => item.stateConsistency === 'passed').length;
+  const failed = rows.filter(item => item.stateConsistency === 'failed').length;
+  const incomplete = rows.filter(item => item.stateConsistency === 'incomplete').length;
+  return {
+    status: !rows.length ? 'not-tested' : failed ? 'failed' : incomplete ? 'incomplete' : 'passed',
+    scope: 'declared write-read flows only', total: rows.length, passed, failed, incomplete,
+  };
+}
 const results = [];
 try {
   if (onlyBusinessRules) {
@@ -1089,8 +1122,9 @@ try {
 for (let index = 0; index < results.length; index += 1) results[index] = attachRepairTask(results[index]);
 let overall = overallOf(results);
 const repairTasks = results.map(item => item.repairTask).filter(Boolean);
+const stateConsistency = stateConsistencyOf(results);
 const report = { schema: 'heimdall.backend-check/1', generatedAt: new Date().toISOString(), base,
-  mode: onlyBusinessRules ? 'business-rules-only' : 'scaffold', overall, results, repairTasks,
+  mode: onlyBusinessRules ? 'business-rules-only' : 'scaffold', overall, results, repairTasks, stateConsistency,
   note: onlyBusinessRules ? '只表示声明的业务规则在当前 base 上通过，不代表服务健康、路由覆盖或完整后端等价。'
     : '通过只表示脚手架能启动并完成当前检查，不代表业务正确。' };
 try {
@@ -1136,7 +1170,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '要做业务后端检查：在 state-rules.json 中填写 rules，并先把 status 改为 reviewed；每条规则由多个 HTTP 步骤和 status / contentType / JSON Pointer 断言组成。',
     '步骤路径可以使用完整段参数（例如 /items/{id}）；pathParams 用 response + path 引用较早步骤的 JSON 标量，值只在内存中解析并按 URL 段编码，不会写入报告。',
     '规则可用 actor 标记匿名、所有者或其他测试身份；规则中的 Authorization、Cookie 和请求体只通过环境变量引用，写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
-    '检查报告只保留规则 ID、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。',
+    '检查报告只保留规则 ID、身份标签、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。声明的写入后读回流程会单列 stateConsistency，范围只到该流程。',
     '要在获授权源站复测同一规则，可运行 node checks.mjs https://source.example --business-rules-only；报告会标记为 business-rules-only，不包含脚手架健康和缺口门禁。',
     '需要外置状态目录时设置 HEIMDALL_RUNTIME_DATA_DIR；默认目录在脚手架目录旁边。',
     'AI 补写有状态处理器时使用 handle(request, { dataDir }) 的包外目录保存数据；读回、重启和删除都要用独立预期另行核验，不能只看写请求返回成功。',

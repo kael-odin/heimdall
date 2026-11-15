@@ -462,6 +462,11 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.find(item => item.id === 'business-rule:guest-private-denied').actor, 'guest');
     assert.equal(report.results.find(item => item.id === 'business-rule:anonymous-private-denied').status, 'passed');
     assert.equal(report.results.find(item => item.id === 'business-rule:invalid-private-denied').status, 'passed');
+    assert.equal(report.results.find(item => item.id === 'business-rule:create-item').stateConsistency, 'incomplete');
+    assert.equal(report.results.find(item => item.id === 'business-rule:read-created-item').stateConsistency, 'passed');
+    assert.equal(report.stateConsistency.status, 'incomplete');
+    assert.equal(report.stateConsistency.passed, 1);
+    assert.equal(report.stateConsistency.incomplete, 1);
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /fixture-secret/);
     assert.doesNotMatch(readFileSync(join(out, 'backend-check.json'), 'utf8'), /owner-secret|guest-secret|invalid-secret/);
 
@@ -475,6 +480,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.mode, 'business-rules-only');
     assert.equal(report.results.some(item => item.id === 'health' || item.id === 'adapter-gap-ledger'), false);
     assert.equal(report.results.filter(item => item.id.startsWith('business-rule:')).length, 7);
+    assert.equal(report.stateConsistency.status, 'incomplete');
 
     put(join(out, 'state-rules.json'), { ...rules, rules: [] });
     const noRules = spawnSync(process.execPath, [join(out, 'checks.mjs'), base, '--business-rules-only'], {
@@ -484,6 +490,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(report.overall, 'incomplete');
     assert.equal(report.results[0].reason, 'no_business_rules_declared');
+    assert.equal(report.stateConsistency.status, 'not-tested');
 
     rules.rules[1].steps[0].expect.json[0].equals = false;
     put(join(out, 'state-rules.json'), rules);
@@ -513,14 +520,14 @@ test('backend compare aligns source and candidate business-rule reports without 
     const out = join(root, 'backend-compare.json');
     put(source, {
       schema: 'heimdall.backend-check/1', mode: 'business-rules-only', overall: 'passed', results: [
-        { id: 'business-rule:read-item', status: 'passed' },
+        { id: 'business-rule:read-item', status: 'passed', stateConsistency: 'passed' },
         { id: 'business-rule:update-item', status: 'passed' },
         { id: 'business-rule:delete-item', status: 'passed' },
       ],
     });
     put(candidate, {
       schema: 'heimdall.backend-check/1', mode: 'business-rules-only', overall: 'failed', results: [
-        { id: 'business-rule:read-item', status: 'passed' },
+        { id: 'business-rule:read-item', status: 'passed', stateConsistency: 'passed' },
         { id: 'business-rule:update-item', status: 'failed', step: 2, pointer: '/title', reason: 'private-value' },
       ],
     });
@@ -533,6 +540,8 @@ test('backend compare aligns source and candidate business-rule reports without 
     assert.deepEqual(report.summary, { compared: 3, passed: 1, failed: 2, incomplete: 0 });
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:update-item').pointer, '/title');
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:delete-item').reason, 'rule_missing_from_candidate');
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').sourceStateConsistency, 'passed');
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').candidateStateConsistency, 'passed');
     assert.equal(new Set(report.repairTasks.map(item => item.id)).size, 2);
     assert.doesNotMatch(readFileSync(out, 'utf8'), /private-value/);
 

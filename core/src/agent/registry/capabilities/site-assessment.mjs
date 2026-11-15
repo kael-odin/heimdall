@@ -681,6 +681,17 @@ function backendScaffoldSummary(root, siteId) {
     incomplete: businessRuleResults.filter(item => ['incomplete', 'skipped'].includes(item?.status)).length,
     actors,
   };
+  const stateConsistencyResults = checkResults.filter(item => ['passed', 'failed', 'incomplete'].includes(item?.stateConsistency));
+  const stateConsistency = {
+    status: !stateConsistencyResults.length ? 'not-tested'
+      : stateConsistencyResults.some(item => item.stateConsistency === 'failed') ? 'failed'
+        : stateConsistencyResults.some(item => item.stateConsistency === 'incomplete') ? 'incomplete' : 'passed',
+    scope: 'declared write-read flows only',
+    total: stateConsistencyResults.length,
+    passed: stateConsistencyResults.filter(item => item.stateConsistency === 'passed').length,
+    failed: stateConsistencyResults.filter(item => item.stateConsistency === 'failed').length,
+    incomplete: stateConsistencyResults.filter(item => item.stateConsistency === 'incomplete').length,
+  };
   const safeRepairTask = task => {
     if (!task || typeof task !== 'object' || Array.isArray(task)) return null;
     const value = {
@@ -700,6 +711,9 @@ function backendScaffoldSummary(root, siteId) {
       for (const key of ['actor', 'sourceActor', 'candidateActor']) {
         if (actorLabel(task.evidence[key])) evidence[key] = actorLabel(task.evidence[key]).slice(0, 64);
       }
+      for (const key of ['stateConsistency', 'sourceStateConsistency', 'candidateStateConsistency']) {
+        if (['passed', 'failed', 'incomplete'].includes(task.evidence[key])) evidence[key] = task.evidence[key];
+      }
       if (Number.isInteger(task.evidence.step) && task.evidence.step > 0) evidence.step = task.evidence.step;
       for (const key of ['expectedStatuses', 'expectedMimeTypes']) {
         if (Array.isArray(task.evidence[key])) evidence[key] = task.evidence[key].slice(0, 30).map(item => String(item).slice(0, 128));
@@ -716,6 +730,7 @@ function backendScaffoldSummary(root, siteId) {
       status: typeof item?.status === 'string' ? item.status.slice(0, 32) : 'unknown',
       ...(typeof item?.reason === 'string' ? { reason: item.reason.slice(0, 256) } : {}),
       ...(actorLabel(item?.actor) ? { actor: actorLabel(item.actor) } : {}),
+      ...(['passed', 'failed', 'incomplete'].includes(item?.stateConsistency) ? { stateConsistency: item.stateConsistency } : {}),
       ...(Number.isInteger(item?.httpStatus) ? { httpStatus: item.httpStatus } : {}),
       ...(Number.isInteger(item?.step) && item.step > 0 ? { step: item.step } : {}),
       ...(typeof item?.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
@@ -736,6 +751,7 @@ function backendScaffoldSummary(root, siteId) {
     failed: checkResults.filter(item => item?.status === 'failed').length,
     incomplete: checkResults.filter(item => ['incomplete', 'not_implemented', 'skipped'].includes(item?.status)).length,
     businessRules,
+    stateConsistency,
     issuesMeta: { total: issueCandidates.length, returned: issueRows.length, truncated: issueCandidates.length > 50 },
     issues: issueRows,
     repairTasks: repairTasks.slice(0, 50),
@@ -757,6 +773,8 @@ function backendScaffoldSummary(root, siteId) {
         candidateStatus: typeof item.candidateStatus === 'string' ? item.candidateStatus.slice(0, 32) : 'unknown',
         ...(actorLabel(item.sourceActor) ? { sourceActor: actorLabel(item.sourceActor) } : {}),
         ...(actorLabel(item.candidateActor) ? { candidateActor: actorLabel(item.candidateActor) } : {}),
+        ...(['passed', 'failed', 'incomplete'].includes(item.sourceStateConsistency) ? { sourceStateConsistency: item.sourceStateConsistency } : {}),
+        ...(['passed', 'failed', 'incomplete'].includes(item.candidateStateConsistency) ? { candidateStateConsistency: item.candidateStateConsistency } : {}),
         ...(Number.isInteger(item.step) && item.step > 0 ? { step: item.step } : {}),
         ...(typeof item.pointer === 'string' ? { pointer: item.pointer.slice(0, 128) } : {}),
       };
@@ -1310,6 +1328,8 @@ function qaBackendScope(origin, api, backendCompletion) {
         ? backendCompletion.businessRules.status : 'not-tested',
       businessRuleActors: Array.isArray(backendCompletion?.businessRules?.actors)
         ? backendCompletion.businessRules.actors.slice(0, 20) : [],
+      stateConsistency: typeof backendCompletion?.stateConsistency?.status === 'string'
+        ? backendCompletion.stateConsistency.status : 'not-tested',
       businessRuleComparison: typeof backendCompletion?.businessRuleComparison?.overall === 'string'
         ? backendCompletion.businessRuleComparison.overall
         : typeof backendCompletion?.businessRuleComparison?.status === 'string'
@@ -1678,6 +1698,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   const operationProbe = delivery?.adapterEgressVerification?.operationProbe ?? { status: 'not-tested' };
   const operationProbeStatus = operationProbe?.status ?? 'not-tested';
   const businessRuleCheck = api.scaffold?.check?.businessRules ?? { status: 'not-tested', total: 0, passed: 0, failed: 0, incomplete: 0 };
+  const stateConsistencyCheck = api.scaffold?.check?.stateConsistency ?? { status: 'not-tested', scope: 'declared write-read flows only', total: 0, passed: 0, failed: 0, incomplete: 0 };
   const businessRuleComparison = api.scaffold?.check?.businessRuleComparison ?? { status: 'not_run', overall: null, summary: { compared: 0, passed: 0, failed: 0, incomplete: 0 }, repairTasks: [] };
   const scaffoldCheckStatus = api.scaffold?.check?.mode === 'business-rules-only' ? 'not-tested' : api.scaffold?.check?.status ?? 'not_run';
   const gapLedger = api.adapter.gapLedger;
@@ -1750,6 +1771,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       check: scaffold.check,
     },
     businessRules: businessRuleCheck,
+    stateConsistency: stateConsistencyCheck,
     businessRuleComparison,
     runtimeDataGaps: runtimeGaps,
     runtimeDataGapsTruncated: delivery?.runtimeDataGapsTruncated === true,
@@ -1820,7 +1842,9 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
         { id: 'business-rule-equivalence', status: businessRuleComparison.overall ?? (businessRuleComparison.status === 'invalid' ? 'not-tested' : businessRuleComparison.status === 'not_run' ? 'not-tested' : 'incomplete'),
           basis: ['passed', 'failed', 'incomplete'].includes(businessRuleComparison.overall) ? 'observed' : 'unknown',
           condition: '对照获授权源站与候选后端的同一份 business-rules-only 报告，确认候选规则逐条通过。' },
-        { id: 'state-consistency', status: 'blocked', basis: 'unknown', condition: '同一业务流程中操作后再次读取/刷新仍保持预期状态。' },
+        { id: 'state-consistency', status: stateConsistencyCheck.status === 'not-tested' ? 'blocked' : stateConsistencyCheck.status,
+          basis: stateConsistencyCheck.status === 'passed' || stateConsistencyCheck.status === 'failed' || stateConsistencyCheck.status === 'incomplete' ? 'observed' : 'unknown',
+          condition: '仅对已声明的写入后读取流程，确认操作后的响应和后续读取仍符合规则；持久化、回滚、并发和副作用仍需独立验证。' },
         { id: 'offline-egress', status: adapterServerEgress === 'verified' ? 'passed' : 'blocked',
           basis: adapterServerEgress === 'verified' || adapterServerEgress === 'not-tested' ? 'observed' : 'unknown',
           condition: '最终适配器在无外联部署中通过断网浏览器验收。' },

@@ -805,7 +805,7 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
           repairTask: { id: 'repair-query-parameter-gap', kind: 'query-parameter-gap', target: 'runtime-adapter/index.mjs', instruction: '补齐查询参数分支', requiresHumanApproval: false, evidence: { uniqueGaps: 1, unobservedQueryVariants: 1, uncoveredQueryParameters: 1 } },
         },
         {
-          id: 'business-rule:create-item', actor: 'owner', status: 'failed', step: 1, pointer: '/created', reason: 'json_assertion',
+          id: 'business-rule:create-item', actor: 'owner', stateConsistency: 'failed', status: 'failed', step: 1, pointer: '/created', reason: 'json_assertion',
           repairTask: { id: 'repair-business-rules', kind: 'business-rule', target: 'state-rules.json', instruction: '修正业务规则', requiresHumanApproval: false, evidence: { reason: 'json_assertion', pointer: '/created', actor: 'owner', secret: 'private-value' } },
         },
       ],
@@ -838,6 +838,10 @@ test('site-assessment: exposes sanitized backend repair tasks to AI', () => {
     assert.equal(tasks[3].evidence.actor, 'guest');
     assert.deepEqual(env.result.api.scaffold.check.businessRules.actors, [{ actor: 'owner', total: 1, passed: 0, failed: 1, incomplete: 0, status: 'failed' }]);
     assert.deepEqual(env.result.deliveryPlan.qaTask.scope.backend.completion.businessRuleActors, [{ actor: 'owner', total: 1, passed: 0, failed: 1, incomplete: 0, status: 'failed' }]);
+    assert.equal(env.result.api.scaffold.check.stateConsistency.status, 'failed');
+    assert.equal(env.result.api.scaffold.check.issues.find(item => item.id === 'business-rule:create-item').stateConsistency, 'failed');
+    assert.equal(env.result.deliveryPlan.backendCompletion.stateConsistency.status, 'failed');
+    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.stateConsistency, 'failed');
     assert.equal(env.result.api.scaffold.check.businessRuleComparison.comparisons[0].sourceActor, 'owner');
     assert.equal(env.result.api.scaffold.check.businessRuleComparison.comparisons[0].candidateActor, 'guest');
     assert.deepEqual(env.result.api.scaffold.check.issuesMeta, { total: 3, returned: 3, truncated: false });
