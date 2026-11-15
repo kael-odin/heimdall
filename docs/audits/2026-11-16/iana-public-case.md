@@ -47,3 +47,7 @@ QA 使用临时只读工作区，执行 3 页 × 2 视口共 6 次检查：0 条
 `site-assessment` 返回 `needs_human_review`：克隆状态为 `ready`，独立部署为 `needs_verification`，strict 交付为 `blocked`，SEO/GEO 为 `needs_follow_up`，后端为 `needs_observation`，QA 页面检查为 `ready`。QA closure 仍有 4 个 verified、1 个 open 和 1 个 unknown；API 契约缺失，业务检查未声明。
 
 下一步是扩大侦察范围后复测 strict，人工决定第三方运行时的缓存、替换或阻断策略，并在有授权的站点上补充 API 契约、认证/权限矩阵、写入读回和业务检查点。该案例不能证明真实业务后端或整站功能等价。
+
+## 复测修正
+
+真实案例还发现评估摘要把辅助 `score.json` 缺失列成 `clone-score-not-current`，即使当前多视口验证已经给出 100% 还原度。修复后，只有没有有效多视口验证时才生成该 unknown；IANA 复测保留 `averageOverall=1` 和 3 页 `stale` 辅助分数状态，但不再把还原度标为未知。边界回归 7/7、站点评估回归 23/23。

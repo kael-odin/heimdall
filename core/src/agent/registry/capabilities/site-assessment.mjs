@@ -2431,7 +2431,7 @@ export default {
     if (clone.unmeasured > 0) unknowns.push({ id: 'clone-unmeasured-pages', detail: `${clone.unmeasured} 页没有当前有效的多视口验证。` });
     if (clone.verificationStatus !== 'checked') unknowns.push({ id: 'clone-verification-unavailable', detail: `验证扫描状态为 ${clone.verificationStatus}。` });
     const unavailableScores = clone.mirrors - clone.scoreStatuses.verified;
-    if (unavailableScores > 0) unknowns.push({ id: 'clone-score-not-current', detail: `${unavailableScores} 页没有当前克隆输入的已核实单页辅助分数，当前平均分已排除。` });
+    if (unavailableScores > 0 && clone.verified === 0) unknowns.push({ id: 'clone-score-not-current', detail: `${unavailableScores} 页没有当前克隆输入的已核实单页辅助分数，且没有有效的多视口还原度验证。` });
     if (clone.delivery.status !== 'passed') unknowns.push({ id: 'offline-delivery-' + clone.delivery.status,
       detail: '严格离线交付尚未通过；旧版本缺少结果记录时须重新导出。' });
     if ((clone.delivery.status === 'passed' || clone.delivery.deploymentVerificationAttempt) && clone.delivery.deploymentVerification?.status !== 'verified') {

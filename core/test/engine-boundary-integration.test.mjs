@@ -159,6 +159,12 @@ test('current page and agent results reject a real measurement after CSS changes
     const currentAssessment = await runAgent(['site-assessment', '127.0.0.1']);
     assert.equal(currentAssessment.clone.averageScore, 96);
     assert.deepEqual(currentAssessment.clone.scoreStatuses, { verified: 1, stale: 0, legacy: 0, missing: 0, invalid: 0 });
+    rmSync(join(page, 'score.json'));
+    const verifiedWithoutAuxiliaryScore = await runAgent(['site-assessment', '127.0.0.1']);
+    assert.equal(verifiedWithoutAuxiliaryScore.clone.averageOverall, 1);
+    assert.equal(verifiedWithoutAuxiliaryScore.clone.scoreStatuses.missing, 1);
+    assert.equal(verifiedWithoutAuxiliaryScore.unknowns.some(item => item.id === 'clone-score-not-current'), false);
+    writeFileSync(join(page, 'score.json'), JSON.stringify({ scoreFormulaVersion: 2, inputSha256: cloneInputSha256(page), total: 96, pixel: 0.96, grade: 'A' }));
 
     const summaryFile = join(dir, 'workspace', '127.0.0.1', 'verify', 'verify-summary.json');
     const originalSummary = readFileSync(summaryFile, 'utf8');
