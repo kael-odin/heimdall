@@ -1182,6 +1182,9 @@ function buildQaTask(siteId, origin, qa, api) {
 function buildCloneTask(siteId, origin, clone, items) {
   const delivery = clone.delivery ?? { status: 'not_recorded' };
   const deployment = delivery.deploymentVerification ?? { status: 'unknown', report: null };
+  const rebuildPage = Array.isArray(clone.samplePages)
+    ? clone.samplePages.find(page => typeof page === 'string' && /^[a-z0-9._-]{1,128}$/i.test(page)) ?? null
+    : null;
   const cloneItems = items.filter(item => CLONE_TASK_ITEM_IDS.has(item.id));
   const actions = cloneItems.map(item => ({
     id: item.id, kind: item.kind, status: item.status, basis: item.basis,
@@ -1213,6 +1216,25 @@ function buildCloneTask(siteId, origin, clone, items) {
       ? [`heimdall live-verify <deliverable/${siteId}-包目录> --static --site-id ${siteId}`] : []),
     `heimdall site-assessment ${siteId} --json`,
   ];
+  const rebuild = rebuildPage ? {
+    status: 'available', basis: 'observed', page: rebuildPage,
+    workflow: ['study', 'build', 'check', 'refine', 'deliver'],
+    commands: [
+      `heimdall rebuild init ${siteId} --page ${rebuildPage} --stack html-css --gate silver`,
+      `heimdall compare --project <rebuild-dir> --page ${rebuildPage} --mode fast`,
+      'heimdall rebuild status --project <rebuild-dir> --json',
+      `heimdall compare --project <rebuild-dir> --page ${rebuildPage} --mode formal --gate --md`,
+      'heimdall rebuild deliver --project <rebuild-dir> --json',
+    ],
+    gates: [
+      '先读取重建工作区生成的 AGENTS.md、brief 和 sections，再修改项目文件。',
+      '每次修改后运行同一页面的 compare/check；分数变差时回到最近一次通过或更好的提交。',
+      '只有正式门禁通过才能把重建项目标为成品；否则按 Floor=Mirror 交付并保留残差。',
+    ],
+  } : {
+    status: 'blocked_on_capture', basis: 'unknown', page: null,
+    workflow: ['study', 'build', 'check', 'refine', 'deliver'], commands: [], gates: [],
+  };
   return {
     schema: 'heimdall.clone-ai-task/1', siteId, status,
     objective: '让 AI 在当前镜像、还原度和独立交付证据范围内补齐可验证的站点重建缺口。',
@@ -1241,6 +1263,7 @@ function buildCloneTask(siteId, origin, clone, items) {
         independentDeployment: { status: deployment.status, report: deployment.report },
       },
     },
+    rebuild,
     observedActions: actions.filter(item => item.basis === 'observed'),
     openActions: actions,
     tasks: actions.length ? actions.map(item => ({
@@ -1257,6 +1280,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       'strict 离线导出通过不等于独立部署通过；必须有当前校验和绑定的断网部署报告。',
       'scope.delivery.coverage.scopeLimited 为 true 时，当前包只代表有界页面范围；先用 allDiscovered 扩大范围并重新验证。',
       '外部运行时、动态 API、WebSocket、登录、权限和写入行为不能由 AI 猜成已实现。',
+      '前端重建只从当前镜像和脱敏证据开始；后端补全继续读取 deliveryPlan.backendCompletion。',
       'unknown、unmeasured、blocked 和未审核资源必须保留原状态，不能改写成通过。',
       '源站源码、凭据、Cookie、令牌、原始 HAR 和未脱敏响应不进入任务包。',
     ],

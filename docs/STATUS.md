@@ -42,6 +42,8 @@
 2026-11-15 [SEO/GEO 外部效果证据入口]：允许在 `workspace/<siteId>/seo/outcome-evidence.json` 提供脱敏的固定样本计数；`site-assessment`、`seo-audit` 任务结果和 `heimdall://site/<siteId>/seo/outcomes` 共用同一来源、origin、时间戳和数值校验。来源不匹配、字段不完整或超过上限时仍为 `unknown`，有效 sidecar 也只进入 `observed`，不直接变成 `verified` 或 readiness 通过。
 2026-11-15 [SEO/GEO 外部效果证据写入能力]：新增 `heimdall_seo_outcomes` / `heimdall seo-outcomes`，从用户指定的脱敏 JSON 中只提取允许的计数和来源类型，按当前站点 origin 原子写入 sidecar；已有 sidecar 必须显式 `--force` 覆盖，秘密级输入和跨 origin 输入直接拒绝。
 
+2026-11-15 [克隆任务接通 AI 重建闭环]：`site-assessment.cloneTask` 现在复用已有 `rebuild init → status → deliver` 和正式门禁/回退语义，明确输出 `study/build/check/refine/deliver` 顺序；没有已捕获页面时保持 `blocked_on_capture`，后端补全仍由 `backendCompletion` 单独承接。
+
 2026-11-15 [过期 GEO 置信度隔离]：GEO 方法版本缺失、过期或状态非法时，摘要会把 `confidence` 保留为 `null`；旧分数可以追溯，但不会带着 `high` 置信度进入 AI 任务包。
 2026-11-15 [QA finding 详情进入就绪门禁]：`deliveryPlan.qaTask`、`deliveryPlan.items` 和 `readiness.qa` 现在都要求 `findings.status=observed`；详情缺失、不可用或返回为空时进入 `blocked_on_qa_evidence`，即使摘要 `fileable=0` 也不能解释成零 bug 或 QA ready。
 2026-11-15 [QA 证据输入路径收紧]：站点评估只把实际存在的脱敏 `report.md`、`bugs.md` 放进 `qaTask.inputs` 和修复证据；缺失文件保持 `null` 或省略，不能用推测路径冒充可读取证据。

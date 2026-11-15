@@ -1243,8 +1243,22 @@ test('site-assessment: clone AI task keeps capture, delivery, and deployment gat
     assert.ok(task.observedActions.some(item => item.id === 'clone-mirror-coverage'));
     assert.ok(task.observedActions.some(item => item.id === 'clone-offline-delivery'));
     assert.ok(task.tasks.some(item => item.id === 'clone-mirror-coverage'));
+    assert.deepEqual(task.rebuild.workflow, ['study', 'build', 'check', 'refine', 'deliver']);
+    assert.equal(task.rebuild.status, 'available');
+    assert.equal(task.rebuild.page, 'home');
+    assert.match(task.rebuild.commands[0], /rebuild init example\.test --page home/);
+    assert.match(task.rebuild.commands[1], /compare --project <rebuild-dir> --page home --mode fast/);
     assert.equal(task.provenance.invented.length, 0);
     assert.match(task.prompt, /strict 导出/);
     assert.doesNotMatch(run.stdout, /private-value/);
+
+    rmSync(join(site, 'pages', 'home', 'clone', 'index.html'));
+    const noMirrorRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(noMirrorRun.status, 0, noMirrorRun.stderr + noMirrorRun.stdout);
+    const noMirrorTask = JSON.parse(noMirrorRun.stdout.trim().split(/\r?\n/).at(-1)).result.deliveryPlan.cloneTask;
+    assert.equal(noMirrorTask.rebuild.status, 'blocked_on_capture');
+    assert.deepEqual(noMirrorTask.rebuild.commands, []);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
