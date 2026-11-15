@@ -164,7 +164,8 @@ D1 已实现 [Schema4 与显式维护](competition/acceptance-catalog-schema4.md
 - [ ] 若 `/api/pages` 扫描在大站成为瓶颈，先设计异步索引和外部文件变更通知；整份响应的 8 秒缓存会违反当前 score/verify 下一请求即时可见的约定，`assets` 字段则已有最多 8 秒索引陈旧窗口。
 - [ ] 对 shadow DOM、第三方嵌入、无限滚动和运行时 WebGL 等复杂页面制定“支持 / 降级 / 不支持”的可观察分类；异步请求晚于 v2 有界稳定窗口才开始的页面需显式等待条件。
 - [x] 远程交互镜像支持显式 `HEIMDALL_MIRROR_ORIGIN`，控制台带 Token 时可通过一次性票据进入 `<site>.<mirror-domain>` 隔离子域；未配置公开 origin 的远程入口拒绝签票，避免误跳到客户端 `.localhost`。
-- [ ] 验证 Token 下受限静态产物的中键/右键打开路径、HTTPS 反代、非 localhost HTTP、不同控制台/API origin 的镜像入口；同主机、跨端口、跨主机的左键/键盘/Chromium 原生新标签已通过。
+- [x] 受控 HTTPS 反向代理和 Chromium 已验证 Token 票据、远程镜像子域、Secure 会话、页面脚本和最终无票据 URL；真实 DNS、Nginx/Caddy、非 localhost HTTP 与中键/右键生产部署仍待复验。
+- [ ] 验证 Token 下受限静态产物的中键/右键打开路径、真实 HTTPS 反代、非 localhost HTTP、不同控制台/API origin 的生产镜像入口；同主机、跨端口、跨主机的左键/键盘/Chromium 原生新标签已通过。
 - [ ] 在真实断网浏览器中验收静态包的关键资源与导航，以及交互包的页面脚本、动态 import、fetch 和表单；区分静态 strict 探针通过与完整交互可用。
   - 2026-11-14 已在 `example.com` 静态包上补齐一条真实闭环：最终 Docker 镜像 `network none` 启动两次，复制 `/app` 快照并校验和复核，再用 Chromium 对 1/1 路由断外联检查通过。该证据明确属于最终镜像文件系统快照；交互包脚本、动态 import、fetch、表单和更多架构仍需授权样本站点复验。
   - 2026-11-14 适配器包已增加 `--operation-plan FILE` 的最终镜像操作复测入口，复用既有断网浏览器探针并只落盘脱敏摘要；真实动态授权站点与 Docker 内部浏览器仍待复验。

@@ -1,14 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, request } from 'node:http';
+import { createServer as createHttpsServer, request as httpsRequest } from 'node:https';
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 import { openJobStore } from '../src/jobs/store.mjs';
 import { liveSnapshotPath } from '../src/live/live-path.mjs';
 import { cloneInputSha256 } from '../src/verify/resume-cache.mjs';
+import { certificate, key } from './fixtures/self-signed-certificate.mjs';
 
 const ENGINE = fileURLToPath(new URL('../src/engine-server.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('..', import.meta.url));
@@ -70,6 +73,32 @@ async function startReverseProxy(enginePort) {
   });
   await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
   return proxy;
+}
+
+async function startHttpsReverseProxy(enginePort, port = 0) {
+  const proxy = createHttpsServer({ key, cert: certificate }, (req, res) => {
+    const upstream = request({ hostname: '127.0.0.1', port: enginePort, path: req.url, method: req.method, headers: req.headers }, response => {
+      res.writeHead(response.statusCode, response.headers);
+      response.pipe(res);
+    });
+    upstream.on('error', error => res.destroy(error));
+    req.pipe(upstream);
+  });
+  await new Promise(resolve => proxy.listen(port, '127.0.0.1', resolve));
+  return proxy;
+}
+
+function getHttpsWithHost(port, path, host, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest({ hostname: '127.0.0.1', port, path, method: 'GET', rejectUnauthorized: false,
+      headers: { Host: host, ...headers } }, res => {
+      const chunks = [];
+      res.on('data', part => chunks.push(part));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 function runNode(args, dir) {
@@ -468,6 +497,53 @@ test('reverse proxy host, token, static isolation and www allowlist stay bounded
     assert.equal(exchange.status, 302, exchange.body);
     assert.equal(exchange.headers.location, '/');
   } finally {
+    if (proxy) await new Promise(resolve => proxy.close(resolve));
+    if (engine) await stopEngine(engine.proc);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('HTTPS reverse proxy opens a remote mirror in Chromium and loads local script assets', { timeout: 45_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-engine-https-mirror-'));
+  const site = join(dir, 'workspace', 'www.example.com');
+  mkdirSync(join(site, 'live'), { recursive: true });
+  writeFileSync(join(site, 'live', 'index.html'), '<!doctype html><html><body><h1 id="state">waiting</h1><script src="/app.js"></script></body></html>');
+  writeFileSync(join(site, 'live', 'app.js'), "document.querySelector('#state').textContent = 'HTTPS MIRROR READY';");
+  const enginePort = await freePort();
+  const proxyPort = await freePort();
+  let engine;
+  let proxy;
+  let browser;
+  try {
+    engine = await startEngine(dir, enginePort, '', {
+      HEIMDALL_TRUSTED_HOSTS: 'console.example.test:443',
+      HEIMDALL_ALLOWED_HOSTS: 'www.example.com',
+      HEIMDALL_MIRROR_ORIGIN: `https://mirror.example.test:${proxyPort}`,
+    });
+    proxy = await startHttpsReverseProxy(enginePort, proxyPort);
+    const launch = await getHttpsWithHost(proxyPort,
+      '/api/mirror-launch?url=' + encodeURIComponent('https://www.example.com/'),
+      'console.example.test:443', { 'x-heimdall-token': 'test-token' });
+    assert.equal(launch.status, 302, launch.body);
+    const location = new URL(launch.headers.location);
+    assert.equal(location.hostname, 'www.example.com.mirror.example.test');
+    assert.equal(location.protocol, 'https:');
+    assert.doesNotMatch(location.href, /test-token/);
+
+    browser = await chromium.launch({ headless: true, args: [
+      '--host-resolver-rules=MAP www.example.com.mirror.example.test 127.0.0.1',
+    ] });
+    const context = await browser.newContext({ ignoreHTTPSErrors: true });
+    const page = await context.newPage();
+    await page.goto(location.href, { waitUntil: 'networkidle' });
+    assert.equal(page.url(), `https://www.example.com.mirror.example.test:${proxyPort}/`);
+    assert.equal(await page.locator('#state').textContent(), 'HTTPS MIRROR READY');
+    assert.equal((await context.cookies()).some(cookie => cookie.name === 'heimdall_session'
+      && cookie.domain === 'www.example.com.mirror.example.test' && cookie.secure), true);
+    assert.doesNotMatch(page.url(), /ticket=|test-token/);
+    await context.close();
+  } finally {
+    await browser?.close();
     if (proxy) await new Promise(resolve => proxy.close(resolve));
     if (engine) await stopEngine(engine.proc);
     rmSync(dir, { recursive: true, force: true });

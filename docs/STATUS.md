@@ -60,6 +60,8 @@
 
 2026-11-16 [远程交互镜像入口]：新增 `HEIMDALL_MIRROR_ORIGIN`，本地默认仍使用 `<site>.localhost`，远程配置例如 `https://mirror.example.com` 时生成 `<site>.mirror.example.com` 隔离子域；控制台远程 Token 会话会校验站点 ID、协议、端口和镜像子域后再跳转。远程 Host 未配置公开 origin 时签票返回 409，不再把客户端 `.localhost` 当成远程部署地址。当前仍未完成真实 HTTPS DNS、Nginx/Caddy 和浏览器跨域部署验收。
 
+2026-11-16 [HTTPS 远程镜像浏览器实测]：使用仓库公开自签名证书和真实 Chromium，通过 HTTPS 反代把 `console.example.test` 和 `www.example.com.mirror.example.test` 转发到引擎；一次性票据交换、Secure `heimdall_session`、远程镜像域、`live/app.js` 脚本执行和最终无 `ticket` URL 均通过。该证据是单进程 TLS 反代夹具，真实 DNS、证书签发、Nginx/Caddy、多节点会话和生产中键/右键入口仍未知。
+
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 
 2026-11-15 [真实重建交付验收]：使用 `example.com/a/b` 的现有捕获完成一次仓库外 `html-css` 重建；首轮空脚手架被 compare 正确识别为缺失正文，补写后 375/768/1440 三视口均为 100% 像素相似度，正式 `silver` 门禁三视口 6/6 通过并生成 18 个项目文件、3 个镜像文件的 `passed` 交付包。正式验收还拦住了外部绝对链接，改为本地 `/help/example-domains` 后才通过；该案例只证明当前页面的视觉、结构、资源和健康闭环，不证明后端、认证、业务状态或整站范围等价。
