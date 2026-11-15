@@ -134,11 +134,18 @@ const SESSION_TICKET_TTL = 60 * 1000;
 const MIRROR_SESSION_PATH = '/.heimdall/session';
 const ALLOWED_ORIGINS = (process.env.HEIMDALL_CORS_ORIGIN ?? 'http://127.0.0.1:5173,http://localhost:5173')
   .split(',').map(s => s.trim()).filter(Boolean);
+function hostNameOf(raw) {
+  if (typeof raw !== 'string' || !raw.trim() || /[\\/@?#]/.test(raw)) return null;
+  try { return new URL('http://' + raw.trim()).hostname.toLowerCase().replace(/\.$/, '') || null; }
+  catch { return null; }
+}
+function proxyHostKey(raw) { return String(raw ?? '').toLowerCase().replace(/^www\./, ''); }
 const EXTRA_PROXY_HOSTS = new Set((process.env.HEIMDALL_ALLOWED_HOSTS ?? '')
-  .split(',').map(s => s.trim().replace(/^www\./, '')).filter(Boolean));
+  .split(',').map(hostNameOf).filter(Boolean).map(proxyHostKey));
+const BIND_HOST = hostNameOf(BIND);
 const TRUSTED_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]',
-  ...((BIND === '0.0.0.0' || BIND === '::') ? [] : [BIND.toLowerCase()]),
-  ...(process.env.HEIMDALL_TRUSTED_HOSTS ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)]);
+  ...((BIND === '0.0.0.0' || BIND === '::') ? [] : [BIND_HOST].filter(Boolean)),
+  ...(process.env.HEIMDALL_TRUSTED_HOSTS ?? '').split(',').map(hostNameOf).filter(Boolean)]);
 // PUT：控制台保存模型设置走 PUT /api/settings/llm；dev 下页面在 :5173、引擎在 :8900，是跨源请求，
 // 预检的 Allow-Methods 里没有 PUT 就会被浏览器直接拦掉（生产同源部署不受影响，所以一直没被发现）。
 const CORS = { 'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,x-heimdall-token' };
@@ -159,11 +166,8 @@ const MIME = {
 const mimeOf = (file) => MIME[extname(file).toLowerCase()] ?? 'application/octet-stream';
 
 function trustedRequestHost(raw) {
-  if (typeof raw !== 'string' || /[\\/@?#]/.test(raw)) return false;
-  try {
-    const host = new URL('http://' + raw).hostname.toLowerCase();
-    return TRUSTED_HOSTS.has(host) || !!mirrorHostOf(raw);
-  } catch { return false; }
+  const host = hostNameOf(raw);
+  return !!host && (TRUSTED_HOSTS.has(host) || !!mirrorHostOf(host));
 }
 
 function activeDocumentHeaders(req, type, { source = 'workspace', file = '', compareView = false } = {}) {
@@ -501,7 +505,7 @@ function issueMirrorTicket(rawUrl, mode) {
       || !MIRROR_HOST_RE.test(host)) return { status: 400, error: 'invalid mirror URL' };
   let identity;
   try { identity = findSiteIdentity(WORKSPACE, target); } catch {}
-  if (!identity && EXTRA_PROXY_HOSTS.has(host) && target.origin === `https://${host}`) identity = { siteId: host, origin: target.origin };
+  if (!identity && EXTRA_PROXY_HOSTS.has(proxyHostKey(host)) && target.origin === `https://${host}`) identity = { siteId: host, origin: target.origin };
   if (!identity) return { status: 403, error: 'origin not allowed' };
   const path = target.pathname + target.search;
   if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
@@ -579,7 +583,7 @@ function countLivePages(host) {
 }
 
 const isProxyHost = (h) => {
-  const noWww = String(h).replace(/^www\./, '');
+  const noWww = proxyHostKey(h);
   if (EXTRA_PROXY_HOSTS.has(noWww)) return true;
   return cached('proxyhosts', () => {
     try { return new Set(readdirSync(WORKSPACE)); } catch { return new Set(); }
@@ -587,9 +591,10 @@ const isProxyHost = (h) => {
 };
 
 function mirrorIdentity(siteId) {
+  const host = String(siteId ?? '').toLowerCase();
   try {
-    return readSiteIdentity(WORKSPACE, siteId)
-      ?? (EXTRA_PROXY_HOSTS.has(siteId) ? { siteId, origin: `https://${siteId}` } : null);
+    return readSiteIdentity(WORKSPACE, host)
+      ?? (EXTRA_PROXY_HOSTS.has(proxyHostKey(host)) ? { siteId: host, origin: `https://${host}` } : null);
   } catch { return null; }
 }
 const pageFor = (u) => resolvePageNameOfUrl(u, join(WORKSPACE, siteIdForOrigin(WORKSPACE, u)));

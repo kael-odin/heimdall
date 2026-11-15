@@ -123,4 +123,5 @@ node bin/heimdall.mjs setup --no-connect
 - **产物不进 git**。`core/workspace/`（逐页产物）与 `core/deliverable/`（可部署包）都在 `.gitignore` 里；
   想挪走就用环境变量 `HEIMDALL_DATA_DIR`。
 - **引擎默认只听本机**。`HEIMDALL_HOST` 可改；设了 `HEIMDALL_TOKEN` 之后 `/api/*`、`/static/*` 和工作区静态路由都需要鉴权。
+- **反向代理部署**。同时设置 `HEIMDALL_TOKEN` 和 `HEIMDALL_TRUSTED_HOSTS`；后者填写代理转发到引擎的公开 Host（可带端口），未列出的 Host 返回 421。`HEIMDALL_ALLOWED_HOSTS` 只增加可代理的源站域名，不会放宽入站 Host。
 - **交付包默认听所有网卡**（它是拿去部署的），只在本机预览用 `node serve.mjs --host 127.0.0.1`。

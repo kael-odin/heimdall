@@ -21,10 +21,10 @@ async function freePort() {
   return port;
 }
 
-async function startEngine(dir, port, preload = '') {
+async function startEngine(dir, port, preload = '', extraEnv = {}) {
   const args = [...(preload ? ['--import', 'data:text/javascript,' + encodeURIComponent(preload)] : []), ENGINE, String(port)];
   const proc = spawn(process.execPath, args, {
-    cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: dir, HEIMDALL_TOKEN: 'test-token', HEIMDALL_HOST: '127.0.0.1' }, stdio: 'ignore',
+    cwd: CORE, env: { ...process.env, HEIMDALL_DATA_DIR: dir, HEIMDALL_TOKEN: 'test-token', HEIMDALL_HOST: '127.0.0.1', ...extraEnv }, stdio: 'ignore',
   });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i++) {
@@ -57,6 +57,19 @@ function requestWithHost(port, path, host, { method = 'GET', headers = {}, body 
 }
 function getWithHost(port, path, host, headers = {}) {
   return requestWithHost(port, path, host, { headers });
+}
+
+async function startReverseProxy(enginePort) {
+  const proxy = createServer((req, res) => {
+    const upstream = request({ hostname: '127.0.0.1', port: enginePort, path: req.url, method: req.method, headers: req.headers }, response => {
+      res.writeHead(response.statusCode, response.headers);
+      response.pipe(res);
+    });
+    upstream.on('error', error => res.destroy(error));
+    req.pipe(upstream);
+  });
+  await new Promise(resolve => proxy.listen(0, '127.0.0.1', resolve));
+  return proxy;
 }
 
 function runNode(args, dir) {
@@ -388,6 +401,52 @@ test('engine protects workspace, revokes cookie and routes mirror hosts before e
       assert.equal(store.list({ limit: 10 }).filter(j => [firstId, secondId].includes(j.id)).length, 2);
     } finally { store.close(); }
   } finally {
+    if (engine) await stopEngine(engine.proc);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('reverse proxy host, token, static isolation and www allowlist stay bounded', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'heimdall-engine-reverse-proxy-'));
+  const site = join(dir, 'workspace', 'www.example.com');
+  mkdirSync(site, { recursive: true });
+  writeFileSync(join(site, 'public.json'), '{"ok":true}');
+  writeFileSync(join(site, 'operation-plan.json'), '{"secret":"private"}');
+  const enginePort = await freePort();
+  let engine;
+  let proxy;
+  try {
+    engine = await startEngine(dir, enginePort, '', {
+      HEIMDALL_TRUSTED_HOSTS: 'console.example:443',
+      HEIMDALL_ALLOWED_HOSTS: 'www.example.com',
+    });
+    proxy = await startReverseProxy(enginePort);
+    const proxyPort = proxy.address().port;
+    const publicHost = 'console.example:443';
+    const token = { 'x-heimdall-token': 'test-token' };
+
+    assert.equal((await getWithHost(enginePort, '/api/status', 'spoof.example:443', token)).status, 421);
+    assert.equal((await getWithHost(proxyPort, '/api/status', publicHost)).status, 401);
+    assert.equal((await getWithHost(proxyPort, '/api/status', publicHost, { 'x-heimdall-token': 'wrong' })).status, 401);
+    const status = await getWithHost(proxyPort, '/api/status', publicHost, token);
+    assert.equal(status.status, 200, status.body);
+    const cookie = status.headers['set-cookie'][0].split(';')[0];
+
+    const publicFile = await getWithHost(proxyPort, '/static/www.example.com/public.json', publicHost, { cookie });
+    assert.equal(publicFile.status, 200, publicFile.body);
+    assert.equal(publicFile.body, '{"ok":true}');
+    assert.equal((await getWithHost(proxyPort, '/static/www.example.com/operation-plan.json', publicHost, { cookie })).status, 403);
+
+    const launch = await getWithHost(proxyPort, '/api/mirror-launch?url=' + encodeURIComponent('https://www.example.com/'), publicHost, { cookie });
+    assert.equal(launch.status, 302, launch.body);
+    const location = new URL(launch.headers.location);
+    assert.equal(location.hostname, 'www.example.com.localhost');
+    const exchange = await getWithHost(proxyPort, location.pathname + location.search,
+      `www.example.com.localhost:${proxyPort}`);
+    assert.equal(exchange.status, 302, exchange.body);
+    assert.equal(exchange.headers.location, '/');
+  } finally {
+    if (proxy) await new Promise(resolve => proxy.close(resolve));
     if (engine) await stopEngine(engine.proc);
     rmSync(dir, { recursive: true, force: true });
   }
