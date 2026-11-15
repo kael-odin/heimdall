@@ -396,6 +396,7 @@ emit({ kind: 'live-stage', stage: 'har', status: 'running', total: pageNames.len
 const harMap = new Map();
 const readOnlyKeys = new Set([...dataPlan.urls, ...readOnlyBinaryUrls].map(url => harKey('GET', url)));
 let readOnlyDataConflicts = 0;
+const readOnlyDataRejected = { privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 };
 let harPages = 0;
 const privacy = { excluded: { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 }, examples: [], includeApiBodies: INCLUDE_API_HAR, sessionPresent: SESSION_PRESENT, privateExportApproved: ALLOW_PRIVATE_EXPORT };
 const runtimeCacheUrls = new Set();
@@ -434,6 +435,9 @@ for (let i = 0; i < pageNames.length; i++) {
     }
     for (const remaining of rawReadOnlyCounts.values()) readOnlyDataConflicts += remaining;
     for (const [reason, count] of Object.entries(sanitized.privacy.excluded)) privacy.excluded[reason] += count;
+    for (const [reason, count] of Object.entries(sanitized.privacy.approvedExcluded ?? {})) {
+      if (Object.prototype.hasOwnProperty.call(readOnlyDataRejected, reason)) readOnlyDataRejected[reason] += count;
+    }
     for (const sample of sanitized.privacy.examples) if (privacy.examples.length < 30) privacy.examples.push(sample);
     for (const e of sanitized.entries) {
       let x; try { x = new URL(e.url); } catch { continue; }
@@ -822,6 +826,7 @@ health.readOnlyData = {
   } : {}),
   ...(shadowedData.length ? { shadowed: shadowedData.length } : {}),
   ...(readOnlyDataConflicts ? { conflicts: readOnlyDataConflicts } : {}),
+  ...(Object.values(readOnlyDataRejected).some(value => value > 0) ? { rejected: readOnlyDataRejected } : {}),
   ...(earlySource?.readOnlyData ? { sourceCapture: earlySource.readOnlyData } : {}),
   ...(COMPARE_SOURCE && INCLUDE_READONLY_DATA ? {
     sourceCurrentAccepted: currentSourceReadOnlyKeys.size,

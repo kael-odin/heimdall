@@ -34,9 +34,9 @@ node core/src/cli.mjs handoff https://www.rfc-editor.org/ --max-pages 3 --strict
 
 ## 只读数据对照
 
-源站对该 Nuxt 元数据路径返回 `200 application/json`，三页 HAR 都记录了相同的 88 字节响应。默认导出不会分发动态 JSON；随后为该精确路径写入 `read-data-plan.json` 并重跑 `--include-readonly-data`，计划本身通过校验，但三份请求都带 Cookie，清洗器按安全策略拒绝响应正文，结果为 `readOnlyDataMissing=1`、`readOnlyDataConflicts=3`。
+源站对该 Nuxt 元数据路径返回 `200 application/json`，三页 HAR 都记录了相同的 88 字节响应。默认导出不会分发动态 JSON；随后为该精确路径写入 `read-data-plan.json` 并重跑 `--include-readonly-data`，计划本身通过校验，但三份请求都带 Cookie，清洗器按安全策略拒绝响应正文。最新健康摘要为 `readOnlyDataMissing=1`、`readOnlyDataConflicts=3`、`readOnlyData.rejected.authenticated=3`；这里的 `authenticated=3` 只表示三份当前证据带认证或 Cookie 边界，不推断业务私有性。
 
-这确认当前缺口不是路径改写错误。要继续补齐，应在无认证、无 Cookie 的干净匿名上下文重新捕获，或提供明确授权且可公开分发的只读证据；不能把带 Cookie 的 HAR 当作公开数据回放。
+这确认当前缺口不是路径改写错误。`authenticated` 只是证据分类，不能成为放宽清洗策略的理由。要继续补齐，应在无认证、无 Cookie 的干净匿名上下文重新捕获，或提供明确授权且可公开分发的只读证据；不能把带 Cookie 的 HAR 当作公开数据回放。
 
 ## SEO/GEO 上下文
 

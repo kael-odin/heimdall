@@ -144,6 +144,8 @@ test('strict export packages only declared public GET data and replays it after 
     const privateHealth = JSON.parse(readFileSync(join(privateCandidate, 'health.json'), 'utf8'));
     assert.equal(privateHealth.readOnlyData.included, 2);
     assert.equal(privateHealth.readOnlyData.missing, 2);
+    assert.ok(privateHealth.readOnlyData.rejected.authenticated >= 1);
+    assert.ok(privateHealth.readOnlyData.rejected.privateBody >= 1);
     assert.equal(privateHealth.strictBlockers.readOnlyDataMissing, 2);
     const privacy = JSON.parse(readFileSync(join(privateCandidate, 'har-privacy.json'), 'utf8'));
     assert.ok(privacy.excluded.privateBody >= 1);

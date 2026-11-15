@@ -79,6 +79,7 @@ test('read-only data excludes authentication, writes, response cookies, private 
     const sanitized = clean([raw], [raw.request.url]);
     assert.equal(sanitized.entries.length, 0, raw.request.url);
     assert.equal(sanitized.privacy.excluded[reason], 1, raw.request.url);
+    assert.equal(sanitized.privacy.approvedExcluded[reason], 1, raw.request.url);
     assert.doesNotMatch(JSON.stringify(sanitized), /sid=private|alice@example.com|X-Session-Token/);
   }
   const text = clean([entry(ORIGIN + '/data.txt', 'public data', { mimeType: 'text/plain' })], [ORIGIN + '/data.txt']);

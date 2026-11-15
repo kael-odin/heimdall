@@ -443,6 +443,10 @@ function liveExportSummary(root, siteId) {
         .filter(key => Number.isSafeInteger(rawReadOnlyData[key]) && rawReadOnlyData[key] >= 0)
         .map(key => [key, rawReadOnlyData[key]])),
       ...(typeof rawReadOnlyData.issue === 'string' ? { issue: rawReadOnlyData.issue.slice(0, 96) } : {}),
+      ...(rawReadOnlyData.rejected && typeof rawReadOnlyData.rejected === 'object' && !Array.isArray(rawReadOnlyData.rejected)
+        ? { rejected: Object.fromEntries(['privateUrl', 'authenticated', 'nonStatic', 'privateBody']
+          .filter(key => Number.isSafeInteger(rawReadOnlyData.rejected[key]) && rawReadOnlyData.rejected[key] >= 0)
+          .map(key => [key, rawReadOnlyData.rejected[key]])) } : {}),
       ...(typeof rawReadOnlyData.binarySourceStatus === 'string'
         ? { binarySourceStatus: rawReadOnlyData.binarySourceStatus.slice(0, 32) } : {}),
     } : null;
@@ -1746,11 +1750,14 @@ function readOnlyDataRepairTask(siteId, data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   const conflicts = Number.isSafeInteger(data.conflicts) && data.conflicts >= 0 ? data.conflicts : 0;
   if (data.status !== 'invalid' && conflicts === 0) return null;
+  const rejected = data.rejected && typeof data.rejected === 'object' ? data.rejected : {};
+  const reasons = Object.entries(rejected).filter(([, count]) => Number.isSafeInteger(count) && count > 0).map(([reason]) => reason);
+  const reasonText = reasons.includes('authenticated') ? '请求带有认证或 Cookie 证据' : reasons.includes('privateBody') ? '响应正文触发隐私清洗' : reasons.includes('nonStatic') ? '响应不符合只读数据回放条件' : '';
   return {
     id: 'repair-readonly-data-evidence', kind: 'readonly-data-evidence', target: 'read-data-plan.json', status: 'blocked_on_observation',
-    instruction: '先用无认证的干净匿名上下文重新捕获精确许可的公开 GET，或补充明确授权的只读证据；确认 read-data-plan.json 与 HAR 响应逐条一致后再回放。不要把带 Cookie、冲突或被清洗拒绝的响应正文交给 AI，也不要从失败状态猜测业务数据。',
+    instruction: `先用无认证的干净匿名上下文重新捕获精确许可的公开 GET，或补充明确授权的只读证据${reasonText ? `；当前证据显示${reasonText}` : ''}。确认 read-data-plan.json 与 HAR 响应逐条一致后再回放。不要把带 Cookie、冲突或被清洗拒绝的响应正文交给 AI，也不要从失败状态猜测业务数据。`,
     requiresHumanApproval: true,
-    evidence: { status: data.status, declared: data.declared ?? 0, included: data.included ?? 0, missing: data.missing ?? 0, conflicts },
+    evidence: { status: data.status, declared: data.declared ?? 0, included: data.included ?? 0, missing: data.missing ?? 0, conflicts, rejected },
     verification: planVerification(siteId, 'clone.delivery.readOnlyData.status === "ok" && (clone.delivery.readOnlyData.conflicts ?? 0) === 0 && clone.delivery.readOnlyData.missing === 0'),
   };
 }

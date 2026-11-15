@@ -298,6 +298,7 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
   const approvedBinary = approvedPublicDataUrls(readOnlyBinaryGetUrls, origin);
   const entries = [];
   const excluded = { invalid: 0, privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 };
+  const approvedExcluded = { privateUrl: 0, authenticated: 0, nonStatic: 0, privateBody: 0 };
   const examples = [];
   for (const e of har?.log?.entries ?? []) {
     const req = e.request ?? {};
@@ -333,6 +334,7 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
       || DATA_MIME.test(mimeType) || !isStaticResponse(parsed, mimeType))) reason = 'nonStatic';
     if (reason) {
       excluded[reason]++;
+      if (publicReadOnly && Object.prototype.hasOwnProperty.call(approvedExcluded, reason)) approvedExcluded[reason]++;
       if (examples.length < 20) examples.push({ reason, path: reportPath(parsed) });
       continue;
     }
@@ -348,6 +350,7 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
       const raw = res.content?.encoding === 'base64' ? Buffer.from(text, 'base64') : Buffer.from(text, 'utf8');
       if (publicReadOnly && !(publicData ? publicDataBody(raw, mimeType) : publicBinaryBody(raw))) {
         excluded.privateBody++;
+        approvedExcluded.privateBody++;
         if (examples.length < 20) examples.push({ reason: 'privateBody', path: reportPath(parsed) });
         continue;
       }
@@ -360,6 +363,7 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
     }
     if (publicReadOnly && !body) {
       excluded.nonStatic++;
+      approvedExcluded.nonStatic++;
       if (examples.length < 20) examples.push({ reason: 'nonStatic', path: reportPath(parsed) });
       continue;
     }
@@ -380,7 +384,7 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
         ? { kind: 'public-read-only-binary', review: 'manual' } : {}),
     });
   }
-  return { version: 1, generatedAt: new Date().toISOString(), entries, privacy: { excluded, examples, includeApiBodies } };
+  return { version: 1, generatedAt: new Date().toISOString(), entries, privacy: { excluded, approvedExcluded, examples, includeApiBodies } };
 }
 
 /** 合并多页 HAR（同 key 第一条优先；页面顺序 = 参数顺序） */
