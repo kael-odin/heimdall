@@ -75,6 +75,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-15 | **[`vite.dev` 与 `example.com` 公开 SEO/GEO 案例](2026-11-15/site-assessment-public-cases.md)** | `vite.dev` 3 页，SEO 90→88、GEO 68.4、sitemap 完整；`example.com` 1 页，SEO 52、GEO 28.1、sitemap 未找到；两案均保留 closure 与真实效果未知边界 |
 | 2026-11-16 | **[B3 业务规则 Cookie 会话实测](2026-11-16/backend-business-cookie-rules.md)** | 受控脚手架 9 条业务规则覆盖登录、Cookie 轮换、退出、退出后 401 和手动 302；Cookie 值不进入报告，生产认证与撤销仍未知 |
 | 2026-11-16 | **[B3 业务规则响应头断言实测](2026-11-16/backend-response-header-rules.md)** | 受控脚手架验证安全响应头存在、错误值失败和非敏感头缺失；报告不保存响应头实际值，真实代理/CDN 行为仍需授权站点验收 |
+| 2026-11-16 | **[公开站点评估摘要复核](2026-11-16/site-assessment-public-recheck.md)** | 用当前 workspace 证据复核 `example.com`、`rfc-editor.org`、`vitest.dev`；SEO/GEO 分数和 sitemap 范围可读，后端、独立部署、QA 与真实搜索/模型引用仍保留未知 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 

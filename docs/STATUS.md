@@ -18,6 +18,8 @@
 
 2026-11-16 [B3 响应头失败进入 AI 修复]：`unexpected_header` 现在把经过格式限制的头名称从 `backend-check.json` 传到 `site-assessment.deliveryPlan.backendCompletion.repairTasks`；实际响应值仍被丢弃，AI 可以定位缺失或错误的安全头而不会接触敏感内容。
 
+2026-11-16 [公开站点评估摘要复核]：用当前 workspace 证据复核 `example.com`、`rfc-editor.org`、`vitest.dev`；SEO/GEO 分数和 sitemap 范围正常投影，后端契约、独立部署、QA、真实搜索/收录和模型引用仍保持未知。`rfc-editor.org` 的 sitemap `partial` 没有被页面级 GEO 完整状态覆盖。
+
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
 2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。
