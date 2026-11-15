@@ -79,6 +79,7 @@
    - 2026-11-14 [留出查询缺口分级](audits/2026-11-14/holdout-query-gap-ledger.md)：离线留出账本现在把未观察路径、已知参数名下的新查询值/组合、全新查询参数分开记录；即使还没有 B3，`site-assessment.deliveryPlan.backendCompletion.repairTasks` 也会为每个缺口类别生成独立修复任务。该改动只提高缺口证据精度，不把未知分页实现成成功回放。
    - 2026-11-14 接入最终镜像操作复测摘要：`deliveryPlan.backendCompletion` 会区分服务端无外联、HTTP 写入/重启读回和授权浏览器操作计划三类证据；缺少操作计划继续显示 `not-tested`，通过一次操作计划仍不代表认证、权限、状态机或完整业务等价。
    - 2026-11-14 B3 脚手架增加人工确认后的业务规则复测：`state-rules.json` 可声明多步 HTTP、角色环境变量、状态码、MIME 和 JSON Pointer 断言；写入默认阻断，失败结果进入脱敏 `site-assessment` 修复任务。下一步仍是用获授权真实项目补充权限矩阵、状态机、清理和外部副作用旅程。
+   - 2026-11-16 业务规则执行器补上每条规则独立的 Cookie jar 与可选 `redirect: "manual"`：已在受控会话夹具中复测登录、Cookie 轮换、退出、退出后拒绝和 3xx；Cookie 值仍只在进程内，生产认证与服务端撤销继续需要授权旅程。
    - 2026-11-14 同一规则可用 `checks.mjs <base> --business-rules-only` 在获授权源站与候选后端上复测；结果明确标记业务规则范围，完整脚手架和独立部署门禁仍单独检查。
    - 2026-11-15 新增 `heimdall backend compare`：按规则 ID 对齐两份业务规则报告，并让候选失败/缺失以退出码 1 进入 CI；空规则、源站失败、规则集不一致和候选状态读回未证明保留为 `incomplete`，不把缺少源站证据或普通响应通过误报为等价。
    - 2026-11-15 `site-assessment` 已读取候选脚手架目录内的 `backend-compare.json` 安全摘要，把业务等价失败交回 AI 交付计划；这仍不替代真实权限、状态机、持久化和副作用旅程。

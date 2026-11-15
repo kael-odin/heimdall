@@ -73,6 +73,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-15 | **[B3 公开源站与候选后端对照实测](2026-11-15/backend-public-source-candidate-compare.md)** | DummyJSON 公开商品列表与详情 GET 对照本地候选适配器，源站和候选规则均通过，`backend compare` 1/1 passed；报告不含候选测试正文，真实写入与权限仍未覆盖 |
 | 2026-11-15 | **[`vitest.dev` 当前 handoff 与页面复杂度专项复验](2026-11-15/vitest-public-handoff-followup.md)** | 3 页克隆与多视口还原完成，平均 99.6%；strict 被 96 个阻断卡住；真实首页观察到 2 个 Canvas，`clone-page-complexity=open` 正确进入 AI 任务，博客页缺少 measurement proof 保持 2/3 verified；SEO 91.3、GEO 62.2，重复 description advisory 已带出 3 个受影响页面 |
 | 2026-11-15 | **[`vite.dev` 与 `example.com` 公开 SEO/GEO 案例](2026-11-15/site-assessment-public-cases.md)** | `vite.dev` 3 页，SEO 90→88、GEO 68.4、sitemap 完整；`example.com` 1 页，SEO 52、GEO 28.1、sitemap 未找到；两案均保留 closure 与真实效果未知边界 |
+| 2026-11-16 | **[B3 业务规则 Cookie 会话实测](2026-11-16/backend-business-cookie-rules.md)** | 受控脚手架 9 条业务规则覆盖登录、Cookie 轮换、退出、退出后 401 和手动 302；Cookie 值不进入报告，生产认证与撤销仍未知 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
 

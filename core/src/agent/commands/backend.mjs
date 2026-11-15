@@ -752,6 +752,46 @@ function headerValue(value) {
   const name = envName(value?.env);
   return name ? { value: process.env[name] ?? null, missing: process.env[name] === undefined } : { value: null, invalid: true };
 }
+function cookiePath(value, requestPath) {
+  if (typeof value === 'string' && value.startsWith('/')) return value;
+  const slash = requestPath.lastIndexOf('/');
+  return slash <= 0 ? '/' : requestPath.slice(0, slash);
+}
+function cookieMatches(cookie, url) {
+  if (cookie.secure && url.protocol !== 'https:') return false;
+  if (!url.pathname.startsWith(cookie.path) || (cookie.path !== '/' && ![undefined, '/'].includes(url.pathname[cookie.path.length]))) return false;
+  return true;
+}
+function cookieHeader(jar, url) {
+  return [...jar.values()]
+    .filter(cookie => cookieMatches(cookie, url))
+    .sort((left, right) => right.path.length - left.path.length)
+    .map(cookie => cookie.name + '=' + cookie.value)
+    .join('; ');
+}
+function updateCookies(jar, response, url) {
+  for (const raw of response.headers.getSetCookie?.() ?? []) {
+    const pair = String(raw).split(';', 1)[0];
+    const equals = pair.indexOf('=');
+    if (equals <= 0) continue;
+    const name = pair.slice(0, equals).trim();
+    if (!/^[!#$%&'*+.^_|~0-9A-Za-z-]{1,128}$/.test(name)) continue;
+    const cookie = { name, value: pair.slice(equals + 1), path: null, secure: false, expires: null };
+    for (const rawAttribute of String(raw).split(';').slice(1)) {
+      const [rawName, ...rawValue] = rawAttribute.trim().split('=');
+      const attribute = rawName.toLowerCase();
+      const value = rawValue.join('=').trim();
+      if (attribute === 'path' && value.startsWith('/')) cookie.path = value;
+      else if (attribute === 'secure') cookie.secure = true;
+      else if (attribute === 'max-age' && /^-?\d+$/.test(value)) cookie.expires = Number(value) <= 0 ? 0 : Date.now() + Number(value) * 1000;
+      else if (attribute === 'expires') cookie.expires = Date.parse(value);
+    }
+    cookie.path = cookiePath(cookie.path, url.pathname);
+    const key = cookie.name + '\n' + cookie.path;
+    if (cookie.expires === 0 || Number.isFinite(cookie.expires) && cookie.expires <= Date.now()) jar.delete(key);
+    else if (!cookie.secure || url.protocol === 'https:') jar.set(key, cookie);
+  }
+}
 function sameJson(left, right) {
   if (Object.is(left, right)) return true;
   if (!left || !right || typeof left !== 'object' || typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) return false;
@@ -830,6 +870,8 @@ function prepareRule(rule) {
       body = process.env[bodyName];
       if (!Object.keys(headers).some(name => name.toLowerCase() === 'content-type')) headers['content-type'] = 'application/json';
     }
+    const redirect = step.redirect === undefined ? 'follow' : step.redirect;
+    if (!['follow', 'manual', 'error'].includes(redirect)) return { id, error: 'invalid_redirect' };
     const rawJsonAssertions = Array.isArray(expect.json) ? expect.json.slice(0, 32) : [];
     if (expect.json !== undefined && !Array.isArray(expect.json)) return { id, error: 'invalid_json_assertions' };
     const jsonAssertions = rawJsonAssertions.map(assertion => {
@@ -841,7 +883,7 @@ function prepareRule(rule) {
     });
     if (jsonAssertions.some(assertion => !assertion)) return { id, error: 'invalid_json_assertion' };
     if (expect.type !== undefined && (typeof expect.type !== 'string' || !JSON_TYPES.has(expect.type))) return { id, error: 'invalid_expected_type' };
-    steps.push({ method, path, headers, body, statuses, expect, jsonAssertions, ...(pathParams ? { pathParams } : {}) });
+    steps.push({ method, path, headers, body, statuses, expect, jsonAssertions, redirect, ...(pathParams ? { pathParams } : {}) });
   }
   return { id, ...(actor ? { actor } : {}), steps };
 }
@@ -876,6 +918,7 @@ async function runBusinessRule(rule) {
   const report = value => withRuleMetadata(actor, stateConsistencyStatus(stateKind, value.status), value);
   if (prepared.error) return report({ id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' });
   const responses = [];
+  const cookies = new Map();
   const pointerFor = path => '/' + path.map(part => String(part).replaceAll('~', '~0').replaceAll('/', '~1')).join('/');
   const readJson = async index => {
     const state = responses[index];
@@ -912,8 +955,15 @@ async function runBusinessRule(rule) {
     const resolved = await resolvePath(step);
     if (resolved.error) return report({ id, status: 'incomplete', step: index + 1, reason: resolved.error, pointer: resolved.pointer });
     let response;
-    try { response = await fetch(base + resolved.path, { method: step.method, headers: step.headers, body: step.body }); }
+    const requestUrl = new URL(resolved.path, base + '/');
+    const headers = { ...step.headers };
+    if (!Object.keys(headers).some(name => name.toLowerCase() === 'cookie')) {
+      const value = cookieHeader(cookies, requestUrl);
+      if (value) headers.cookie = value;
+    }
+    try { response = await fetch(requestUrl, { method: step.method, headers, body: step.body, redirect: step.redirect }); }
     catch { return report({ id, status: 'failed', step: index + 1, reason: 'request_failed' }); }
+    updateCookies(cookies, response, requestUrl);
     responses.push({ response, bodyRead: false, body: null, bodyError: null });
     if (!step.statuses.includes(response.status)) return report({ id, status: 'failed', step: index + 1, httpStatus: response.status, expectedStatuses: step.statuses, reason: 'unexpected_status' });
     const expectedMime = step.expect.contentType;
@@ -1174,6 +1224,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '要做业务后端检查：在 state-rules.json 中填写 rules，并先把 status 改为 reviewed；每条规则由多个 HTTP 步骤和 status / contentType / JSON Pointer 断言组成。',
     '步骤路径可以使用完整段参数（例如 /items/{id}）；pathParams 用 response + path 引用较早步骤的 JSON 标量，值只在内存中解析并按 URL 段编码，不会写入报告。',
     '规则可用 actor 标记匿名、所有者或其他测试身份；规则中的 Authorization、Cookie 和请求体只通过环境变量引用，写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
+    '同一条规则会维护独立的内存 Cookie jar，按响应 Set-Cookie 处理登录、轮换和 Max-Age=0 退出；步骤可用 redirect: manual 核对 3xx，默认 follow。Cookie 值不会写入报告。',
     '检查报告只保留规则 ID、身份标签、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。声明的写入后读回流程会单列 stateConsistency，范围只到该流程。',
     '要在获授权源站复测同一规则，可运行 node checks.mjs https://source.example --business-rules-only；报告会标记为 business-rules-only，不包含脚手架健康和缺口门禁。',
     '需要外置状态目录时设置 HEIMDALL_RUNTIME_DATA_DIR；默认目录在脚手架目录旁边。',
