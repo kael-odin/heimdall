@@ -20,7 +20,7 @@
 
 2026-11-16 [B3 业务步骤超时]：生成的 `checks.mjs` 为每个业务步骤设置 15 秒请求上限；超时返回 `incomplete/request_timeout` 并进入脱敏修复任务，避免长轮询或失控接口让整次验收无限等待，也不把未知网络状态判成后端失败。
 
-2026-11-16 [只读数据证据任务]：`site-assessment.deliveryPlan.backendCompletion` 现在保留显式只读数据计划的声明、纳入、缺口和冲突计数；计划无效或存在冲突时生成 `readonly-data-evidence`，要求干净匿名捕获或明确授权的只读证据。`readOnlyData.rejected` 只统计已批准目标被 `privateUrl`、`authenticated`、`nonStatic` 或 `privateBody` 清洗拒绝的次数；`authenticated` 只表示当前证据带认证或 Cookie 边界，不能推断业务私有性，也不能放宽清洗策略。Cookie、响应正文和查询值仍不会进入 AI 摘要。
+2026-11-16 [只读数据证据任务]：`site-assessment.deliveryPlan.backendCompletion` 现在保留显式只读数据计划的声明、纳入、缺口、遮蔽和冲突计数；计划无效，或 `missing`、`shadowed`、`conflicts` 任一大于 0 时生成 `readonly-data-evidence`，要求干净匿名捕获或明确授权的只读证据。`readOnlyData.rejected` 只统计已批准目标被 `privateUrl`、`authenticated`、`nonStatic` 或 `privateBody` 清洗拒绝的次数；`authenticated` 只表示当前证据带认证或 Cookie 边界，不能推断业务私有性，也不能放宽清洗策略。Cookie、响应正文和查询值仍不会进入 AI 摘要。
 
 2026-11-16 [公开站点评估摘要复核]：用当前 workspace 证据复核 `example.com`、`rfc-editor.org`、`vitest.dev`；SEO/GEO 分数和 sitemap 范围正常投影，后端契约、独立部署、QA、真实搜索/收录和模型引用仍保持未知。`rfc-editor.org` 的 sitemap `partial` 没有被页面级 GEO 完整状态覆盖。
 
