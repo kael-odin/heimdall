@@ -738,15 +738,47 @@ function pointerValue(value, pointer) {
   }
   return { found: true, value: current };
 }
+function responseFieldPath(value) {
+  if (!Array.isArray(value) || !value.length || value.length > 8
+    || value.some(part => typeof part !== 'string' || !part || part.length > 100 || /[\x00-\x1f\x7f]/.test(part))) return null;
+  return [...value];
+}
+function responseReference(value, stepIndex) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || Object.keys(value).some(key => !['response', 'path'].includes(key))) return null;
+  if (!Number.isInteger(value.response) || value.response < 0 || value.response >= stepIndex) return null;
+  const path = responseFieldPath(value.path);
+  return path ? { response: value.response, path } : null;
+}
+function safeReferenceValue(value) {
+  return value === null || typeof value === 'string' || typeof value === 'boolean'
+    || (typeof value === 'number' && Number.isFinite(value) && (!Number.isInteger(value) || Number.isSafeInteger(value)));
+}
 function prepareRule(rule) {
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return { error: 'invalid_rule' };
   const id = typeof rule.id === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(rule.id) ? rule.id : null;
   if (!id || !Array.isArray(rule.steps) || !rule.steps.length || rule.steps.length > 16) return { error: 'invalid_rule' };
   const steps = [];
-  for (const step of rule.steps) {
+  for (let stepIndex = 0; stepIndex < rule.steps.length; stepIndex += 1) {
+    const step = rule.steps[stepIndex];
     const method = String(step?.method || '').toUpperCase();
     const path = step?.path;
     if (!RULE_METHODS.has(method) || typeof path !== 'string' || !path.startsWith('/') || path.length > 512 || path.includes('\\0') || path.includes('\\\\')) return { id, error: 'invalid_step' };
+    const names = path.split('/').map(part => /^\{([A-Za-z_][A-Za-z0-9_.-]{0,63})\}$/.exec(part)?.[1] ?? null).filter(Boolean);
+    if (path.split('/').some(part => /[{}]/.test(part) && !/^\{[A-Za-z_][A-Za-z0-9_.-]{0,63}\}$/.test(part))
+      || new Set(names).size !== names.length) return { id, error: 'invalid_path_params' };
+    let pathParams;
+    if (names.length || step.pathParams !== undefined) {
+      if (!names.length || !step.pathParams || typeof step.pathParams !== 'object' || Array.isArray(step.pathParams)
+        || Object.keys(step.pathParams).length !== names.length || names.some(name => !Object.prototype.hasOwnProperty.call(step.pathParams, name))) {
+        return { id, error: 'invalid_path_params' };
+      }
+      pathParams = Object.fromEntries(names.map(name => {
+        const reference = responseReference(step.pathParams[name], stepIndex);
+        return [name, reference];
+      }));
+      if (Object.values(pathParams).some(reference => !reference)) return { id, error: 'invalid_path_params' };
+    }
     const expect = step.expect && typeof step.expect === 'object' && !Array.isArray(step.expect) ? step.expect : null;
     const statuses = Array.isArray(expect?.status) ? expect.status : expect?.status === undefined ? [] : [expect.status];
     if (!expect || !statuses.length || statuses.some(status => !Number.isInteger(status) || status < 100 || status > 599)) return { id, error: 'missing_expected_status' };
@@ -765,11 +797,18 @@ function prepareRule(rule) {
       body = process.env[bodyName];
       if (!Object.keys(headers).some(name => name.toLowerCase() === 'content-type')) headers['content-type'] = 'application/json';
     }
-    const jsonAssertions = Array.isArray(expect.json) ? expect.json.slice(0, 32) : [];
+    const rawJsonAssertions = Array.isArray(expect.json) ? expect.json.slice(0, 32) : [];
     if (expect.json !== undefined && !Array.isArray(expect.json)) return { id, error: 'invalid_json_assertions' };
-    if (jsonAssertions.some(assertion => !assertion || typeof assertion !== 'object' || typeof assertion.pointer !== 'string')) return { id, error: 'invalid_json_assertion' };
+    const jsonAssertions = rawJsonAssertions.map(assertion => {
+      if (!assertion || typeof assertion !== 'object' || Array.isArray(assertion) || typeof assertion.pointer !== 'string') return null;
+      if (!Object.prototype.hasOwnProperty.call(assertion, 'equalsFrom')) return assertion;
+      if (Object.prototype.hasOwnProperty.call(assertion, 'equals')) return null;
+      const reference = responseReference(assertion.equalsFrom, stepIndex);
+      return reference ? { ...assertion, equalsFrom: reference } : null;
+    });
+    if (jsonAssertions.some(assertion => !assertion)) return { id, error: 'invalid_json_assertion' };
     if (expect.type !== undefined && (typeof expect.type !== 'string' || !JSON_TYPES.has(expect.type))) return { id, error: 'invalid_expected_type' };
-    steps.push({ method, path, headers, body, statuses, expect, jsonAssertions });
+    steps.push({ method, path, headers, body, statuses, expect, jsonAssertions, ...(pathParams ? { pathParams } : {}) });
   }
   return { id, steps };
 }
@@ -798,11 +837,46 @@ async function runBusinessRule(rule) {
   const prepared = prepareRule(rule);
   const id = 'business-rule:' + String(prepared.id || 'unknown').slice(0, 80);
   if (prepared.error) return { id, status: prepared.error === 'missing_env' || prepared.error === 'invalid_body' ? 'incomplete' : 'failed', reason: prepared.error, requiresHumanApproval: prepared.error === 'missing_env' };
+  const responses = [];
+  const pointerFor = path => '/' + path.map(part => String(part).replaceAll('~', '~0').replaceAll('/', '~1')).join('/');
+  const readJson = async index => {
+    const state = responses[index];
+    if (!state) return { error: 'reference_unavailable' };
+    if (state.bodyRead) return state.bodyError ? { error: state.bodyError } : { value: state.body };
+    state.bodyRead = true;
+    try {
+      const raw = await state.response.text();
+      if (raw.length > 2 * 1024 * 1024) { state.bodyError = 'response_too_large'; return { error: state.bodyError }; }
+      state.body = JSON.parse(raw);
+      return { value: state.body };
+    } catch {
+      state.bodyError = 'invalid_json_response';
+      return { error: state.bodyError };
+    }
+  };
+  const resolvePath = async step => {
+    let resolved = step.path;
+    for (const [name, reference] of Object.entries(step.pathParams ?? {})) {
+      const source = await readJson(reference.response);
+      if (source.error) return { error: 'reference_unavailable', pointer: pointerFor(reference.path) };
+      const actual = pointerValue(source.value, pointerFor(reference.path));
+      const value = actual.found ? actual.value : null;
+      const safeNumber = typeof value !== 'number' || (Number.isFinite(value) && (!Number.isInteger(value) || Number.isSafeInteger(value)));
+      if (actual.invalid || !actual.found || !['string', 'number', 'boolean'].includes(typeof value) || !safeNumber) {
+        return { error: 'reference_unavailable', pointer: pointerFor(reference.path) };
+      }
+      resolved = resolved.replace('{' + name + '}', encodeURIComponent(String(value)));
+    }
+    return { path: resolved };
+  };
   for (let index = 0; index < prepared.steps.length; index += 1) {
     const step = prepared.steps[index];
+    const resolved = await resolvePath(step);
+    if (resolved.error) return { id, status: 'incomplete', step: index + 1, reason: resolved.error, pointer: resolved.pointer };
     let response;
-    try { response = await fetch(base + step.path, { method: step.method, headers: step.headers, body: step.body }); }
+    try { response = await fetch(base + resolved.path, { method: step.method, headers: step.headers, body: step.body }); }
     catch { return { id, status: 'failed', step: index + 1, reason: 'request_failed' }; }
+    responses.push({ response, bodyRead: false, body: null, bodyError: null });
     if (!step.statuses.includes(response.status)) return { id, status: 'failed', step: index + 1, httpStatus: response.status, expectedStatuses: step.statuses, reason: 'unexpected_status' };
     const expectedMime = step.expect.contentType;
     if (expectedMime !== undefined) {
@@ -810,15 +884,22 @@ async function runBusinessRule(rule) {
       if (!allowed.some(item => typeof item === 'string' && normalizeMime(item) === normalizeMime(response.headers.get('content-type')))) return { id, status: 'failed', step: index + 1, httpStatus: response.status, reason: 'unexpected_content_type' };
     }
     if (step.jsonAssertions.length || step.expect.type !== undefined) {
-      let value;
-      try {
-        const raw = await response.text();
-        if (raw.length > 2 * 1024 * 1024) return { id, status: 'failed', step: index + 1, reason: 'response_too_large' };
-        value = JSON.parse(raw);
-      } catch { return { id, status: 'failed', step: index + 1, reason: 'invalid_json_response' }; }
+      const parsed = await readJson(index);
+      if (parsed.error) return { id, status: 'failed', step: index + 1, reason: parsed.error };
+      const value = parsed.value;
       if (step.expect.type !== undefined && actualType(value) !== step.expect.type) return { id, status: 'failed', step: index + 1, reason: 'json_assertion' };
       for (const assertion of step.jsonAssertions) {
-        const error = assertionError(value, assertion);
+        let resolvedAssertion = assertion;
+        if (assertion.equalsFrom) {
+          const source = await readJson(assertion.equalsFrom.response);
+          if (source.error) return { id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) };
+          const actual = pointerValue(source.value, pointerFor(assertion.equalsFrom.path));
+          if (actual.invalid || !actual.found || !safeReferenceValue(actual.value)) {
+            return { id, status: 'incomplete', step: index + 1, reason: 'reference_unavailable', pointer: pointerFor(assertion.equalsFrom.path) };
+          }
+          resolvedAssertion = { ...assertion, equals: actual.value };
+        }
+        const error = assertionError(value, resolvedAssertion);
         if (error) return { id, status: 'failed', step: index + 1, ...error };
       }
     }
@@ -1039,6 +1120,7 @@ function readmeSource({ siteId, outDir, adapter, routes }) {
     '打开 http://127.0.0.1:8080/__heimdall/health 查看当前状态。',
     '运行 npm run check 做健康、只读路由和未实现项检查。',
     '要做业务后端检查：在 state-rules.json 中填写 rules，并先把 status 改为 reviewed；每条规则由多个 HTTP 步骤和 status / contentType / JSON Pointer 断言组成。',
+    '步骤路径可以使用完整段参数（例如 /items/{id}）；pathParams 用 response + path 引用较早步骤的 JSON 标量，值只在内存中解析并按 URL 段编码，不会写入报告。',
     '规则中的 Authorization、Cookie 和请求体只通过环境变量引用；写入规则还需要显式设置 HEIMDALL_ALLOW_WRITES=1。',
     '检查报告只保留规则 ID、步骤、状态和脱敏断言位置，不保存请求体、认证值或响应正文。',
     '要在获授权源站复测同一规则，可运行 node checks.mjs https://source.example --business-rules-only；报告会标记为 business-rules-only，不包含脚手架健康和缺口门禁。',
