@@ -403,7 +403,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
       "export const __heimdallAdapter = { routes: [{ method: 'GET', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'POST', path: '/api/items', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'GET', path: '/api/items/{id}', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }, { method: 'GET', path: '/api/private', queryParams: [], responseBody: 'observed', writeVerification: 'unverified' }] };",
       "let items = [];",
       "function cookieResponse(value, status, cookie) { const response = Response.json(value, { status }); if (cookie) response.headers.append('Set-Cookie', cookie); return response; }",
-      "export async function handle(request) { const url = new URL(request.url); const cookies = request.headers.get('cookie') || ''; if (url.pathname === '/api/login' && request.method === 'POST') return cookieResponse({ loggedIn: true }, 200, 'sid=fixture-session-one; Path=/; HttpOnly'); if (url.pathname === '/api/redirect-login' && request.method === 'POST') { const response = new Response(null, { status: 302, headers: { Location: '/api/private-cookie' } }); response.headers.append('Set-Cookie', 'sid=fixture-session-one; Path=/; HttpOnly'); return response; } if (url.pathname === '/api/private-cookie') return cookies.includes('sid=fixture-session-one') || cookies.includes('sid=fixture-session-two') ? Response.json({ allowed: true }) : Response.json({ allowed: false, error: 'unauthorized' }, { status: 401 }); if (url.pathname === '/api/rotate' && request.method === 'POST') return cookies.includes('sid=fixture-session-one') ? cookieResponse({ rotated: true }, 200, 'sid=fixture-session-two; Path=/; HttpOnly') : Response.json({ rotated: false, error: 'unauthorized' }, { status: 401 }); if (url.pathname === '/api/logout' && request.method === 'POST') return new Response(null, { status: 204, headers: { 'Set-Cookie': 'sid=; Max-Age=0; Path=/' } }); if (request.method === 'POST') { const body = await request.json(); items.push(body); return Response.json({ created: true, id: body.id }, { status: 201 }); } if (url.pathname === '/api/private') { const auth = request.headers.get('authorization'); if (auth === 'Bearer owner-secret') return Response.json({ allowed: true, actor: 'owner' }); if (auth === 'Bearer guest-secret') return Response.json({ allowed: false, error: 'forbidden' }, { status: 403 }); return Response.json({ allowed: false, error: 'unauthorized' }, { status: 401 }); } if (url.pathname.startsWith('/api/items/')) return Response.json({ found: true, id: decodeURIComponent(url.pathname.split('/').at(-1)) }); return Response.json({ items }); }",
+      "export async function handle(request) { const url = new URL(request.url); const cookies = request.headers.get('cookie') || ''; if (url.pathname === '/api/login' && request.method === 'POST') return cookieResponse({ loggedIn: true }, 200, 'sid=fixture-session-one; Path=/; HttpOnly'); if (url.pathname === '/api/redirect-login' && request.method === 'POST') { const response = new Response(null, { status: 302, headers: { Location: '/api/private-cookie' } }); response.headers.append('Set-Cookie', 'sid=fixture-session-one; Path=/; HttpOnly'); return response; } if (url.pathname === '/api/private-cookie') return cookies.includes('sid=fixture-session-one') || cookies.includes('sid=fixture-session-two') ? Response.json({ allowed: true }, { headers: { 'X-Content-Type-Options': 'nosniff' } }) : Response.json({ allowed: false, error: 'unauthorized' }, { status: 401 }); if (url.pathname === '/api/rotate' && request.method === 'POST') return cookies.includes('sid=fixture-session-one') ? cookieResponse({ rotated: true }, 200, 'sid=fixture-session-two; Path=/; HttpOnly') : Response.json({ rotated: false, error: 'unauthorized' }, { status: 401 }); if (url.pathname === '/api/logout' && request.method === 'POST') return new Response(null, { status: 204, headers: { 'Set-Cookie': 'sid=; Max-Age=0; Path=/' } }); if (request.method === 'POST') { const body = await request.json(); items.push(body); return Response.json({ created: true, id: body.id }, { status: 201 }); } if (url.pathname === '/api/private') { const auth = request.headers.get('authorization'); if (auth === 'Bearer owner-secret') return Response.json({ allowed: true, actor: 'owner' }); if (auth === 'Bearer guest-secret') return Response.json({ allowed: false, error: 'forbidden' }, { status: 403 }); return Response.json({ allowed: false, error: 'unauthorized' }, { status: 401 }); } if (url.pathname.startsWith('/api/items/')) return Response.json({ found: true, id: decodeURIComponent(url.pathname.split('/').at(-1)) }); return Response.json({ items }); }",
     ].join('\n'));
 
     const generated = spawnSync(process.execPath, [CLI, 'backend', 'scaffold', 'business-rules.test', '--json'], {
@@ -426,7 +426,7 @@ test('backend scaffold executes reviewed business rules without leaking test dat
         { id: 'invalid-private-denied', actor: 'invalid-token', steps: [{ method: 'GET', path: '/api/private', headers: { Authorization: { env: 'HEIMDALL_FIXTURE_INVALID_AUTH' } }, expect: { status: 401, json: [{ pointer: '/allowed', equals: false }, { pointer: '/error', equals: 'unauthorized' }] } }] },
         { id: 'cookie-session-lifecycle', actor: 'owner', steps: [
           { method: 'POST', path: '/api/login', expect: { status: 200, json: [{ pointer: '/loggedIn', equals: true }] } },
-          { method: 'GET', path: '/api/private-cookie', expect: { status: 200, json: [{ pointer: '/allowed', equals: true }] } },
+          { method: 'GET', path: '/api/private-cookie', expect: { status: 200, headers: [{ name: 'x-content-type-options', equals: 'nosniff' }, { name: 'x-powered-by', exists: false }], json: [{ pointer: '/allowed', equals: true }] } },
           { method: 'POST', path: '/api/rotate', expect: { status: 200, json: [{ pointer: '/rotated', equals: true }] } },
           { method: 'GET', path: '/api/private-cookie', expect: { status: 200, json: [{ pointer: '/allowed', equals: true }] } },
           { method: 'POST', path: '/api/logout', expect: { status: 204 } },
@@ -487,6 +487,32 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(invalidLocation.status, 1, invalidLocation.stderr + invalidLocation.stdout);
     report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
     assert.equal(report.results.find(item => item.id === 'business-rule:cookie-manual-redirect').reason, 'invalid_expected_location');
+    put(join(out, 'state-rules.json'), rules);
+
+    const invalidHeaderRules = JSON.parse(JSON.stringify(rules));
+    invalidHeaderRules.rules.find(item => item.id === 'cookie-session-lifecycle').steps[1].expect.headers[0].equals = 'unsafe';
+    put(join(out, 'state-rules.json'), invalidHeaderRules);
+    const invalidHeader = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}', HEIMDALL_FIXTURE_OWNER_AUTH: 'Bearer owner-secret', HEIMDALL_FIXTURE_GUEST_AUTH: 'Bearer guest-secret', HEIMDALL_FIXTURE_INVALID_AUTH: 'Bearer invalid-secret' },
+      encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(invalidHeader.status, 1, invalidHeader.stderr + invalidHeader.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').reason, 'unexpected_header');
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').header, 'x-content-type-options');
+    put(join(out, 'state-rules.json'), rules);
+
+    const sensitiveHeaderRules = JSON.parse(JSON.stringify(rules));
+    sensitiveHeaderRules.rules.find(item => item.id === 'cookie-session-lifecycle').steps[1].expect.headers[0] = { name: 'set-cookie', exists: true };
+    put(join(out, 'state-rules.json'), sensitiveHeaderRules);
+    const sensitiveHeader = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: { ...process.env, HEIMDALL_ALLOW_WRITES: '1', HEIMDALL_TEST_BODY_JSON: '{"id":"fixture-secret"}', HEIMDALL_FIXTURE_OWNER_AUTH: 'Bearer owner-secret', HEIMDALL_FIXTURE_GUEST_AUTH: 'Bearer guest-secret', HEIMDALL_FIXTURE_INVALID_AUTH: 'Bearer invalid-secret' },
+      encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(sensitiveHeader.status, 1, sensitiveHeader.stderr + sensitiveHeader.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').reason, 'invalid_header_assertion');
+    assert.equal(report.results.find(item => item.id === 'business-rule:cookie-session-lifecycle').header, undefined);
     put(join(out, 'state-rules.json'), rules);
 
     const allowed = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {

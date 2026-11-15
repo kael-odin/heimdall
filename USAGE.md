@@ -251,6 +251,8 @@ npm run check
 
 多步规则按数组顺序执行。敏感请求头写成 `{ "env": "HEIMDALL_AUTH_READER" }`，请求体使用 `bodyEnv` 引用环境变量中的 JSON。写入规则默认只记录 `skipped`；确认测试数据和授权后，设置 `HEIMDALL_ALLOW_WRITES=1` 再运行 `npm run check`。检查报告不保存请求体、认证值或响应正文。
 
+响应头可以用 `expect.headers` 做安全断言，例如 `{ "name": "x-content-type-options", "equals": "nosniff" }` 或 `{ "name": "x-powered-by", "exists": false }`。每项只能使用 `exists`、`equals` 或 `contains` 其中一种；认证、Cookie 和 `Set-Cookie` 头不能写入断言，报告只保留失败的头名称，不保留实际值。
+
 同一份规则也可以在获授权源站上复测：
 
 ```powershell

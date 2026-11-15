@@ -10,6 +10,8 @@
 
 2026-11-16 [B3 重定向目标复测]：业务规则增加受限的相对 `expect.location` 断言；手动重定向现在可同时核对状态码、目标路径和响应 Cookie，避免只看到 302 就漏掉登录或退出落点错误。绝对地址、片段、控制字符和跨域目标不进入规则。
 
+2026-11-16 [B3 响应头断言]：业务规则增加受限的 `expect.headers`，可用 `exists`、`equals` 或 `contains` 核对安全和缓存响应头；认证、Cookie 和 `Set-Cookie` 头被拒绝进入规则，失败报告只保留头名称，不保留实际值。受控夹具已验证 `X-Content-Type-Options` 正向通过、错误值失败和缺失 `X-Powered-By` 通过。
+
 2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
 
 2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。
