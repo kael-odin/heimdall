@@ -282,6 +282,10 @@ test('site-assessment: preserves bounded sitemap reasons for SEO follow-up', () 
     assert.deepEqual(result.seo.sitemap.truncated, ['url-limit']);
     assert.equal(result.seo.sitemap.stats.urlCount, 10000);
     assert.equal(result.seo.sitemap.stats.maxUrls, 10000);
+    assert.deepEqual(result.deliveryPlan.seoGeoTask.coverage.sitemap, {
+      coverage: 'partial', reasons: ['budget-exhausted'], truncated: ['url-limit'],
+      stats: { urlCount: 10000, filesAttempted: 3, filesRead: 3, filesFailed: 0, maxUrls: 10000, maxFiles: 100 },
+    });
     assert.match(result.deliveryPlan.items.find(item => item.id === 'seo-geo-follow-up').detail, /budget-exhausted/);
     assert.ok(result.unknowns.some(item => item.id === 'seo-sitemap-scope-limited' && /budget-exhausted/.test(item.detail)));
     assert.doesNotMatch(run.stdout, /private-value/);

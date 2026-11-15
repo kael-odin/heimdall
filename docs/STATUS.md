@@ -97,6 +97,8 @@
 
 2026-11-15 [SEO 行动截断进入 AI 任务元数据]：`deliveryPlan.seoGeoTask` 现在同时暴露 `observedActionsMeta` 与 `observedAdvisoriesMeta`；SEO 与 GEO 合并超过 20 条时明确标记 `truncated`，避免 AI 把被裁掉的行动误读成完整列表。medium 线索仍不会单独改变 readiness。
 
+2026-11-15 [SEO/GEO sitemap 证据进入 AI 任务]：`deliveryPlan.seoGeoTask.coverage.sitemap` 复用已清洗的覆盖状态、受限原因、截断原因和预算计数；RFC Editor 公开复验可直接看到 `partial`、`budget-exhausted`、`url-limit`，AI 不必先从完整报告猜测站点范围限制。
+
 2026-11-15 [SEO/GEO 行动跨来源排序]：合并行动现在按 P0/P1/P2 和影响页数排序，并在 `observedActionsMeta` 中返回 `totalByKind` 与 `returnedByKind`；高优先级 GEO 行动不会因为 SEO 列表先进入摘要而被静默挤掉。
 
 ## 现在的主线

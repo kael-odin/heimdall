@@ -1220,6 +1220,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
   const coverage = {
     pages: Number.isInteger(seo.pages) ? seo.pages : null,
     sitemapCoverage: seo.completeness?.sitemapCoverage ?? null,
+    sitemap: seo.sitemap ?? null,
     failedPages: Number(seo.completeness?.failedPages ?? 0),
     initialHtmlUnchecked: Number(seo.completeness?.initialHtmlUnchecked ?? 0),
     geoStatus: geo.status ?? 'unknown',

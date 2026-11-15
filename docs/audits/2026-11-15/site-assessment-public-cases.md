@@ -40,6 +40,8 @@ node core/src/cli.mjs site-assessment rfc-editor.org --qa-workspace D:\Github-St
 
 这次复核证明 `site-assessment` 能把视觉、离线交付、SEO/GEO 范围、二进制分发、API 和 QA 缺口放在同一份交付计划中。它没有把 6 页视觉验证解释成后端完成，也没有把页面级 GEO 证据解释成完整站点覆盖。
 
+本轮公开 SEO/GEO 复验还把 RFC Editor 的受限 sitemap 摘要直接投影到 `deliveryPlan.seoGeoTask.coverage.sitemap`：`coverage=partial`、`reasons=[budget-exhausted]`、`truncated=[url-limit]`，并保留 10,000 URL 上限和文件计数。AI 读取任务包即可知道站点范围为何受限，仍需回到完整报告读取页面证据和行动详情。
+
 ## Xspark 公开案例
 
 命令：
