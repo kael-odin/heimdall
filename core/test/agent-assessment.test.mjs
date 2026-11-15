@@ -806,6 +806,10 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     const accepted = assess(passed);
     assert.equal(accepted.readiness.delivery.status, 'last_check_passed');
     assert.equal(accepted.readiness.delivery.basis, 'observed');
+    assert.equal(accepted.readiness.clone.status, 'needs_verification');
+    assert.equal(accepted.readiness.clone.scope.status, 'needs_scope_review');
+    assert.equal(accepted.readiness.clone.scopeLimited, true);
+    assert.equal(accepted.readiness.clone.scope.nextAction.args.allDiscovered, true);
     assert.equal(accepted.clone.delivery.coverage.scopeLimited, true);
     assert.equal(accepted.deliveryPlan.cloneTask.status, 'blocked_on_visual_verification');
     assert.equal(accepted.deliveryPlan.cloneTask.scope.delivery.coverage.scopeLimited, true);
@@ -816,6 +820,10 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(accepted.claims.verified.some(claim => claim.includes('offline')), false);
     assert.equal(accepted.deliveryPlan.items.some(item => item.id === 'clone-offline-delivery'), false);
     assert.equal(accepted.deliveryPlan.items.some(item => item.id === 'clone-browser-failures'), false);
+    const full = assess({ ...passed, coverage: { scope: 'recon-discovered', scopeLimited: false } });
+    assert.equal(full.readiness.clone.status, 'needs_verification');
+    assert.equal(full.readiness.clone.scope.status, 'ready');
+    assert.equal(full.readiness.clone.scopeLimited, false);
     assert.equal(assess({ ...passed, status: 'unverified', strict: false, browser: null }).readiness.delivery.status, 'needs_strict_verification');
     for (const invalid of [
       { ...passed, siteId: 'other.test' }, { ...passed, strict: false }, { ...passed, published: false },

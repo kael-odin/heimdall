@@ -34,6 +34,8 @@ node core/src/cli.mjs site-assessment <site-id> --json
 
 `scope.visual.verificationGaps` 现在返回当前扫描发现的前 50 个页面及其状态，并保留 `total` 与 `truncated`。这给 AI 提供具体复测对象，同时避免把旧验证摘要当成当前证据。
 
+对 `example.com` 的同一份真实归档复核还确认：`readiness.clone.status=ready` 只表示页面和视觉验证通过；`readiness.clone.scope.status=needs_scope_review`、`scopeLimited=true` 才表示当前整站范围仍未闭合，`readiness.delivery=last_check_passed` 也不会清除这个范围缺口。
+
 仍未证明登录、权限、写入、状态机、WebSocket、持久化和外部副作用等价。公开快照也不能证明任意站点的克隆成功率。
 
 ## 克隆范围门禁复验

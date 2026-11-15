@@ -1778,6 +1778,14 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     && clone.unmeasured === 0 && clone.verificationStatus === 'checked';
   const cloneStatus = !clone.pages || !clone.mirrors ? 'needs_capture' : cloneComplete ? 'ready' : 'needs_verification';
   const cloneItem = item('clone-capture', 'clone-mirror-coverage', 'clone-visual-verification');
+  const cloneScopeLimited = clone.delivery.coverage ? clone.delivery.coverage.scopeLimited === true : null;
+  const cloneScopeReady = clone.delivery.coverage?.scope === 'recon-discovered' && !cloneScopeLimited;
+  const cloneScope = entry(cloneScopeReady ? 'ready' : clone.delivery.coverage ? 'needs_scope_review' : 'unknown',
+    clone.delivery.coverage ? 'observed' : 'unknown',
+    [
+      `clone.delivery.coverage.scope:${clone.delivery.coverage?.scope ?? 'unknown'}`,
+      `clone.delivery.coverage.scopeLimited:${cloneScopeLimited ?? 'unknown'}`,
+    ], item('clone-scope-limited'));
   const seoComplete = seo.status === 'observed'
     && seo.scoreMethodStatus === 'current' && seo.measurementStatus === 'current'
     && !['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)
@@ -1798,8 +1806,12 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     schema: 'heimdall.site-readiness/1',
     stage: deliveryPlan.decision.stage,
     overall: overallForStage(deliveryPlan.decision.stage),
-    clone: entry(cloneStatus, cloneStatus === 'ready' ? 'verified' : clone.pages || clone.mirrors ? 'observed' : 'unknown',
-      [`clone.mirrors:${clone.mirrors}/${clone.pages}`, `clone.verification:${clone.verificationStatus}`], cloneItem),
+    clone: {
+      ...entry(cloneStatus, cloneStatus === 'ready' ? 'verified' : clone.pages || clone.mirrors ? 'observed' : 'unknown',
+        [`clone.mirrors:${clone.mirrors}/${clone.pages}`, `clone.verification:${clone.verificationStatus}`], cloneItem),
+      scope: cloneScope,
+      scopeLimited: cloneScopeLimited,
+    },
     delivery: entry(clone.delivery.status === 'passed' ? 'last_check_passed'
       : clone.delivery.status === 'blocked' ? 'blocked' : clone.delivery.status === 'unverified' ? 'needs_strict_verification' : 'needs_export',
       clone.delivery.report ? 'observed' : 'unknown', [clone.delivery.report, clone.delivery.healthReport], item('clone-offline-delivery')),
