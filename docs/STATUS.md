@@ -38,6 +38,8 @@
 
 2026-11-15 [Vite 公开 SEO/GEO 新案例]：对 `vite.dev` 的公开 GET 审计覆盖 3 页，首次 SEO 90，随后同范围复跑 SEO 88、GEO 68.4；sitemap `complete`，失败页和初始 HTML 未核查页均为 0。最新任务包返回 5 条未截断的 GEO P1 行动、4 条 medium advisory，SEO/GEO 账本为 `4 verified / 1 open / 0 unknown`；该漂移要求比较时绑定同一采集证据，真实排名、收录和模型引用仍未知。
 
+2026-11-15 [example.com 公开 SEO/GEO 对照案例]：公开单页 GET 得到 SEO 52、GEO 28.1，sitemap `not_found`；SEO/GEO closure 为 `4 verified / 1 open / 0 unknown`，后端为 `0 verified / 0 open / 8 unknown / 1 notApplicable`，QA 为 `0 verified / 0 open / 6 unknown`，真实搜索、收录和模型引用仍未知。该结果只覆盖单页。
+
 2026-11-15 [SEO/GEO 优化义务账本]：`deliveryPlan.seoGeoTask.closure` 现在统一汇总口径版本、页面采集、sitemap 范围、GEO 覆盖和优化行动，并投影到 `readiness.seo.closure` 与 `readiness.geo.closure`；它区分“评分证据完整”和“优化行动已处理”，真实搜索与模型引用仍由 `outcomeEvidence` 单独表示。
 
 2026-11-15 [公开案例摘要保留能力闭合状态]：`public_case_summary` 现在从脱敏 `site-assessment` 投影受限 closure 摘要到克隆、部署、后端、SEO/GEO 和 QA 能力卡片；公开案例不会只显示 `ready`，还会保留未关闭的义务和未知证据。

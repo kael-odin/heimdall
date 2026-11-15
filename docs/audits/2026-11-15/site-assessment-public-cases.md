@@ -75,6 +75,29 @@ node core/src/cli.mjs site-assessment vite.dev --json
 
 该案例验证了任务包可以同时给出 GEO 维度、优先级、受影响页和中等严重度提示。两次同范围复跑的 SEO 90→88 说明分数必须绑定采集证据，不能直接比较裸数字。它仍只证明三页公开样本，不证明整站业务或真实搜索效果。
 
+## example.com 当前公开复核
+
+命令：
+
+```powershell
+pnpm -C core run audit -- https://example.com/ --max 1
+node core/src/cli.mjs site-assessment example.com --json
+```
+
+本次只做公开 GET，并在临时数据目录中运行后清理原始工作区。
+
+| 项目 | 结果 |
+| --- | --- |
+| 页面范围 | 1 页；失败页 0；初始 HTML 未核查 0 |
+| SEO/GEO | SEO 52；GEO 28.1；GEO 状态 `complete` |
+| sitemap | `not_found` |
+| SEO/GEO 账本 | `4 verified / 1 open / 0 unknown`；open 为待处理优化行动 |
+| 后端账本 | `0 verified / 0 open / 8 unknown / 1 notApplicable` |
+| QA 账本 | `0 verified / 0 open / 6 unknown` |
+| 外部效果 | 搜索/收录与模型引用均 `unknown` |
+
+该案例验证了单页公开站点也会保留 SEO/GEO 优化义务、sitemap 范围和后端/QA 未知边界。它不代表整站覆盖，也不证明页面分数对应排名、收录或模型引用成功。
+
 ## 结论与边界
 
 - 公开案例已经能区分“页面与 SEO 证据充分”和“后端、认证、权限、业务 QA 未知”。
