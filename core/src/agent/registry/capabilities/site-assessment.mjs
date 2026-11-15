@@ -1055,6 +1055,7 @@ function buildQaTask(siteId, origin, qa, api) {
   const findingsTotal = Number.isSafeInteger(latest?.findings?.total) && latest.findings.total >= 0
     ? latest.findings.total : findings.length;
   const hasFindings = findingsTotal > 0;
+  const findingsObserved = latest?.findings?.status === 'observed';
   const completeness = latest?.completeness?.status ?? 'unknown';
   const observed = qa.status === 'observed';
   const backendScope = {
@@ -1068,12 +1069,14 @@ function buildQaTask(siteId, origin, qa, api) {
     ? 'blocked_on_qa_evidence'
     : qa.status === 'no_runs' ? 'blocked_on_observation'
       : completeness !== 'complete' ? 'blocked_on_complete_run'
+        : !findingsObserved ? 'blocked_on_qa_evidence'
         : hasFindings ? 'human_review'
           : qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
             ? 'ready_for_ai_review' : 'ready';
   const tasks = observed && latest ? [
     ...(completeness !== 'complete' ? [{ id: 'complete-qa-run', basis: 'observed', requiresHumanApproval: true, instruction: '补齐环境、导航、检测器和基线证据；没有可提单问题不等于 QA 已完成。' }] : []),
-    ...(hasFindings ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
+    ...(!findingsObserved ? [{ id: 'obtain-finding-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先恢复或重新生成脱敏 finding 详情；摘要总量不能替代逐条证据。' }] : []),
+    ...(findingsObserved && hasFindings ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
     ...(findings.some(item => item.triage === 'known-bug') ? [{ id: 'fix-confirmed-findings', basis: 'observed', requiresHumanApproval: false, instruction: '修复已经标记为 known-bug 的问题，再用同一站点和检查点重跑 QA。' }] : []),
     ...(qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
       ? [{ id: 'follow-up-qa-metrics', basis: 'inferred', requiresHumanApproval: true, instruction: '按 QA 指标决策补证据、修已有检测器或增加业务检查点；不以指标不足为由新增通用检测器。' }] : []),
@@ -1473,6 +1476,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   const backendCompletion = buildBackendCompletionTask(siteId, api, clone.delivery);
   const seoGeoTask = buildSeoGeoTask(siteId, origin, seo);
   const qaTask = buildQaTask(siteId, origin, qa, api);
+  const qaFindingEvidenceUnavailable = qa.status === 'observed' && qa.latest && qa.latest.findings?.status !== 'observed';
   const add = (item) => items.push({
     evidence: [],
     ...(item.action ? { action: item.action } : {}),
@@ -1743,6 +1747,15 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
       verify: { tool: 'heimdall_qa_run', condition: 'matching run has complete QA evidence' },
     });
   }
+  if (qaFindingEvidenceUnavailable) {
+    add({
+      id: 'qa-finding-evidence', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'blocked',
+      title: 'QA finding 详情不可用', detail: '运行摘要无法替代逐条 finding 证据；先恢复脱敏详情或重新运行 QA。',
+      evidence: [qa.latest?.report].filter(Boolean),
+      action: plannedAction('heimdall_qa_findings', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), action: 'show', runId: qa.latest.runId }, '恢复逐条 QA finding 证据'),
+      verify: { tool: 'heimdall_qa_findings', condition: 'qa.latest.findings.status === "observed"' },
+    });
+  }
   if (qa.latest?.summary?.fileable > 0) {
     add({
       id: 'qa-findings', kind: 'qa_business_checkpoint_gap', basis: 'observed', status: 'open',
@@ -1821,8 +1834,9 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     : seo.geo.status !== 'complete' || sitemapIncomplete || seoMethodIncomplete || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
-  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-findings', 'qa-metrics-decision');
-  const qaReady = qa.status === 'observed' && qa.latest?.completeness?.status === 'complete' && qa.latest.summary.fileable === 0;
+  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-finding-evidence', 'qa-findings', 'qa-metrics-decision');
+  const qaReady = qa.status === 'observed' && qa.latest?.completeness?.status === 'complete'
+    && qa.latest.findings?.status === 'observed' && qa.latest.summary.fileable === 0;
   return {
     schema: 'heimdall.site-readiness/1',
     stage: deliveryPlan.decision.stage,

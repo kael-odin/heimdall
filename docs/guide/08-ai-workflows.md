@@ -57,7 +57,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 
 当最近一次运行有可提单问题时，`qa.latest.findings` 会从 `findings.json` 提供最多 12 条脱敏摘要，包含 `id`、`tier`、`basis`、`kind`、`path`、`title`、定位、实测描述和 `verification.status=pending_human_verdict`。`total`、`returned`、`truncated` 表示摘要是否完整；截图、原始证据、请求体、Cookie 和令牌不会进入站点评估结果。摘要用于让 AI 先判断问题类型和下一步，最终仍需通过 `heimdall_qa_findings` 逐条查看并由人裁决。
 - `deliveryPlan.qaTask` 是前后端缺陷检测的 AI 任务包：它把前端页面覆盖、后端契约/适配器范围、完整性状态、脱敏 findings、人工裁决和复测条件放在一起。零可提单问题不等于零 bug，页面视觉通过也不等于后端业务通过；`provenance.invented` 必须保持为空。
-- QA 任务包以 `latest.findings.total` 判断是否存在待人工裁决的问题；即使脱敏 finding 详情缺失或返回为空，只要总数大于 0，状态仍保持 `human_review`。
+- QA 任务包要求 `latest.findings.status=observed` 才能进入 finding 裁决或 ready；详情缺失、不可用或返回为空时进入 `blocked_on_qa_evidence`。即使摘要 `fileable=0`，也不能解释成零 bug 或 `readiness.qa=ready`。
 - `qaTask.latest.coverage` 会保留最多 50 个页面/视口和检查点的脱敏状态，并用 `pagesMeta`、`checksMeta` 区分总量、有效量、返回量和截断；它用于定位 QA 证据缺口，不替代 finding 的人工裁决。
 - `deliveryPlan.cloneTask` 是克隆、还原度和独立部署的 AI 任务包：它汇总页面/镜像覆盖、多视口验证、strict 离线交付、浏览器失败、动态数据、二进制缺口和断网部署状态。视觉分数不等于功能等价，strict 导出不等于独立部署；`provenance.invented` 必须保持为空。
 - `deliveryPlan.cloneTask.scope.delivery.coverage.scopeLimited` 为真时，strict 结果只覆盖有界页面范围；任务会给出 `allDiscovered` 复测动作，不会把有限范围包装成整站克隆。

@@ -27,6 +27,7 @@ test('site-assessment: zero fileable findings do not hide incomplete QA evidence
     const runId = 'qa-20261113-120000-abcd';
     put(join(qa, '.heimdall', 'qa', 'runs', runId, 'report.md'), '# QA report');
     put(join(qa, '.heimdall', 'qa', 'runs', runId, 'bugs.md'), '# QA findings');
+    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'findings.json'), []);
     for (const [name, patch, status] of [
       ['unverified check', { summary: { ...summary, checkNeedsFix: 1 } }, 'incomplete'],
       ['complete', {}, 'complete'],
@@ -101,16 +102,17 @@ test('site-assessment: does not borrow QA evidence from an unrelated workspace s
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('site-assessment: fileable QA summary stays in human review when finding details are unavailable', () => {
+test('site-assessment: blocks QA readiness when finding details are unavailable', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-finding-summary-'));
   const qa = join(root, 'qa-project');
+  const runPath = join(qa, '.heimdall', 'qa', 'runs', 'qa-summary-20261115-abcd', 'run.json');
   try {
     put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(root, 'workspace', 'example.test', 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
     put(join(qa, '.heimdall', 'qa.json'), {
       sites: { web: { url: 'https://example.test/', pages: ['/'] } },
     });
-    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-summary-20261115-abcd', 'run.json'), {
+    put(runPath, {
       runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
       summary: { total: 1, fileable: 1, environment: 0, checkNeedsFix: 0 },
       coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
@@ -124,8 +126,26 @@ test('site-assessment: fileable QA summary stays in human review when finding de
     assert.equal(result.qa.latest.completeness.status, 'complete');
     assert.equal(result.qa.latest.findings.status, 'unavailable');
     assert.equal(result.qa.latest.findings.total, 1);
-    assert.equal(result.deliveryPlan.qaTask.status, 'human_review');
-    assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'review-findings'));
+    assert.equal(result.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
+    assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'obtain-finding-evidence'));
+    assert.equal(result.readiness.qa.status, 'needs_human_review');
+    assert.equal(result.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').status, 'blocked');
+
+    put(runPath, {
+      runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
+      summary: { total: 0, fileable: 0, environment: 0, checkNeedsFix: 0 },
+      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
+    });
+
+    const emptySummaryRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(emptySummaryRun.status, 0, emptySummaryRun.stderr + emptySummaryRun.stdout);
+    const { result: emptySummary } = JSON.parse(emptySummaryRun.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(emptySummary.qa.latest.findings.total, 0);
+    assert.equal(emptySummary.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
+    assert.equal(emptySummary.readiness.qa.status, 'needs_human_review');
+    assert.equal(emptySummary.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').status, 'blocked');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -996,6 +1016,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
       coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [] },
       summary: { total: 1, fileable: 0, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 0 },
     });
+    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-20261111-130000-abcd', 'findings.json'), []);
 
     const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
