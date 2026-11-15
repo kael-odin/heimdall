@@ -92,6 +92,8 @@ function status(flags) {
   const ledger = readLedger(dir);
   const sections = readJson(join(dir, '.heimdall', 'sections', `${cfg.pages[0].name}.json`))?.sections?.filter(s => !s.overlay) ?? [];
   const bySection = groupBySection(ledger);
+  const page = bySection.get('page');
+  const pageDecision = page ? decide(page.entries, { scope: 'page', budget: cfg.budget }) : null;
   const rows = sections.map(s => {
     const st = bySection.get(s.id);
     // 收敛控制器（E7-08）给出这一段的下一步：继续 / 回退 / 升级 / 接受残差 / 完成
@@ -100,14 +102,18 @@ function status(flags) {
       minPixel: st?.last ? Math.min(...Object.values(st.last.pixel ?? {})) : null,
       next: { action: d.action, reason: d.reason, ...(d.ladderStep ? { ladderStep: d.ladderStep } : {}), ...(d.revertTo ? { revertTo: d.revertTo } : {}) } };
   });
-  const page = bySection.get('page');
   const done = rows.filter(r => r.verdict === 'pass-candidate').length;
-  return ok({ dir, siteId: cfg.siteId, stack: cfg.stack, gate: cfg.gate, sections: rows, page: page ? { iterations: page.iterations, verdict: page.last.verdict, reached: page.last.reached } : null,
-    compareRuns: runs.length, lastRunId: runs.at(-1) ?? null }, {
-    summary: `${done}/${rows.length} 个分段到 pass-candidate；共对比 ${runs.length} 次${page ? `；整页最近一次 ${page.last.verdict}` : ''}。`,
-    nextActions: rows.find(r => r.verdict !== 'pass-candidate')
+  const pageStatus = page ? { iterations: page.iterations, verdict: page.last.verdict, reached: page.last.reached,
+    next: { action: pageDecision.action, reason: pageDecision.reason, ...(pageDecision.ladderStep ? { ladderStep: pageDecision.ladderStep } : {}), ...(pageDecision.revertTo ? { revertTo: pageDecision.revertTo } : {}) } } : null;
+  const nextActions = pageDecision?.action === 'done'
+    ? [nextAction('cli:shell', { command: `heimdall gate formal --project "${dir}" --json`, cwd: dir }, '整页已到 pass-candidate，运行正式门禁确认')]
+    : rows.find(r => r.verdict !== 'pass-candidate')
       ? [nextAction('heimdall_brief', { project: dir, detail: 'full', sectionId: rows.find(r => r.verdict !== 'pass-candidate').sectionId }, '下一个要做的分段')]
-      : [nextAction('heimdall_compare', { candidate: { dir } }, '所有分段都到了 pass-candidate：整页对比一次')],
+      : [nextAction('heimdall_compare', { candidate: { dir } }, '所有分段都到了 pass-candidate：整页对比一次')];
+  return ok({ dir, siteId: cfg.siteId, stack: cfg.stack, gate: cfg.gate, sections: rows, page: pageStatus,
+    compareRuns: runs.length, lastRunId: runs.at(-1) ?? null }, {
+    summary: `${done}/${rows.length} 个分段有独立对比并到 pass-candidate；共对比 ${runs.length} 次${page ? `；整页最近一次 ${page.last.verdict}` : ''}。`,
+    nextActions,
   });
 }
 
