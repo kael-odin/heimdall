@@ -20,7 +20,7 @@
 
 2026-11-15 [交付包页面复杂度信号]：离线浏览器探针现在在脱敏摘要中记录 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面信号，并投影到 `cloneTask.scope.delivery.browserCapabilities`；`deliveryPlan` 同时生成 `clone-page-complexity` 专项复测项。这些信号只指导复测类型，不自动判为缺陷或支持。
 
-2026-11-15 [Vitest 公开复杂页面复验]：当前代码对 `vitest.dev` 三页公开样本完成 3/3 克隆、3/3 多视口还原，平均 99.6%；strict 被 96 个阻断卡住。首页观察到 2 个 Canvas，`site-assessment` 正确生成 `clone-page-complexity=open`；博客页缺少 measurement proof，评估保留为 2/3 verified，不把验证摘要的 3/3 measured 直接当作完整交付证据。
+2026-11-15 [Vitest 公开复杂页面复验]：当前代码对 `vitest.dev` 三页公开样本完成 3/3 克隆、3/3 多视口还原，平均 99.6%；strict 被 96 个阻断卡住。首页观察到 2 个 Canvas，`site-assessment` 正确生成 `clone-page-complexity=open`；博客页缺少 measurement proof，评估保留为 2/3 verified，并把 `blog:stale` 原因投影到 `clone-visual-verification`，不把验证摘要的 3/3 measured 直接当作完整交付证据。
 
 2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
 

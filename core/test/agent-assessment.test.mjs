@@ -1322,6 +1322,7 @@ test('site-assessment: clone AI task keeps capture, delivery, and deployment gat
     assert.ok(task.observedActions.some(item => item.id === 'clone-mirror-coverage'));
     assert.ok(task.observedActions.some(item => item.id === 'clone-offline-delivery'));
     assert.ok(task.tasks.some(item => item.id === 'clone-mirror-coverage'));
+    assert.match(task.tasks.find(item => item.id === 'clone-visual-verification').instruction, /about:missing/);
     assert.deepEqual(task.rebuild.workflow, ['study', 'build', 'check', 'refine', 'deliver']);
     assert.equal(task.rebuild.status, 'available');
     assert.equal(task.rebuild.page, 'home');

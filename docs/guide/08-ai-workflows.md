@@ -64,7 +64,7 @@ MCP 服务可以在任务调用时按需启动临时引擎，但为了演示稳�
 - `deliveryPlan.cloneTask.scope.delivery.coverage.scopeLimited` 为真时，strict 结果只覆盖有界页面范围；任务会给出 `allDiscovered` 复测动作，不会把有限范围包装成整站克隆。
   `deliveryPlan.cloneTask.scope.delivery.browserCapabilities` 是最终离线浏览器观察到的页面复杂度信号，按页返回 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面计数；它会同时生成 `clone-page-complexity` 专项复测项，只用于选择后续复测，不代表这些功能已坏或已完整支持。
   `status` 依次用 `blocked_on_capture`、`blocked_on_visual_verification`、`blocked_on_offline_delivery`、`blocked_on_independent_deployment`、`ready_for_ai_review` 或 `ready` 表示当前门禁位置。
-  `scope.visual.verificationGaps` 只列当前扫描得到的前 50 个 `missing`、`stale` 或 `incomplete` 页面；旧的验证摘要不能覆盖当前扫描状态。
+  `scope.visual.verificationGaps` 只列当前扫描得到的前 50 个 `missing`、`stale` 或 `incomplete` 页面；`clone-visual-verification` 会把前 4 个页面及状态写入任务详情，帮助 AI 区分缺少 proof、过期结果和未完成测量；旧的验证摘要不能覆盖当前扫描状态。
 
 公开案例的 `qa.findingDigest` 复用同一摘要边界，但只读取案例中的 `qa-ci.json` 安全结果，不打开 `findings.json` 或截图。这样 AI 可以先比较真实案例的缺陷类型和门禁结果，再决定是否需要读取更详细的本地证据。
 

@@ -1715,12 +1715,14 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
   if (clone.pages && (clone.unmeasured > 0 || clone.verificationStatus !== 'checked')) {
+    const gapExamples = Array.isArray(clone.verificationGaps?.items)
+      ? clone.verificationGaps.items.slice(0, 4).map(item => `${item.page}:${item.status}`).join('、') : '';
     add({
       id: 'clone-visual-verification', kind: 'visual_verification_gap', basis: 'unknown', status: 'open',
       title: '多视口验证不完整', detail: clone.unmeasured > 0
-        ? `${clone.unmeasured} 页没有当前有效的多视口验证。`
+        ? `${clone.unmeasured} 页没有当前有效的多视口验证${gapExamples ? `（${gapExamples}）` : ''}。`
         : `验证扫描状态为 ${clone.verificationStatus}。`,
-      evidence: [`clone.verification:${clone.verificationStatus}`, `clone.unmeasured:${clone.unmeasured}`],
+      evidence: [`clone.verification:${clone.verificationStatus}`, `clone.unmeasured:${clone.unmeasured}`, ...(gapExamples ? [`clone.verificationGaps:${gapExamples}`] : [])],
       action: plannedAction('heimdall_clone', { siteId, scope: 'site', level: 'verified' }, '补齐页面的当前多视口验证'),
       verify: planVerification(siteId, 'clone.unmeasured === 0 && clone.verificationStatus === "checked"'),
     });
