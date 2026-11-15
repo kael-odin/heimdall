@@ -477,6 +477,17 @@ test('backend scaffold executes reviewed business rules without leaking test dat
     assert.equal(report.results.find(item => item.id === 'business-rule:read-items').actor, undefined);
     put(join(out, 'state-rules.json'), rules);
 
+    const invalidPathRules = JSON.parse(JSON.stringify(rules));
+    invalidPathRules.rules[0].steps[0].path = '/api/items/' + '\\' + String.fromCharCode(0);
+    put(join(out, 'state-rules.json'), invalidPathRules);
+    const invalidPath = spawnSync(process.execPath, [join(out, 'checks.mjs'), base], {
+      cwd: out, env: process.env, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(invalidPath.status, 1, invalidPath.stderr + invalidPath.stdout);
+    report = JSON.parse(readFileSync(join(out, 'backend-check.json'), 'utf8'));
+    assert.equal(report.results.find(item => item.id === 'business-rule:read-items').reason, 'invalid_step');
+    put(join(out, 'state-rules.json'), rules);
+
     const invalidLocationRules = JSON.parse(JSON.stringify(rules));
     invalidLocationRules.rules.find(item => item.id === 'cookie-manual-redirect').steps[0].expect.location = 'https://outside.example/after-login';
     put(join(out, 'state-rules.json'), invalidLocationRules);

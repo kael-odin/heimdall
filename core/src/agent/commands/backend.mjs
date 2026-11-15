@@ -844,7 +844,8 @@ function prepareRule(rule) {
     const step = rule.steps[stepIndex];
     const method = String(step?.method || '').toUpperCase();
     const path = step?.path;
-    if (!RULE_METHODS.has(method) || typeof path !== 'string' || !path.startsWith('/') || path.length > 512 || path.includes('\\0') || path.includes('\\\\')) return { id, error: 'invalid_step' };
+    if (!RULE_METHODS.has(method) || typeof path !== 'string' || !path.startsWith('/') || path.length > 512
+      || path.includes(String.fromCharCode(0)) || path.includes('\\')) return { id, error: 'invalid_step' };
     const names = path.split('/').map(part => /^\{([A-Za-z_][A-Za-z0-9_.-]{0,63})\}$/.exec(part)?.[1] ?? null).filter(Boolean);
     if (path.split('/').some(part => /[{}]/.test(part) && !/^\{[A-Za-z_][A-Za-z0-9_.-]{0,63}\}$/.test(part))
       || new Set(names).size !== names.length) return { id, error: 'invalid_path_params' };
