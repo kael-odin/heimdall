@@ -124,7 +124,7 @@ GEO 方法 8 沿用 canonical 与 Google 页面级索引、摘要限制的独立
 | 功能 | 命令 / 位置 | 产出 |
 | --- | --- | --- |
 | 静态交付包 | `deliver <host>` | `deliverable/<host>-<date>/`：镜像 + 原站 CSSOM/DOM + 差异热图 + 还原度 CSV + 接手 README |
-| 一条命令走完 | `handoff <url> [--max-pages N]` | 侦察→克隆→验证→资产→交付，自起临时引擎；写 `handoff/README.md`，第一段就说清"测到多少页、没测到的卡在哪" |
+| 一条命令走完 | `handoff <url> [--max-pages N] [--all-discovered]` | 侦察→克隆→验证→资产→交付，自起临时引擎；`--all-discovered` 纳入当前侦察发现的全部同源页；写 `handoff/README.md`，第一段就说清"测到多少页、没测到的卡在哪" |
 | 交互镜像包 | `live <host>` | 自包含可部署包：`serve.mjs` + Dockerfile + 清洗过的静态资源 HAR + 健康报告；API 正文需显式 `--include-api-har` |
 | **改站起点清单** | 报告页 → 改站起点 | `edit-manifest.md`：换域名 / 图片 / 文案各要动哪些文件 |
 | **域名替换** | 同一张卡片 | 预览 → 确认替换；**改前逐文件备份，可逐字节还原** |

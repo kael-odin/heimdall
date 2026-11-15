@@ -141,7 +141,7 @@ node core/src/cli.mjs handoff https://example.org --max-pages 40
 发现多少页、完整测到多少页、没测到的卡在什么原因上、资产缺口有多少、交付包在哪里。
 没测到的部分会如实写出来 —— 一个写着"120 页里测到 96 页"的包，比一个假装全绿的包有用。
 
-可选：`--jobs N`（验证并发）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）、`--strict`（追加 `live --offline --strict --root mirror` 独立离线交付门禁）、`--privacy-max-file-bytes N`（人工审核后提高单文件隐私扫描预算，16 MiB..256 MiB）。
+可选：`--jobs N`（验证并发）、`--all-discovered`（把当前侦察发现的全部同源页交给克隆队列；侦察范围仍由 `--max-pages` 控制）、`--allow-bounded`（有界置信度）、`--skip-verify`（只要复刻件）、`--strict`（追加 `live --offline --strict --root mirror` 独立离线交付门禁）、`--privacy-max-file-bytes N`（人工审核后提高单文件隐私扫描预算，16 MiB..256 MiB）。
 
 ## 交互镜像
 

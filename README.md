@@ -36,6 +36,8 @@ node bin/heimdall.mjs setup
 
 ```bash
 node core/src/cli.mjs handoff https://example.org --max-pages 40
+# 把本次侦察发现的全部同源页交给克隆队列（侦察范围仍由 --max-pages 控制）
+node core/src/cli.mjs handoff https://example.org --max-pages 40 --all-discovered
 ```
 
 跑完在 `core/workspace/<站点>/handoff/README.md` 会有一份交接说明，第一段就写清"发现多少页、完整测到多少页、没测到的卡在哪"——没测到的地方不会藏起来。

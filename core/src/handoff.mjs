@@ -2,7 +2,7 @@
 /**
  * handoff — 一条命令走完全程
  *
- *   node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]
+ *   node src/handoff.mjs <url> [--max-pages N] [--all-discovered] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]
  *
  * README 承诺的是"给它一个网址，还你一份能核对的复刻件"，但实际要手动串五条命令，
  * 中间还得自己判断哪步可以跳。这里把它们串成一条：
@@ -39,6 +39,7 @@ const numFlag = (name, fallback) => {
   return Number.isFinite(v) ? v : fallback;
 };
 const MAX_PAGES = numFlag('--max-pages', 40);
+const ALL_DISCOVERED = argv.includes('--all-discovered');
 const JOBS = numFlag('--jobs', 1);
 const SKIP_VERIFY = argv.includes('--skip-verify');
 const STRICT = argv.includes('--strict');
@@ -52,7 +53,7 @@ const privacyMaxFileBytesValue = (() => {
 const privacyMaxFileBytes = Number(privacyMaxFileBytesValue);
 
 if (!TARGET) {
-  console.error('usage: node src/handoff.mjs <url> [--max-pages N] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]');
+  console.error('usage: node src/handoff.mjs <url> [--max-pages N] [--all-discovered] [--jobs N] [--allow-bounded] [--skip-verify] [--strict] [--privacy-max-file-bytes N]');
   process.exit(2);
 }
 if (privacyMaxFileBytesPresent && !STRICT) {
@@ -199,8 +200,9 @@ log('站点目录', siteId, '（origin', identity.origin ?? '未知', '）');
 // ---------- 2. 批量克隆 ----------
 // --max 必须跟侦察用同一个页数：queue 自己的默认上限来自站点配方（通常 20 页），
 // 只给侦察传 40 的话，用户以为克隆了 40 页、实际只克隆 20 页，而且没有任何提示。
-log('2/5 批量克隆（增量：已克隆且源站没变的页会跳过；上限', MAX_PAGES, '页）');
-const clone = await run('src/queue.mjs', [host, '--incremental', '--max', String(MAX_PAGES)]);
+log('2/5 批量克隆（增量：已克隆且源站没变的页会跳过；', ALL_DISCOVERED ? '纳入当前侦察发现的全部同源页' : `上限 ${MAX_PAGES} 页`, '）');
+const cloneArgs = [host, '--incremental', ...(ALL_DISCOVERED ? ['--all-discovered'] : ['--max', String(MAX_PAGES)])];
+const clone = await run('src/queue.mjs', cloneArgs);
 const cloneFailed = clone.code !== 0;
 
 // ---------- 3. 多视口验证 ----------

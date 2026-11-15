@@ -22,6 +22,7 @@
 2026-11-15 [站点评估下一步截断元数据]：`site-assessment.result.nextActionsMeta` 现在保留去重后动作的总数、返回数和 `truncated`；顶层仍只返回前 5 条，AI 可回读 `deliveryPlan.items` 获取完整动作，避免把摘要当成全集。
 2026-11-15 [后端检查摘要截断元数据]：B3 摘要现在为检查问题、修复任务、业务规则对比和对比修复任务分别提供 `*Meta`；大规模结果被裁剪时，AI 必须继续读取同一份脱敏报告。
 2026-11-15 [handoff 范围语义复验]：真实 `example.com` 的当前 `handoff --strict --max-pages 1` 通过 1/1 页和 strict 0 阻断，但 `live-export.coverage.scopeLimited=true`；交接报告现在明确写出“当前范围完整、整站范围受限”，并要求提高 `--max-pages` 后复测。
+2026-11-15 [handoff 接通 all-discovered]：一键 handoff 现在支持 `--all-discovered`，把当前侦察发现的全部同源页传给克隆队列；公开 `example.com` 两条路径均真实通过，`--max-pages` 仍只控制侦察预算，范围仍受限时交接报告继续保留 `scopeLimited=true`。
 
 2026-11-15 [SEO 评分口径进入 AI 摘要]：`site-assessment.seo` 现在保留 `scoreMethodVersion` 与 `measurementVersion`；版本缺失或不一致时，AI 必须把分数当作历史观察，避免跨口径比较。
 
