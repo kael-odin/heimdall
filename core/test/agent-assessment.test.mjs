@@ -932,8 +932,8 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
       browserProbe: {
         capabilities: {
           pagesObserved: 1, signalPages: 1, pagesTruncated: false,
-          totals: { iframes: 1, externalIframes: 0, shadowRoots: 1, canvases: 1, tallPages: 0 },
-          pages: [{ page: '/library/', iframeCount: 1, shadowRootCount: 1, canvasCount: 1 }],
+          totals: { iframes: 1, externalIframes: 1, shadowRoots: 1, canvases: 1, tallPages: 0 },
+          pages: [{ page: '/library/', iframeCount: 1, externalIframeCount: 1, shadowRootCount: 1, canvasCount: 1 }],
         },
         failures: [
           { page: '/library/', kind: 'pageError', error: 'ReferenceError', message: 'CodeMirror is not defined' },
@@ -968,9 +968,12 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.clone.delivery.browserFailures[0].message, 'CodeMirror is not defined');
     assert.equal(blocked.clone.delivery.browserFailures[1].resourceType, 'script');
     assert.deepEqual(blocked.clone.delivery.browserCapabilities.totals,
-      { iframes: 1, externalIframes: 0, shadowRoots: 1, canvases: 1, tallPages: 0 });
+      { iframes: 1, externalIframes: 1, shadowRoots: 1, canvases: 1, tallPages: 0 });
     assert.deepEqual(blocked.deliveryPlan.cloneTask.scope.delivery.browserCapabilities.pages,
-      [{ page: '/library/', iframeCount: 1, shadowRootCount: 1, canvasCount: 1 }]);
+      [{ page: '/library/', iframeCount: 1, externalIframeCount: 1, shadowRootCount: 1, canvasCount: 1 }]);
+    assert.equal(blocked.clone.delivery.browserCapabilities.support.overall, 'unsupported');
+    assert.equal(blocked.clone.delivery.browserCapabilities.support.signals.find(item => item.id === 'externalIframes').status, 'unsupported');
+    assert.equal(blocked.clone.delivery.browserCapabilities.support.signals.find(item => item.id === 'canvases').status, 'degraded');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-page-complexity').status, 'open');
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-page-complexity').detail, /shadowRoots=1/);
     assert.equal(blocked.clone.delivery.runtimeDataGaps[0].target, '/api/search');
@@ -998,10 +1001,21 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /library\.db/);
     assert.match(blocked.deliveryPlan.items.find(item => item.id === 'clone-binary-downloads').detail, /--include-readonly-binaries/);
     assert.match(blocked.readiness.delivery.nextAction.args.command, /--root mirror$/);
-    put(join(root, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), { browserProbe: { failures: [] } });
+    put(join(root, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
+      browserProbe: {
+        failures: [],
+        capabilities: {
+          pagesObserved: 1, signalPages: 1, pagesTruncated: false,
+          totals: { iframes: 0, externalIframes: 0, shadowRoots: 0, canvases: 1, tallPages: 0 },
+          pages: [{ page: '/library/', canvasCount: 1 }],
+        },
+      },
+    });
     const passed = { ...outcome, status: 'passed', published: true, blockingCount: 0, blockers: {},
       browser: { checked: 1, failed: 0, untested: 0, totalPages: 1 } };
     const accepted = assess(passed);
+    assert.equal(accepted.clone.delivery.browserCapabilities.support.overall, 'supported');
+    assert.equal(accepted.clone.delivery.browserCapabilities.support.signals[0].status, 'supported');
     assert.equal(accepted.readiness.delivery.status, 'last_check_passed');
     assert.equal(accepted.readiness.delivery.basis, 'observed');
     assert.equal(accepted.readiness.clone.status, 'needs_verification');

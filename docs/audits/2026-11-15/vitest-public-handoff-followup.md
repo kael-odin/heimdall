@@ -18,7 +18,7 @@ node core/src/cli.mjs site-assessment vitest.dev --json
 | 多视口还原 | 3/3 | 平均 99.6%，最差首页移动视口 98.2% |
 | 资产扫描 | 通过 | 259 个引用，视觉缺口 0 |
 | 严格离线 | 阻断 | 外部资产 3、第三方运行时 3、未镜像链接 87、浏览器失败 3 |
-| 页面复杂度任务 | 已出现 | 1/3 页观察到 2 个 Canvas，生成 `clone-page-complexity=open` |
+| 页面复杂度任务 | 已出现 | 1/3 页观察到 2 个 Canvas，`support.overall=supported`，仍生成 `clone-page-complexity=open` |
 | 动态后端缺口 | 0 条 | 没有把外链运行时误判为同源 XHR/fetch 缺口 |
 | SEO/GEO | SEO 91.3、GEO 62.2 | 3 页、SEO 16 条问题、GEO 6 条 P1 行动；sitemap `not_found` |
 
@@ -26,4 +26,4 @@ node core/src/cli.mjs site-assessment vitest.dev --json
 
 SEO/GEO 任务包返回 `geoStatus=complete`、GEO 置信度 `high`，但真实搜索排名、收录和模型引用仍为 `unknown`。站点级重复 description advisory 现在返回 `affectedPages=3` 和 `/`、`/api/test`、`/blog`，AI 可以定位修改范围；该修复不改变 SEO/GEO 分数。
 
-该案例证明 `clone-page-complexity` 能在真实公开交付中进入 AI 任务包，也证明高视觉分数不能解除严格离线门禁。没有生成独立部署通过证据；本次仍未覆盖认证、权限、写入、状态机、业务规则或真实 SEO/GEO 效果。
+该案例证明 `clone-page-complexity` 能在真实公开交付中进入 AI 任务包，且 Canvas 在候选包观察中没有匹配失败；`support.overall=supported` 仍不关闭专项复测，也不能解除严格离线门禁。没有生成独立部署通过证据；本次仍未覆盖认证、权限、写入、状态机、业务规则或真实 SEO/GEO 效果。

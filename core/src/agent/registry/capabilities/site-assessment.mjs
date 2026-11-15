@@ -463,6 +463,8 @@ function liveExportSummary(root, siteId) {
       ...(Number.isSafeInteger(adapterSource.untestedRoutes) && adapterSource.untestedRoutes >= 0
         ? { untestedRoutes: adapterSource.untestedRoutes } : {}),
     } : null;
+  const browserCapabilitySupport = browserCapabilities
+    ? classifyBrowserCapabilitySupport(browserCapabilities, browserFailures, runtimeDataGaps) : null;
   return {
     status: source.status, generatedAt: new Date(source.generatedAt).toISOString(), report, healthReport,
     offline: source.offline, strict: source.strict, root: source.root === 'mirror' ? 'mirror' : 'landing',
@@ -470,7 +472,9 @@ function liveExportSummary(root, siteId) {
     deploymentVerification, deploymentVerificationAttempt,
     blockingCount: source.blockingCount, blockers,
     otherBlockers: source.blockingCount - Object.values(blockers).reduce((sum, value) => sum + value, 0),
-    browser, browserFailures, ...(browserCapabilities ? { browserCapabilities } : {}), runtimeDataGaps,
+    browser, browserFailures, ...(browserCapabilities ? {
+      browserCapabilities: { ...browserCapabilities, ...(browserCapabilitySupport ? { support: browserCapabilitySupport } : {}) },
+    } : {}), runtimeDataGaps,
     ...(health?.runtimeDataGapsTruncated === true ? { runtimeDataGapsTruncated: true } : {}),
     binaryDownloadGaps, readOnlyData, coverage: {
       scope: ['captured-only', 'recon-discovered', 'untrusted-recon'].includes(source.coverage?.scope) ? source.coverage.scope : 'unknown',
@@ -963,6 +967,72 @@ function browserComplexitySummary(capabilities) {
     signalPages: Number.isSafeInteger(capabilities.signalPages) && capabilities.signalPages >= 0 ? capabilities.signalPages : null,
     pagesTruncated: capabilities.pagesTruncated === true,
     signals,
+    support: capabilities.support ?? null,
+  };
+}
+
+function classifyBrowserCapabilitySupport(capabilities, failures, runtimeDataGaps) {
+  const pages = Array.isArray(capabilities.pages) ? capabilities.pages : [];
+  const failureItems = Array.isArray(failures) ? failures : [];
+  const dataGapItems = Array.isArray(runtimeDataGaps) ? runtimeDataGaps : [];
+  const specs = [
+    ['iframes', 'iframeCount', 'iframes'],
+    ['externalIframes', 'externalIframeCount', 'externalIframes'],
+    ['shadowRoots', 'shadowRootCount', 'shadowRoots'],
+    ['canvases', 'canvasCount', 'canvases'],
+    ['tallPages', 'tallPage', 'tallPages'],
+  ];
+  const signals = specs.flatMap(([id, key, totalKey]) => {
+    const signalPages = pages.filter(page => key === 'tallPage' ? page.tallPage === true : page[key] > 0);
+    const total = Number.isSafeInteger(capabilities.totals?.[totalKey]) && capabilities.totals[totalKey] > 0
+      ? capabilities.totals[totalKey] : 0;
+    if (!signalPages.length && !total) return [];
+    const pageNames = signalPages.map(page => page.page);
+    if (!signalPages.length) return [{
+      id, status: 'degraded', count: total, pages: [], pagesTruncated: true,
+      reason: '已观察到该类信号，但没有可用的逐页样本来确认支持状态。',
+    }];
+    const pageSet = new Set(pageNames);
+    const relevantFailures = failureItems.filter(item => pageSet.has(item.page));
+    const externalFailures = relevantFailures.filter(item => ['externalRequest', 'websocketUnsupported'].includes(item.kind));
+    const localFailures = relevantFailures.filter(item => !['externalRequest', 'websocketUnsupported'].includes(item.kind));
+    const relevantDataGaps = dataGapItems.filter(item => pageSet.has(item.page));
+    const count = total || (key === 'tallPage'
+      ? signalPages.length
+      : signalPages.reduce((sum, page) => sum + (Number.isSafeInteger(page[key]) ? page[key] : 0), 0));
+    let status = 'supported';
+    let reason = '观察页面没有匹配的本地浏览器失败或动态数据缺口。';
+    if (id === 'externalIframes') {
+      status = externalFailures.length ? 'unsupported' : 'degraded';
+      reason = externalFailures.length
+        ? '外部嵌入在候选包断网探针中被阻断。'
+        : '发现外部嵌入，但当前候选包没有证明其可独立部署。';
+    } else if (id === 'iframes' && externalFailures.length) {
+      status = 'degraded';
+      reason = 'iframe 所在页面仍有外部运行时失败。';
+    } else if (localFailures.length || relevantDataGaps.length) {
+      status = 'degraded';
+      reason = '信号所在页面仍有本地浏览器失败或同源动态数据缺口。';
+    } else if (capabilities.pagesTruncated === true) {
+      status = 'degraded';
+      reason = '页面复杂度样本已截断，当前分类只覆盖部分信号页面。';
+    }
+    return [{
+      id, status, count, pages: pageNames.slice(0, 10),
+      pagesReturned: Math.min(pageNames.length, 10),
+      ...(pageNames.length > 10 || capabilities.pagesTruncated === true ? { pagesTruncated: true } : {}),
+      reason,
+    }];
+  });
+  if (!signals.length) return null;
+  const overall = signals.some(signal => signal.status === 'unsupported') ? 'unsupported'
+    : signals.some(signal => signal.status === 'degraded') ? 'degraded' : 'supported';
+  return {
+    overall, basis: 'observed', scope: 'candidate-offline-browser', signals,
+    limitations: [
+      'supported 只表示当前候选包的已观察页面没有匹配失败，不证明源站语义、交互或业务等价。',
+      'degraded 和 unsupported 需要按页面信号修复、人工审核或重新导出后复测。',
+    ],
   };
 }
 
@@ -1430,7 +1500,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       'strict 离线导出通过不等于独立部署通过；必须有当前校验和绑定的断网部署报告。',
       'scope.delivery.coverage.scopeLimited 为 true 时，当前包只代表有界页面范围；先用 allDiscovered 扩大范围并重新验证。',
       '外部运行时、动态 API、WebSocket、登录、权限和写入行为不能由 AI 猜成已实现。',
-      'browserCapabilities 只是页面复杂度信号；iframe、Shadow DOM、Canvas 或长页需要按实际证据复测，不能直接当成缺陷或已支持。',
+      'browserCapabilities.support 是候选包离线观察分类；supported 不证明源站或业务等价，degraded 和 unsupported 必须继续复测。',
       '前端重建只从当前镜像和脱敏证据开始；后端补全继续读取 deliveryPlan.backendCompletion。',
       'unknown、unmeasured、blocked 和未审核资源必须保留原状态，不能改写成通过。',
       'closure.requiredObligations 是重建闭环的硬门槛；unknown 或 open 不能被 AI 改写成 ready。',
@@ -1451,7 +1521,7 @@ function buildCloneTask(siteId, origin, clone, items) {
       '把 observedActions 当作当前证据，把 tasks 中的 inferred 内容当作待验证工作。',
       '不要把视觉分数、strict 导出或静态页面通过解释成后端和业务功能完成。',
       '不要猜测动态 API、外部运行时、WebSocket、认证、权限或写入行为；遇到缺口先保留 unknown。',
-      '如果 scope.delivery.browserCapabilities 存在，先按其信号决定复测类型，再把结果写回同一交付证据。',
+      '如果 scope.delivery.browserCapabilities 存在，先读取 support 的逐信号分类；supported 只限候选包观察，degraded 或 unsupported 先按页面证据复测。',
       '先处理 closure.requiredObligations，再按相同证据重新运行 site-assessment；所有必需义务 verified 后才可称为 ready。',
       '完成小改动后按 verification.commands 复测，并分别汇报 verified、observed、inferred、unknown。',
     ].join('\n'),
@@ -1748,12 +1818,13 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   const complexity = browserComplexitySummary(clone.delivery.browserCapabilities);
   if (complexity) {
     const signalText = complexity.signals.map(([name, count]) => `${name}=${count}`).join('、');
+    const supportText = complexity.support?.signals?.map(item => `${item.id}=${item.status}`).join('、');
     const scopeText = complexity.signalPages !== null && complexity.pagesObserved !== null
       ? `${complexity.signalPages}/${complexity.pagesObserved} 个已观察页面` : '部分已观察页面';
     add({
       id: 'clone-page-complexity', kind: 'page_complexity_signal', basis: 'observed', status: 'open',
       title: '页面复杂度需要专项复测',
-      detail: `离线浏览器在 ${scopeText} 观察到 ${signalText}${complexity.pagesTruncated ? '；页面样本已截断' : ''}。这些信号只说明需要按页复测 Shadow DOM、画布、嵌入内容或超长滚动，不代表缺陷或已支持。`,
+      detail: `离线浏览器在 ${scopeText} 观察到 ${signalText}${complexity.pagesTruncated ? '；页面样本已截断' : ''}${supportText ? `；候选包分类为 ${complexity.support.overall}（${supportText}）` : ''}。这些信号仍需按页复测 Shadow DOM、画布、嵌入内容或超长滚动，分类只覆盖候选包观察范围。`,
       evidence: [clone.delivery.healthReport, `browserCapabilities:${signalText}`].filter(Boolean),
       verify: { method: 'human_authorized_complexity_review', condition: '按页面信号完成对应专项复测，并把结果分别记录为 verified、observed 或 unknown' },
     });

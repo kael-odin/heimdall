@@ -22,6 +22,8 @@
 
 2026-11-15 [交付包页面复杂度信号]：离线浏览器探针现在在脱敏摘要中记录 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面信号，并投影到 `cloneTask.scope.delivery.browserCapabilities`；`deliveryPlan` 同时生成 `clone-page-complexity` 专项复测项。这些信号只指导复测类型，不自动判为缺陷或支持。
 
+2026-11-15 [页面复杂度支持分类]：`browserCapabilities.support` 现在按候选包离线浏览器证据，为每类已观察信号输出 `supported`、`degraded` 或 `unsupported`，并保留逐页原因；外部 iframe 在断网探针中被阻断时单独归为 `unsupported`，本地浏览器错误或同源动态数据缺口归为 `degraded`。该分类只覆盖候选包观察范围，不替代源站、交互或业务等价验证。
+
 2026-11-15 [Vitest 公开复杂页面复验]：当前代码对 `vitest.dev` 三页公开样本完成 3/3 克隆、3/3 多视口还原，平均 99.6%；strict 被 96 个阻断卡住。首页观察到 2 个 Canvas，`site-assessment` 正确生成 `clone-page-complexity=open`；博客页缺少 measurement proof，评估保留为 2/3 verified，并把 `blog:stale` 原因投影到 `clone-visual-verification`，不把验证摘要的 3/3 measured 直接当作完整交付证据。
 
 2026-11-15 [Vitest SEO/GEO 行动页面证据]：同一公开三页样本当前 SEO 91.3、GEO 62.2；站点级重复 description advisory 现在带出 `affectedPages=3` 和 `/`、`/api/test`、`/blog`，AI 能定位优化范围。搜索排名、收录和模型引用效果仍为 unknown，分数与行动包口径未改变。
