@@ -7,7 +7,7 @@
  *
  *   tools/list   ← GET  /api/v1/capabilities（工具清单、schema、注解都由注册表生成，两边永远一致）
  *   tools/call   → POST /api/v1/tools/{name}
- * 引擎没在跑时退回 18 个核心工具的最小 schema；doctor 与 overview 在本机也能回答（引擎状态 unreachable），
+ * 引擎没在跑时退回 19 个核心工具的最小 schema；doctor 与 overview 在本机也能回答（引擎状态 unreachable），
  * 其余调用返回 engine_unreachable 与「heimdall serve」——插件形态下不自行起引擎。
  * 工厂是 async：SDK 允许返回 Promise，等引擎清单到位再注册，避免 tools/list 与注册赛跑。
  */
@@ -77,7 +77,7 @@ const FALLBACK_TOOLS = [
   ['overview', true], ['site', true], ['brief', true], ['artifact', true], ['compare', false], ['jobs', true], ['clone', false], ['doctor', true],
   ['qa_status', true], ['qa_run', false], ['qa_findings', true],
   ['qa_ci', false], ['qa_metrics', true],
-  ['seo_audit', false], ['seo_matrix', false], ['site_watch', false], ['site_assessment', true], ['public_case_summary', true],
+  ['seo_audit', false], ['seo_matrix', false], ['seo_outcomes', true], ['site_watch', false], ['site_assessment', true], ['public_case_summary', true],
 ].map(([id, readOnly]) => ({
   id, tool: `heimdall_${id}`, title: id,
   description: `Heimdall ${id}. The engine is not reachable right now, so the full schema is unavailable; start the engine (heimdall serve) and reconnect.`,

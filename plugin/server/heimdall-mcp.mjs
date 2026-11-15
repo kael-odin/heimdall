@@ -22438,6 +22438,7 @@ var FALLBACK_TOOLS = [
   ["qa_metrics", true],
   ["seo_audit", false],
   ["seo_matrix", false],
+  ["seo_outcomes", true],
   ["site_watch", false],
   ["site_assessment", true],
   ["public_case_summary", true]

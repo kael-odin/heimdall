@@ -18,6 +18,11 @@ import { GEO_METHOD_VERSION, SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION }
 const PUBLIC_CASES = join(REPO_ROOT, 'docs', 'cases');
 const MAX_JSON_BYTES = 4 * 1024 * 1024;
 const KNOWN_EVIDENCE = ['evidence/run.json', 'evidence/qa-ci.json', 'evidence/seo.json'];
+const SITE_ASSESSMENT_EVIDENCE = 'evidence/site-assessment.json';
+const ASSESSMENT_STATUSES = new Set([
+  'ready', 'verified', 'needs_capture', 'needs_verification', 'needs_scope_review', 'needs_export', 'needs_strict_verification',
+  'last_check_passed', 'blocked', 'needs_report', 'needs_follow_up', 'needs_human_review', 'needs_observation', 'needs_run',
+]);
 
 function readJson(file) {
   try {
@@ -116,6 +121,58 @@ function compareValue(mismatches, label, left, right) {
   }
 }
 
+function assessmentResult(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value.result && typeof value.result === 'object' && !Array.isArray(value.result) ? value.result : value;
+}
+
+function validAssessment(value) {
+  const result = assessmentResult(value);
+  return result?.readiness && typeof result.readiness === 'object' && typeof result.siteId === 'string' ? result : null;
+}
+
+function unknownCapability(reason) {
+  return { status: 'unknown', basis: 'unknown', reason };
+}
+
+function capabilityFromAssessment(value, fallback) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return fallback;
+  return {
+    status: ASSESSMENT_STATUSES.has(value.status) ? value.status : 'unknown',
+    basis: ['verified', 'observed', 'inferred', 'unknown'].includes(value.basis) ? value.basis : 'unknown',
+    source: 'site-assessment',
+  };
+}
+
+function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel) {
+  const readiness = siteAssessment?.readiness ?? {};
+  const qaReady = qa.status === 'observed' && qa.baseline.gate === 'passed' && qa.fileable === 0;
+  const fallback = {
+    clone: unknownCapability('公开案例没有克隆或重建的站点评估摘要。'),
+    independentDeployment: unknownCapability('公开案例没有当前校验和绑定的独立部署摘要。'),
+    backendCompletion: unknownCapability('公开案例没有 API、适配器或业务等价摘要。'),
+    bugDetection: qa.status === 'observed'
+      ? { status: qaReady ? 'ready_for_declared_scope' : 'observed', basis: 'observed', scope: '已声明 QA 页面、视口和检查范围' }
+      : unknownCapability('公开案例没有可用的 QA 运行摘要。'),
+    seo: seo.status === 'observed'
+      ? { status: 'observed', basis: 'observed', score: seo.score, scoreMethodStatus: seo.scoreMethodStatus, measurementStatus: seo.measurementStatus }
+      : unknownCapability('公开案例没有 SEO 摘要。'),
+    geo: seo.geo.status === 'unknown'
+      ? unknownCapability('公开案例没有当前 GEO 方法和覆盖证据。')
+      : { status: seo.geo.status, basis: 'observed', score: seo.geo.score, confidence: seo.geo.confidence },
+  };
+  return {
+    evidence: siteAssessment ? `${caseRel}/${SITE_ASSESSMENT_EVIDENCE}` : null,
+    evidenceStatus: siteAssessmentRead.status,
+    clone: capabilityFromAssessment(readiness.clone, fallback.clone),
+    independentDeployment: capabilityFromAssessment(readiness.independentDeployment, fallback.independentDeployment),
+    backendCompletion: capabilityFromAssessment(readiness.backend, fallback.backendCompletion),
+    bugDetection: capabilityFromAssessment(readiness.qa, fallback.bugDetection),
+    seo: capabilityFromAssessment(readiness.seo, fallback.seo),
+    geo: capabilityFromAssessment(readiness.geo, fallback.geo),
+  };
+}
+
 function qaSummary(manifest, run, ci, caseRel) {
   const manifestRun = manifest.run ?? {};
   const runCoverage = run?.coverage ?? {};
@@ -194,7 +251,7 @@ function seoSummary(manifest, seo, caseRel) {
 export default {
   id: 'public_case_summary',
   title: '公开案例：读取脱敏验收摘要',
-  description: 'Read one checked-in public case and return a compact, evidence-bounded summary of page and viewport coverage, QA findings and gate status, baseline regressions, SEO results, proven capabilities, limits and evidence paths. It reads only docs/cases/<case>/manifest.json plus evidence/run.json, evidence/qa-ci.json and evidence/seo.json; it never opens raw findings, screenshots, HAR files, sessions, tokens or login state. This is a public-case summary, not a claim about generic accuracy or a fresh website run.',
+  description: 'Read one checked-in public case and return a compact, evidence-bounded summary of page and viewport coverage, QA findings and gate status, baseline regressions, SEO results, clone/backend/deployment capability status, limits and evidence paths. It reads only docs/cases/<case>/manifest.json plus four small evidence summaries; it never opens raw findings, screenshots, HAR files, sessions, tokens or login state. This is a public-case summary, not a claim about generic accuracy or a fresh website run.',
   effects: ['read'], scope: 'read', idempotent: true, cost: 'cheap',
   input: {
     type: 'object', additionalProperties: false, required: ['casePath'],
@@ -216,9 +273,11 @@ export default {
     const runRead = readJson(join(caseDir, 'evidence', 'run.json'));
     const ciRead = readJson(join(caseDir, 'evidence', 'qa-ci.json'));
     const seoRead = readJson(join(caseDir, 'evidence', 'seo.json'));
+    const siteAssessmentRead = readJson(join(caseDir, SITE_ASSESSMENT_EVIDENCE));
     const run = runRead.status === 'observed' ? runRead.value : null;
     const ci = ciRead.status === 'observed' ? ciRead.value : null;
     const seo = seoRead.status === 'observed' ? seoRead.value : null;
+    const siteAssessment = siteAssessmentRead.status === 'observed' ? validAssessment(siteAssessmentRead.value) : null;
     const mismatches = [];
     compareValue(mismatches, 'run.id', manifest.run?.id, run?.runId);
     compareNumber(mismatches, 'run.findings', manifest.run?.findings, ci?.result?.summary?.total ?? run?.summary?.total);
@@ -228,10 +287,15 @@ export default {
     compareValue(mismatches, 'run.ciGate', manifest.run?.ciGate, ci?.gate?.status);
     compareNumber(mismatches, 'seo.score', manifest.seo?.score, seo?.score);
     compareNumber(mismatches, 'seo.issues', manifest.seo?.issues, seo?.summary?.issues);
+    compareValue(mismatches, 'siteAssessment.siteId', safeIssueText(manifest.target?.site, 80), safeIssueText(siteAssessment?.siteId, 80));
+    compareValue(mismatches, 'siteAssessment.origin', safeUrl(manifest.target?.origin), safeUrl(siteAssessment?.origin));
+    if (siteAssessmentRead.status === 'invalid') mismatches.push({ field: 'siteAssessment', manifest: 'valid JSON', evidence: 'invalid' });
+    if (siteAssessmentRead.status === 'observed' && !siteAssessment) mismatches.push({ field: 'siteAssessment', manifest: 'site-assessment summary', evidence: 'invalid shape' });
 
     const targetPages = unique((manifest.target?.pages ?? []).map(safePage).filter(Boolean));
     const qa = qaSummary(manifest, run, ci, caseRel);
     const seoResult = seoSummary(manifest, seo, caseRel);
+    const capabilities = capabilitySummary(qa, seoResult, siteAssessment, siteAssessmentRead, caseRel);
     const limitations = Array.isArray(manifest.limitations)
       ? manifest.limitations.map(value => safeText(value)).filter(Boolean).slice(0, 20)
       : [];
@@ -250,11 +314,14 @@ export default {
       ...(runRead.status === 'observed' ? [{ kind: 'file', path: `${caseRel}/evidence/run.json` }] : []),
       ...(ciRead.status === 'observed' ? [{ kind: 'file', path: `${caseRel}/evidence/qa-ci.json` }] : []),
       ...(seoRead.status === 'observed' ? [{ kind: 'file', path: `${caseRel}/evidence/seo.json` }] : []),
+      ...(siteAssessmentRead.status === 'observed' ? [{ kind: 'file', path: `${caseRel}/${SITE_ASSESSMENT_EVIDENCE}` }] : []),
     ];
     const nextActions = [];
     if (mismatches.length) nextActions.push(nextAction('heimdall_public_case_summary', { casePath: caseRel }, '先修正案例摘要与证据文件不一致，再引用数字'));
     if (!run || !ci) nextActions.push(nextAction('heimdall_public_case_summary', { casePath: caseRel }, '补齐公开案例的 QA 运行与 CI 摘要'));
     if (!seo) nextActions.push(nextAction('heimdall_public_case_summary', { casePath: caseRel }, '补齐公开案例的 SEO 摘要'));
+    if (siteAssessmentRead.status === 'missing') nextActions.push(nextAction('heimdall_site_assessment', { siteId: manifest.target?.site }, '补齐同源脱敏站点评估摘要，才能汇总克隆、独立部署和后端状态'));
+    if (siteAssessmentRead.status === 'invalid') nextActions.push(nextAction('heimdall_site_assessment', { siteId: manifest.target?.site }, '修复公开案例的站点评估摘要后再引用能力状态'));
     return ok({
       schema: 'heimdall.public-case-summary/1',
       case: { id: safeText(manifest.case, 120), project: safeText(manifest.project, 120), capturedAt: safeText(manifest.capturedAt, 80),
@@ -262,12 +329,12 @@ export default {
           viewports: unique((manifest.target?.viewports ?? []).map(value => safeText(value, 32)).filter(Boolean)),
           login: manifest.target?.login ? 'present' : 'none', writes: manifest.target?.writes === 'block' ? 'block' : 'unknown' } },
       integrity: { status: mismatches.length ? 'needs_review' : 'consistent', mismatches, evidence: {
-        manifest: manifestRead.status, run: runRead.status, qaCi: ciRead.status, seo: seoRead.status,
+        manifest: manifestRead.status, run: runRead.status, qaCi: ciRead.status, seo: seoRead.status, siteAssessment: siteAssessmentRead.status,
       } },
       coverage: { pages: targetPages.length || qa.pages, pageViewportChecks: qa.pageViewportChecks, viewports: qa.viewports, baselinePairs: qa.baseline.compared, regressions: qa.baseline.regressions },
-      qa, seo: seoResult, proven, unknowns,
+      qa, seo: seoResult, capabilities, proven, unknowns,
     }, {
-      summary: `${safeText(manifest.project, 80) ?? '公开案例'}：${targetPages.length || qa.pages} 页、${qa.pageViewportChecks} 次检查；QA ${qa.baseline.gate ?? '未知'}，SEO ${seoResult.score ?? '未知'}。`,
+      summary: `${safeText(manifest.project, 80) ?? '公开案例'}：${targetPages.length || qa.pages} 页、${qa.pageViewportChecks} 次检查；QA ${qa.baseline.gate ?? '未知'}，SEO ${seoResult.score ?? '未知'}；克隆 ${capabilities.clone.status}，后端 ${capabilities.backendCompletion.status}。`,
       nextActions: nextActions.slice(0, 3), evidence,
     });
   },

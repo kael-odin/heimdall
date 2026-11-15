@@ -31,6 +31,7 @@
 2026-11-15 [公开案例分数口径进入摘要]：`public_case_summary` 现在同时输出 SEO 评分、测量和 GEO 方法版本状态；Xspark 公开案例因历史证据缺少版本字段而标为 `unknown`，不能与当前报告直接横比。
 
 2026-11-15 [公开案例 proven 语义收紧]：当 SEO 评分或测量口径不是 `current` 时，公开案例的 `proven` 摘要会明确标为“仅历史观察”，避免 AI 把旧分数当成当前验证事实。
+2026-11-15 [公开案例三项能力摘要]：`public_case_summary` 可读取可选的脱敏 `evidence/site-assessment.json`，把克隆、独立部署、后端、SEO/GEO 和 QA 缺陷检测状态分别投影；缺少该证据时克隆、独立部署和后端保持 `unknown`，不从 QA/SEO 结果推断完成。
 2026-11-15 [QA 覆盖定位进入 AI 任务]：`qaTask.latest.coverage` 现在投影最多 50 个页面/视口与检查点的脱敏状态，并保留截断、导航失败、检测器失败和基线状态；AI 可以先补覆盖证据，再处理 finding，不会把总数当成缺陷准确率。
 2026-11-15 [后端缺口账本截断进入 AI 任务元数据]：`api.adapter.gapLedger` 现在为 `gaps`、`knownRoutes` 和 `unknowns` 暴露 `*Meta`；大站摘要超过安全上限时明确标记 `truncated`，AI 必须回读同一份脱敏报告。
 2026-11-15 [QA 覆盖总量与有效量分开]：`qaTask.latest.coverage` 现在用 `pagesMeta`、`checksMeta` 区分原始总量、有效条目、返回条目和截断状态；无效覆盖记录或超过 50 条时，AI 会先补证据，不把列表当成完整 QA 范围。

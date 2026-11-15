@@ -220,6 +220,8 @@ AI 需要先了解一个已经落盘的真实案例时，调用只读的 `heimda
 不要读取或索取原始 findings、HAR、Cookie、Token、登录态，也不要把一个案例外推成通用准确率。
 ```
 
+摘要里的 `capabilities` 是三项能力的证据投影：`clone`、`independentDeployment`、`backendCompletion`、`seo`、`geo` 和 `bugDetection` 分开返回。缺少 `evidence/site-assessment.json` 时，克隆、独立部署和后端保持 `unknown`；QA/SEO 观察也不会自动升级为这些能力完成。若案例需要汇总站点评估状态，只提交同源、脱敏的 `site-assessment` 摘要，不要把原始工作区文件放进公开案例。
+
 公开案例的 `seo.scoreMethodStatus`、`measurementStatus` 和 `geoMethodStatus` 也必须一起读取。状态为 `unknown` 或 `stale` 时，分数只能作为历史观察，不能直接和当前案例横比。
 
 CLI 等价命令：
