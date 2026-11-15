@@ -70,6 +70,7 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 | 2026-11-15 | **[B3 动态响应绑定公开 API 实测](2026-11-15/backend-dynamic-response-binding.md)** | DummyJSON 两步公开 GET 先取商品 ID、再读同一详情；`pathParams` 与 `equalsFrom` 规则 1/1 通过，动态值没有进入报告；认证、写入和完整业务等价仍未知 |
 | 2026-11-15 | **[B3 认证与权限矩阵标签实测](2026-11-15/backend-actor-matrix.md)** | 受控本地授权夹具用同一套规则验证匿名 401、所有者 200、非所有者 403、无效凭据 401；报告只保留身份标签，站点评估按身份汇总；生产权限模型仍需授权旅程 |
 | 2026-11-15 | **[B3 写入后读回状态一致性实测](2026-11-15/backend-state-readback.md)** | 同一受控夹具的写入后动态 ID 读取通过，写入但没有读回的规则标为 incomplete；`backend-check` 与 `site-assessment` 均保留范围，重启持久化和完整状态机仍未知 |
+| 2026-11-15 | **[B3 公开源站与候选后端对照实测](2026-11-15/backend-public-source-candidate-compare.md)** | DummyJSON 公开商品列表与详情 GET 对照本地候选适配器，源站和候选规则均通过，`backend compare` 1/1 passed；报告不含候选测试正文，真实写入与权限仍未覆盖 |
 | 2026-11-15 | **[`vitest.dev` 当前 handoff 与页面复杂度专项复验](2026-11-15/vitest-public-handoff-followup.md)** | 3 页克隆与多视口还原完成，平均 99.6%；strict 被 96 个阻断卡住；真实首页观察到 2 个 Canvas，`clone-page-complexity=open` 正确进入 AI 任务，博客页缺少 measurement proof 保持 2/3 verified；SEO 91.3、GEO 62.2，重复 description advisory 已带出 3 个受影响页面 |
 
 路线图中提到的 2026-10-16 `vitest.dev` 221 页结果只存在于历史提交 `75a1b4c3` 的文字记录；当前外部归档未找到可独立核验的完整证据目录，所以这里没有把它列为独立审计报告。
