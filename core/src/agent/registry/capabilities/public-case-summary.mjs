@@ -258,7 +258,8 @@ function summarizeAssessmentFollowUps(value) {
 
 function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel) {
   const readiness = siteAssessment?.readiness ?? {};
-  const qaReady = qa.status === 'observed' && qa.baseline.gate === 'passed' && qa.fileable === 0;
+  const qaReady = qa.status === 'observed' && qa.baseline.gate === 'passed' && qa.fileable === 0
+    && qa.findingDigest.status === 'observed' && qa.findingDigest.total === 0 && qa.findingDigest.truncated === false;
   const fallback = {
     clone: unknownCapability('公开案例没有克隆或重建的站点评估摘要。'),
     independentDeployment: unknownCapability('公开案例没有当前校验和绑定的独立部署摘要。'),

@@ -20,6 +20,8 @@
 
 2026-11-16 [GEO 行动元数据一致性]：脱敏 GEO 摘要现在保证 `actionPlanMeta.total` 不小于实际行动项数量；超过 8 条的返回会明确保持 `truncated`，不会再出现“返回项多于总数”或把截断列表当成完整行动包的矛盾。
 
+2026-11-16 [公开案例 QA 证据门禁]：`public_case_summary` 只有在逐条 finding 摘要确实存在、数量为 0 且未截断时，才会把无站点评估摘要的 QA fallback 标为 `ready_for_declared_scope`；仅有 `fileable=0` 或通过门禁的运行摘要现在保持 `observed`。
+
 2026-11-16 [B0 契约动作路由]：已有观察型契约但没有业务 API 证据时，`site-assessment` 不再重复建议 `probe contract`；下一步明确为人在可见浏览器中录制获授权旅程，再重新生成契约。`missing` 或 `invalid` 契约仍先走观察型探针。
 
 2026-11-16 [获授权旅程录制入口]：`heimdall journey start <url|siteId>` 打开可见 Chromium，记录不含输入值的步骤，原始 `network.journey.har` 只留在秘密路径，结束后用统一 HAR 清洗器生成带旅程来源的 B0/B1 契约。没有业务接口时只保留 B0，不覆盖已有有效契约；真实生产认证、权限、写入和状态旅程仍待授权验收。

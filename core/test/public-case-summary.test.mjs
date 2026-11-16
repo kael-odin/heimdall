@@ -171,6 +171,36 @@ test('public case summary projects a sanitized site-assessment capability envelo
   }
 });
 
+test('public case summary keeps bug detection observed without finding evidence', async () => {
+  const dir = mkdtempSync(join(CASES, '.public-case-summary-findings-'));
+  try {
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify({
+      schema: 'heimdall.public-case/1', case: 'fixture-findings', project: 'Fixture findings',
+      target: { site: 'fixture-findings.test', origin: 'https://fixture-findings.test', pages: ['/'], viewports: ['1440x900'], writes: 'block' },
+      run: { id: 'qa-20261116-120000-abcd', fileable: 0, ciGate: 'passed' },
+    }));
+    const evidenceDir = join(dir, 'evidence');
+    mkdirSync(evidenceDir);
+    writeFileSync(join(evidenceDir, 'run.json'), JSON.stringify({
+      runId: 'qa-20261116-120000-abcd', coverage: { pages: [{ path: '/', viewport: '1440x900' }] },
+      summary: { total: 0, fileable: 0 },
+    }));
+    writeFileSync(join(evidenceDir, 'qa-ci.json'), JSON.stringify({
+      gate: { status: 'passed' }, result: { summary: { total: 0, fileable: 0 }, baseline: { compared: 1 } },
+    }));
+    writeFileSync(join(evidenceDir, 'seo.json'), JSON.stringify({
+      origin: 'https://fixture-findings.test', score: 100,
+      summary: { pages: 1, issues: 0, bySeverity: {}, sitemapCoverage: 'not_found' },
+    }));
+    const env = await invoke('public_case_summary', { casePath: dir }, { client: 'mcp' });
+    assert.equal(env.ok, true);
+    assert.equal(env.result.qa.findingDigest.status, 'unavailable');
+    assert.equal(env.result.capabilities.bugDetection.status, 'observed');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('public case summary refuses paths outside docs/cases', async () => {
   const env = await invoke('public_case_summary', { casePath: resolve(CASE, '..', '..', '..', '..', 'README.md') }, { client: 'mcp' });
   assert.equal(env.ok, false);
