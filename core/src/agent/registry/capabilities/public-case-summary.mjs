@@ -182,6 +182,12 @@ function capabilityFromAssessment(value, fallback) {
   return closure ? { ...summary, closure } : summary;
 }
 
+function qaCapabilityFromAssessment(value, fallback) {
+  const capability = capabilityFromAssessment(value, fallback);
+  if (capability.source !== 'site-assessment' || capability.status !== 'ready' || capability.closure?.state === 'ready') return capability;
+  return { ...capability, status: 'ready_for_ai_review' };
+}
+
 function summarizeOutcomePart(value, kind) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { status: 'unknown', basis: 'unknown' };
   const sources = kind === 'search' ? ['search-console', 'search-api', 'manual-search'] : ['model-probe', 'manual-model'];
@@ -280,7 +286,7 @@ function capabilitySummary(qa, seo, siteAssessment, siteAssessmentRead, caseRel)
     clone: capabilityFromAssessment(readiness.clone, fallback.clone),
     independentDeployment: capabilityFromAssessment(readiness.independentDeployment, fallback.independentDeployment),
     backendCompletion: capabilityFromAssessment(readiness.backend, fallback.backendCompletion),
-    bugDetection: capabilityFromAssessment(readiness.qa, fallback.bugDetection),
+    bugDetection: qaCapabilityFromAssessment(readiness.qa, fallback.bugDetection),
     seo: capabilityFromAssessment(readiness.seo, fallback.seo),
     geo: capabilityFromAssessment(readiness.geo, fallback.geo),
   };

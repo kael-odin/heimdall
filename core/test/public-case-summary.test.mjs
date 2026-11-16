@@ -141,7 +141,7 @@ test('public case summary projects a sanitized site-assessment capability envelo
     assert.equal(env.result.capabilities.geo.closure, undefined);
     assert.deepEqual(env.result.seo.outcomeEvidence.search, { status: 'observed', basis: 'observed', source: 'manual-search', samples: 4, hits: 2, indexedPages: 3, hitRate: 0.5 });
     assert.deepEqual(env.result.seo.outcomeEvidence.modelCitation, { status: 'observed', basis: 'observed', source: 'manual-model', samples: 5, hits: 1, sourceMentions: 1, hitRate: 0.2 });
-    assert.equal(env.result.capabilities.bugDetection.status, 'ready');
+    assert.equal(env.result.capabilities.bugDetection.status, 'ready_for_ai_review');
     assert.equal(env.result.capabilities.geo.status, 'needs_follow_up');
     assert.deepEqual(env.result.assessmentUnknowns, {
       items: [
