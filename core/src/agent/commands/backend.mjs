@@ -67,6 +67,19 @@ function comparisonRepairTask(ruleId, source, candidate, index) {
   };
 }
 
+function comparisonContextTask(ruleId, source, candidate, index) {
+  const suffix = ruleId.slice('business-rule:'.length).replace(/[^a-z0-9._-]+/gi, '-').slice(0, 64) || 'unknown';
+  return {
+    id: `review-backend-rule-context-${suffix}-${index}`,
+    kind: 'business-rule-context', target: 'state-rules.json',
+    instruction: '用同一个 actor 身份分别运行源站和候选后端的 business-rules-only 检查；不要通过改标签掩盖权限差异。',
+    requiresHumanApproval: true,
+    evidence: {
+      ruleId, ...(source?.actor ? { sourceActor: source.actor } : {}), ...(candidate?.actor ? { candidateActor: candidate.actor } : {}),
+    },
+  };
+}
+
 function compareReports(flags, positional) {
   if (positional[0] !== 'compare' || !positional[1] || !positional[2]) {
     throw new CapabilityError('invalid_args', '用法：heimdall backend compare <source-check.json> <candidate-check.json> [--out FILE] [--force] [--json]');
@@ -88,6 +101,9 @@ function compareReports(flags, positional) {
     else if (sourceResult.stateConsistency && sourceResult.stateConsistency !== 'passed') { status = 'incomplete'; reason = 'source_state_consistency_not_passed'; }
     else if (candidateResult.stateConsistency === 'failed') { status = 'failed'; reason = 'candidate_state_consistency_failed'; }
     else if (sourceResult.stateConsistency === 'passed' && candidateResult.stateConsistency !== 'passed') { status = 'incomplete'; reason = 'candidate_state_consistency_incomplete'; }
+    else if (sourceResult.actor !== candidateResult.actor) {
+      status = 'incomplete'; reason = sourceResult.actor && candidateResult.actor ? 'actor_context_mismatch' : 'actor_context_missing';
+    }
     return {
       id, status, reason,
       ...(sourceResult?.actor ? { sourceActor: sourceResult.actor } : {}),
@@ -100,7 +116,11 @@ function compareReports(flags, positional) {
     };
   });
   if (!comparisons.length) comparisons.push({ id: 'business-rules', status: 'incomplete', reason: 'no_business_rules_declared', sourceStatus: 'missing', candidateStatus: 'missing' });
-  const repairTasks = comparisons.filter(item => item.status === 'failed').map((item, index) => comparisonRepairTask(item.id, source.get(item.id), candidate.get(item.id), index + 1));
+  const repairTasks = [
+    ...comparisons.filter(item => item.status === 'failed').map((item, index) => comparisonRepairTask(item.id, source.get(item.id), candidate.get(item.id), index + 1)),
+    ...comparisons.filter(item => ['actor_context_mismatch', 'actor_context_missing'].includes(item.reason))
+      .map((item, index) => comparisonContextTask(item.id, source.get(item.id), candidate.get(item.id), index + 1)),
+  ];
   const overall = comparisons.some(item => item.status === 'failed') ? 'failed'
     : comparisons.some(item => item.status === 'incomplete') ? 'incomplete' : 'passed';
   const base = process.env.HEIMDALL_INVOKE_CWD ?? process.cwd();

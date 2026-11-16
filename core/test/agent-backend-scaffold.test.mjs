@@ -660,7 +660,7 @@ test('backend compare aligns source and candidate business-rule reports without 
     const out = join(root, 'backend-compare.json');
     put(source, {
       schema: 'heimdall.backend-check/1', mode: 'business-rules-only', overall: 'passed', results: [
-        { id: 'business-rule:read-item', status: 'passed', stateConsistency: 'passed' },
+        { id: 'business-rule:read-item', actor: 'owner', status: 'passed', stateConsistency: 'passed' },
         { id: 'business-rule:stateful-item', status: 'passed', stateConsistency: 'passed' },
         { id: 'business-rule:update-item', status: 'passed' },
         { id: 'business-rule:delete-item', status: 'passed' },
@@ -668,7 +668,7 @@ test('backend compare aligns source and candidate business-rule reports without 
     });
     put(candidate, {
       schema: 'heimdall.backend-check/1', mode: 'business-rules-only', overall: 'failed', results: [
-        { id: 'business-rule:read-item', status: 'passed', stateConsistency: 'passed' },
+        { id: 'business-rule:read-item', actor: 'guest', status: 'passed', stateConsistency: 'passed' },
         { id: 'business-rule:stateful-item', status: 'passed', stateConsistency: 'incomplete' },
         { id: 'business-rule:update-item', status: 'failed', step: 2, pointer: '/title', reason: 'private-value' },
       ],
@@ -679,15 +679,17 @@ test('backend compare aligns source and candidate business-rule reports without 
     assert.equal(envelope.ok, true);
     const report = JSON.parse(readFileSync(out, 'utf8'));
     assert.equal(report.overall, 'failed');
-    assert.deepEqual(report.summary, { compared: 4, passed: 1, failed: 2, incomplete: 1 });
+    assert.deepEqual(report.summary, { compared: 4, passed: 0, failed: 2, incomplete: 2 });
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:update-item').pointer, '/title');
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:delete-item').reason, 'rule_missing_from_candidate');
-    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').sourceStateConsistency, 'passed');
-    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').candidateStateConsistency, 'passed');
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').sourceActor, 'owner');
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').candidateActor, 'guest');
+    assert.equal(report.comparisons.find(item => item.id === 'business-rule:read-item').reason, 'actor_context_mismatch');
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:stateful-item').status, 'incomplete');
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:stateful-item').reason, 'candidate_state_consistency_incomplete');
     assert.equal(report.comparisons.find(item => item.id === 'business-rule:stateful-item').candidateStateConsistency, 'incomplete');
-    assert.equal(new Set(report.repairTasks.map(item => item.id)).size, 2);
+    assert.equal(new Set(report.repairTasks.map(item => item.id)).size, 3);
+    assert.equal(report.repairTasks.find(item => item.kind === 'business-rule-context').requiresHumanApproval, true);
     assert.doesNotMatch(readFileSync(out, 'utf8'), /private-value/);
 
     const scaffold = join(root, 'scaffold-check.json');
