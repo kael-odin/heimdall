@@ -1167,6 +1167,29 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-runtime-data-gaps').repairTasks.length, 1);
     assert.equal(blocked.deliveryPlan.backendCompletion.runtimeDataGaps[0].failureKind, 'http');
     assert.equal(blocked.deliveryPlan.backendCompletion.repairTasks.some(item => item.kind === 'runtime-data-observation'), true);
+    assert.deepEqual(blocked.deliveryPlan.backendCompletion.repairTasksMeta, { total: 2, returned: 2, truncated: false });
+    assert.deepEqual(blocked.deliveryPlan.qaTask.scope.backend.completion.repairTasks, {
+      total: 2, returned: 2, truncated: false, kinds: ['runtime-data-observation', 'readonly-data-evidence'],
+    });
+    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
+      runtimeDataGaps: Array.from({ length: 51 }, (_, index) => ({
+        page: '/library/', target: `/api/search/${index}`, resourceType: 'fetch', failureKind: 'http', status: 404,
+      })),
+      readOnlyData: { status: 'ok', declared: 0, included: 0, missing: 0, shadowed: 0, conflicts: 0 },
+    });
+    const capped = assess(outcome).deliveryPlan;
+    assert.equal(capped.backendCompletion.repairTasks.length, 50);
+    assert.deepEqual(capped.backendCompletion.repairTasksMeta, { total: 51, returned: 50, truncated: true });
+    assert.deepEqual(capped.qaTask.scope.backend.completion.repairTasks, {
+      total: 51, returned: 50, truncated: true, kinds: ['runtime-data-observation'],
+    });
+    put(join(site, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
+      runtimeDataGaps: [{ page: '/library/', target: '/api/search/hidden', resourceType: 'fetch', failureKind: 'http', status: 404 }],
+      runtimeDataGapsTruncated: true,
+      readOnlyData: { status: 'ok', declared: 0, included: 0, missing: 0, shadowed: 0, conflicts: 0 },
+    });
+    const sourceTruncated = assess(outcome).deliveryPlan;
+    assert.deepEqual(sourceTruncated.backendCompletion.repairTasksMeta, { total: 1, returned: 1, truncated: true });
     assert.equal(assess({ ...outcome, healthReport: '/super-secret/health.json' }).clone.delivery.healthReport, null);
     assert.equal(blocked.readiness.delivery.status, 'blocked');
     assert.equal(blocked.deliveryPlan.items.find(item => item.id === 'clone-offline-delivery').status, 'blocked');

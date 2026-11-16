@@ -26,6 +26,7 @@ import { listJourneys } from '../../journey-store.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
+const MAX_BACKEND_REPAIR_TASKS = 50;
 const SEO_SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']);
 const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'requestFailed', 'externalRequest', 'websocketUnsupported', 'observationDeadline', 'pageCrash', 'probeError']);
@@ -1422,6 +1423,9 @@ function qaBackendScope(origin, api, backendCompletion) {
       repairTasks: {
         total: Number.isSafeInteger(backendCompletion?.repairTasksMeta?.total)
           ? backendCompletion.repairTasksMeta.total : repairTasks.length,
+        returned: Number.isSafeInteger(backendCompletion?.repairTasksMeta?.returned)
+          ? backendCompletion.repairTasksMeta.returned : repairTasks.length,
+        truncated: backendCompletion?.repairTasksMeta?.truncated === true,
         kinds: [...new Set(repairTasks.map(task => task?.kind).filter(kind => typeof kind === 'string'))].slice(0, 12),
       },
       humanJourneys: humanJourneys.slice(0, 8).map(journey => ({
@@ -1862,6 +1866,14 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   for (const task of businessRuleComparison.repairTasks ?? []) {
     if (!repairTasks.some(item => item?.id === task.id)) repairTasks.push(task);
   }
+  const repairTasksMeta = {
+    total: repairTasks.length,
+    returned: Math.min(repairTasks.length, MAX_BACKEND_REPAIR_TASKS),
+    truncated: repairTasks.length > MAX_BACKEND_REPAIR_TASKS
+      || delivery?.runtimeDataGapsTruncated === true
+      || scaffold.check?.repairTasksMeta?.truncated === true
+      || businessRuleComparison.repairTasksMeta?.truncated === true,
+  };
   const scaffoldAction = observed && !scaffold.present
     ? plannedAction('cli:shell', {
       command: `heimdall backend scaffold ${siteId}${scaffold.status === 'incomplete' ? ' --force' : ''}`,
@@ -1959,7 +1971,8 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
     runtimeDataGaps: runtimeGaps,
     runtimeDataGapsTruncated: delivery?.runtimeDataGapsTruncated === true,
     readOnlyData: delivery?.readOnlyData ?? null,
-    repairTasks,
+    repairTasks: repairTasks.slice(0, MAX_BACKEND_REPAIR_TASKS),
+    repairTasksMeta,
     adapterEgress: {
       status: adapterServerEgress,
       basis: adapterServerEgress === 'not-tested' || adapterServerEgress === 'verified' ? 'observed' : 'unknown',
