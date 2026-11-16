@@ -22,6 +22,7 @@ import { readCurrentScore } from '../../../score-status.mjs';
 import { validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
 import { SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../../../seo/method.mjs';
 import { summarizeOutcomeEvidence } from '../../../seo/outcome-evidence.mjs';
+import { listJourneys } from '../../journey-store.mjs';
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -636,6 +637,28 @@ function adapterSummary(root, siteId) {
   };
 }
 
+function journeyEvidenceSummary(siteId, expectedOrigin) {
+  let records;
+  try { records = listJourneys(siteId, 100); } catch { return { status: 'invalid', reason: 'read_failed', origin: null, journeys: [] }; }
+  const origins = [...new Set(records.map(item => originOf(item.origin)).filter(Boolean))];
+  const boundOrigin = expectedOrigin === undefined ? origins.length === 1 ? origins[0] : null : expectedOrigin;
+  const reason = expectedOrigin === null || (expectedOrigin === undefined && origins.length > 1)
+    ? 'origin_ambiguous' : null;
+  const journeys = boundOrigin ? records.filter(item => originOf(item.origin) === boundOrigin) : [];
+  const projected = journeys.slice(0, 20).map(item => ({
+    id: item.id, ...(item.name ? { name: item.name } : {}), startedAt: item.startedAt, finishedAt: item.finishedAt,
+    steps: item.steps, contract: item.contract,
+    path: reportPath(siteId, `agent/journeys/${item.id}/journey.json`),
+  }));
+  return {
+    status: projected.length ? 'observed' : records.length ? 'invalid' : 'missing',
+    origin: boundOrigin, ...(reason ? { reason } : {}),
+    total: records.length, count: journeys.length,
+    journeys: projected,
+    journeysMeta: { total: journeys.length, returned: projected.length, truncated: journeys.length > 20 },
+  };
+}
+
 function backendScaffoldSummary(root, siteId) {
   const dir = join(root, 'backend-scaffold');
   const required = ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json'];
@@ -817,6 +840,7 @@ function backendScaffoldSummary(root, siteId) {
 function apiSummary(root, siteId, expectedOrigin = null) {
   const contract = publicContract(root, siteId, expectedOrigin);
   const adapter = adapterSummary(root, siteId);
+  const journeyEvidence = journeyEvidenceSummary(siteId, expectedOrigin);
   const scaffold = backendScaffoldSummary(root, siteId);
   const unknowns = [];
   if (contract.status === 'missing') unknowns.push('api-contract-missing');
@@ -825,6 +849,7 @@ function apiSummary(root, siteId, expectedOrigin = null) {
     unknowns.push('auth-permissions-state-unknown', 'business-rules-and-side-effects-unknown');
     if (contract.summary?.unknowns) unknowns.push(`api-contract-unknowns:${contract.summary.unknowns}`);
   }
+  if (journeyEvidence.status === 'invalid') unknowns.push('journey-evidence-invalid');
   if (adapter.present && !adapter.validation) unknowns.push('adapter-validation-missing');
   if (adapter.present && adapter.validation?.status !== 'passed') unknowns.push('adapter-not-validated');
   if (adapter.gapLedger?.summary?.uniqueGaps > 0) unknowns.push(`adapter-runtime-gaps:${adapter.gapLedger.summary.uniqueGaps}`);
@@ -844,6 +869,7 @@ function apiSummary(root, siteId, expectedOrigin = null) {
           : contract.status,
     contract,
     adapter,
+    journeyEvidence,
     scaffold,
     unknowns,
   };
@@ -981,6 +1007,7 @@ function claimsOf(siteId, clone, seo, api, qa, unknowns) {
   if (clone.delivery.report) observed.push(`clone.offline_export:${clone.delivery.status}`);
   if (seo.status === 'observed') observed.push(`seo.report:${seo.score ?? 'n/a'}`);
   if (api.contract.status === 'observed') observed.push(`api.contract:${api.contract.summary?.endpoints ?? 0}`);
+  if (api.journeyEvidence?.status === 'observed') observed.push(`api.journeys:${api.journeyEvidence.count}`);
   if (api.adapter.present) observed.push(`api.adapter:${api.adapter.routes ?? 'n/a'} routes`);
   if (api.scaffold?.present) observed.push('api.backend_scaffold:B3');
   if (qa.status === 'observed') observed.push(`qa.latest_run:${qa.latest.runId}`);
@@ -1872,6 +1899,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       currentLevel: observed ? (api.adapter.present ? 'B1_to_B2_bridge' : 'B1_observed_contract') : 'B0_or_lower',
     },
     observedEndpoints: endpoints,
+    journeyEvidence: api.journeyEvidence ?? { status: 'missing', total: 0, count: 0, journeys: [], journeysMeta: { total: 0, returned: 0, truncated: false } },
     verifiedResponseShapes: {
       count: shapedResponses.length,
       items: shapedResponses,
@@ -1974,7 +2002,8 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       humanChecks: humanJourneys.map(journey => ({ id: journey.id, basis: journey.basis, requiresHumanApproval: true, condition: journey.goal })),
     },
     provenance: {
-      observed: observed ? ['api-contract.json', ...(api.adapter.present ? ['runtime-adapter/manifest.json', 'adapter-report.json'] : [])] : [],
+      observed: observed ? ['api-contract.json', ...(api.adapter.present ? ['runtime-adapter/manifest.json', 'adapter-report.json'] : []),
+        ...(api.journeyEvidence?.status === 'observed' ? api.journeyEvidence.journeys.map(item => item.path) : [])] : [],
       inferred: ['B2 目标', '业务旅程清单', '本地状态规则文件', '检查脚本和测试数据需求'],
       invented: [],
     },

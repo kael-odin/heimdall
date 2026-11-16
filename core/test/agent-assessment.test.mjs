@@ -777,6 +777,37 @@ test('site-assessment does not repeat contract probing after a B0 contract is pe
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment carries origin-bound sanitized journey provenance into backend completion', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-journey-evidence-'));
+  const site = join(root, 'workspace', 'example.test');
+  const journeyId = 'journey-1794787993231-f8a2e67d';
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    put(join(site, 'api-contract.json'), {
+      schema: 'heimdall.contract/1', siteId: 'example.test', tier: 'B1', origin: 'https://example.test',
+      openapi: { openapi: '3.1.0', servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {} } } },
+      observations: [], fixtures: [], sources: { journeys: [journeyId] },
+    });
+    put(join(site, 'agent', 'journeys', journeyId, 'journey.json'), {
+      schema: 'heimdall.journey/1', id: journeyId, siteId: 'example.test', origin: 'https://example.test',
+      startedAt: '2026-11-16T00:00:00.000Z', finishedAt: '2026-11-16T00:01:00.000Z', steps: 3,
+      network: { sanitizedEntries: 3, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1 },
+    });
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+    });
+    assert.equal(run.status, 0, run.stderr + run.stdout);
+    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+    assert.equal(result.api.journeyEvidence.status, 'observed');
+    assert.equal(result.api.journeyEvidence.count, 1);
+    assert.equal(result.deliveryPlan.backendCompletion.journeyEvidence.journeys[0].id, journeyId);
+    assert.ok(result.deliveryPlan.backendCompletion.provenance.observed.some(path => path.endsWith(`/agent/journeys/${journeyId}/journey.json`)));
+    assert.ok(result.unknowns.some(item => item.id === 'auth-permissions-state-unknown'));
+    assert.doesNotMatch(run.stdout, /network\.journey\.har|response-secret/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: recognizes a complete default B3 scaffold', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-scaffold-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
