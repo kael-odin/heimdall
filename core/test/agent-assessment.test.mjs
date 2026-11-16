@@ -818,6 +818,7 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
   const scaffold = join(root, 'workspace', 'example.test', 'backend-scaffold');
   const journeyId = 'journey-1794787993231-f8a2e67d';
+  const mismatchJourneyId = 'journey-1794787993232-a8b9c0d1';
   try {
     put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
@@ -834,6 +835,11 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     put(join(root, 'workspace', 'example.test', 'agent', 'journeys', journeyId, 'journey.json'), {
       schema: 'heimdall.journey/1', id: journeyId, siteId: 'example.test', origin: 'https://example.test', status: 'recorded',
       actor: 'owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'], steps: 2,
+      network: { sanitizedEntries: 2, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1 },
+    });
+    put(join(root, 'workspace', 'example.test', 'agent', 'journeys', mismatchJourneyId, 'journey.json'), {
+      schema: 'heimdall.journey/1', id: mismatchJourneyId, siteId: 'example.test', origin: 'https://example.test', status: 'recorded',
+      actor: 'non_owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'], steps: 2,
       network: { sanitizedEntries: 2, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1 },
     });
     for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json', 'backend-task.json']) put(join(scaffold, name), {
@@ -861,7 +867,11 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     assert.equal(env.result.api.scaffold.status, 'present');
     assert.equal(env.result.api.scaffold.aiTask.status, 'present');
     assert.equal(env.result.api.scaffold.check.status, 'passed');
-    assert.equal(env.result.api.journeyEvidence.journeys[0].verification.status, 'passed');
+    const verifiedJourney = env.result.api.journeyEvidence.journeys.find(item => item.id === journeyId);
+    const mismatchedJourney = env.result.api.journeyEvidence.journeys.find(item => item.id === mismatchJourneyId);
+    assert.equal(verifiedJourney.verification.status, 'passed');
+    assert.equal(mismatchedJourney.verification.status, 'unknown');
+    assert.equal(mismatchedJourney.verification.reason, 'actor_mismatch');
     const recordedJourney = env.result.deliveryPlan.backendCompletion.humanJourneys.find(item => item.id === journeyId);
     assert.equal(recordedJourney.status, 'passed');
     assert.deepEqual(recordedJourney.ruleIds, ['read-items']);

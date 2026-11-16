@@ -643,6 +643,8 @@ function journeyVerification(journey, scaffold) {
   const rules = Array.isArray(scaffold?.check?.businessRules?.rules) ? scaffold.check.businessRules.rules : [];
   const matched = ruleIds.map(id => rules.find(rule => rule.id === `business-rule:${id}`));
   if (matched.some(rule => !rule)) return { status: 'unknown', reason: 'rule_check_missing' };
+  if (journey.actor && matched.some(rule => rule.actor !== journey.actor)) return { status: 'unknown', reason: 'actor_mismatch' };
+  if (!journey.actor && matched.some(rule => rule.actor)) return { status: 'unknown', reason: 'actor_missing' };
   if (matched.some(rule => rule.status === 'failed' || rule.stateConsistency === 'failed')) return { status: 'failed' };
   if (matched.some(rule => ['incomplete', 'skipped'].includes(rule.status) || rule.stateConsistency === 'incomplete')) {
     return { status: 'incomplete' };
