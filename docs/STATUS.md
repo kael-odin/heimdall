@@ -1,94 +1,10 @@
 # Heimdall 当前状态（STATUS）
 
-> 更新：2026-11-15 · **本页是“当前为真”的唯一入口**。历史接手记录与逐日审计已归档，见文末。
+> 更新：2026-11-17 · **本页只写“当前为真”**：三项能力现在到哪一步、怎么验、边界在哪。按日期追加的记录在 [逐日记录](archive/STATUS-log-through-2026-11-15.md) 与 [审计索引](audits/README.md)。
 
 ## 一句话
 
 面向获授权网站，采集证据、辅助 AI 重建与独立部署，度量还原度，诊断 SEO/GEO，并按充分的需求与接口信息检测前后端缺陷。
-
-2026-11-15 [真实独立部署失败定位]：用当前 `live-verify --static` 复验既有 RFC Editor 候选包；Docker `network none` 启动、路由检查和最终镜像校验和均走到浏览器阶段，但 6/6 页面因 6 个 `analytics.ietf.org` 外部运行时请求和 6 个本地 Nuxt JSON 404 失败，不能标记为独立部署通过。CLI 现在保留失败门禁，并输出脱敏原因摘要，便于 AI 分别处理外部运行时与本地动态数据缺口。
-
-2026-11-15 [独立部署失败证据落盘]：`live-verify` 在失败、未完成或环境不可用时写入脱敏 `deployment-verification-attempt.json` 或 `adapter-egress-verification-attempt.json`；`site-assessment` 读取失败阶段、浏览器失败摘要、当前包校验关系和复测动作，但只有成功的校验和绑定报告才能标为 `verified`。统一 CLI 同时修复相对包路径继承，用户从调用目录运行 `live-verify` 时不再被内部 `core` 工作目录误导。
-
-2026-11-15 [handoff 串入最终包独立部署]：`heimdall handoff --strict` 现在在严格离线导出通过后，自动对最新正式交付包执行 `live-verify --static`；只有离线导出和 Docker `network none` 独立验收都通过时才返回成功。部署复测失败会清掉旧的当前通过报告并保留脱敏失败 sidecar，避免过时证据污染交接结论。
-
-2026-11-15 [QA 检测摘要进入 AI 任务]：真实 `example.com` 公开 QA 暴露 `a11y-heading` 检测结果后，`site-assessment.qa.latest.coverage.detection` 现在投影检测页数、发现数、失败页数和 detector 名称；`qaTask` 明确要求读取 finding 证据并完成人工裁决，避免把 detector 命中直接包装成已确认 bug。
-
-2026-11-15 [业务检查点缺口进入 QA 任务]：当匹配站点的完整 QA 运行没有声明检查点时，`site-assessment` 保留页面 QA 的 `ready` 语义，但在 `coverage.businessChecks`、`qa-business-checks` 和 `add-business-checks` 中明确标出业务检查缺失；页面 detector 不再被误解为认证、接口、状态机或后端业务验收。
-
-2026-11-15 [QA 业务检查点完整性]：`coverage.checks` 现在只有在每条记录同时具备非空 `id` 和布尔 `pass` 时才标为 `observed`；半截或畸形检查点标为 `incomplete`，并生成 `complete-business-checks` 与阻断型 `qa-business-checks`，避免 AI 把数量存在误读成业务验收通过。
-
-2026-11-15 [QA 任务关联后端完成摘要]：`qaTask.scope.backend.completion` 现在直接索引后端完成状态、当前层级、观察端点数、缺口计数、修复任务类别、认证/权限/状态等人工旅程和未知项；完整契约、适配器和业务规则证据仍由 `deliveryPlan.backendCompletion` 单独承载，避免 QA 页面结果被误读成后端等价。
-
-2026-11-15 [QA 任务关联后端复测状态]：同一摘要新增 `businessRules`、`businessRuleComparison`、`adapterEgress` 和 `operationProbe`，帮助 AI 区分业务规则未测、候选等价未对照、服务端外联未验和浏览器操作未测；这些状态仍不替代完整后端证据。
-
-2026-11-15 [QA 聚合计入业务检查覆盖]：`qa.metrics.coverage.checks` 现在累计运行记录里的声明检查点；历史脱敏聚合没有该字段时保留为 0，避免 `site-assessment` 把已有业务检查误报为零覆盖。
-
-2026-11-15 [交付包页面复杂度信号]：离线浏览器探针现在在脱敏摘要中记录 iframe、外部 iframe、开放 Shadow DOM、Canvas 和超长页面信号，并投影到 `cloneTask.scope.delivery.browserCapabilities`；`deliveryPlan` 同时生成 `clone-page-complexity` 专项复测项。这些信号只指导复测类型，不自动判为缺陷或支持。
-
-2026-11-15 [页面复杂度支持分类]：`browserCapabilities.support` 现在按候选包离线浏览器证据，为每类已观察信号输出 `supported`、`degraded` 或 `unsupported`，并保留逐页原因；外部 iframe 在断网探针中被阻断时单独归为 `unsupported`，本地浏览器错误或同源动态数据缺口归为 `degraded`。该分类只覆盖候选包观察范围，不替代源站、交互或业务等价验证。
-
-2026-11-15 [Vitest 公开复杂页面复验]：当前代码对 `vitest.dev` 三页公开样本完成 3/3 克隆、3/3 多视口还原，平均 99.6%；strict 被 96 个阻断卡住。首页观察到 2 个 Canvas，`site-assessment` 正确生成 `clone-page-complexity=open`；博客页缺少 measurement proof，评估保留为 2/3 verified，并把 `blog:stale` 原因投影到 `clone-visual-verification`，不把验证摘要的 3/3 measured 直接当作完整交付证据。
-
-2026-11-15 [Vitest SEO/GEO 行动页面证据]：同一公开三页样本当前 SEO 91.3、GEO 62.2；站点级重复 description advisory 现在带出 `affectedPages=3` 和 `/`、`/api/test`、`/blog`，AI 能定位优化范围。搜索排名、收录和模型引用效果仍为 unknown，分数与行动包口径未改变。
-
-2026-11-15 [RFC Editor 公开只读 QA 实战]：在仓库外临时工作区对 6 个公开页面执行 1440/390 两个视口的 12 次页面检查；导航和检测器完整，得到 0 条可提单、61 条可容忍、0 个业务检查点。真实结果让 `site-assessment.qaTask` 进入 `ready_for_ai_review`，同时保留 API、认证、权限、状态机和业务流程未知。QA 覆盖计数修正为使用去重后的报告发现数，避免 CLI 的检测数量与报告不一致。
-
-2026-11-15 [真实重建交付验收]：使用 `example.com/a/b` 的现有捕获完成一次仓库外 `html-css` 重建；首轮空脚手架被 compare 正确识别为缺失正文，补写后 375/768/1440 三视口均为 100% 像素相似度，正式 `silver` 门禁三视口 6/6 通过并生成 18 个项目文件、3 个镜像文件的 `passed` 交付包。正式验收还拦住了外部绝对链接，改为本地 `/help/example-domains` 后才通过；该案例只证明当前页面的视觉、结构、资源和健康闭环，不证明后端、认证、业务状态或整站范围等价。
-
-2026-11-14 [动态数据缺口进入 AI 后端任务]：strict 浏览器探针现在把同源 XHR/fetch 的 4xx 或请求失败单独写入 `health.runtimeDataGaps`，保留页面、脱敏路径、资源类型和状态；`site-assessment` 会去重后生成 `runtime-data-observation` 修复任务，要求先授权观察响应再补本地适配器或只读数据，不把动态 JSON 404 伪造成静态资源或成功回放。
-
-2026-11-15 [外部运行时与本地浏览器错误分流]：`site-assessment` 现在把 `externalRequest` 单独投影为 `clone-external-runtime` 人工审核任务；本地 page error、HTTP 和 request failure 继续进入 `clone-browser-failures` 修复任务。两类证据不再共享一个 heal 动作，避免把外链服务误读成站内后端缺口。
-
-2026-11-15 [QA 证据按站点隔离]：`site-assessment --qa-workspace` 找不到目标站点时不再借用工作区第一个站点的运行记录；标准主机名站点仍可在缺少页面来源 manifest 时按 `siteId` 匹配，带 `--origin-` 的隔离 ID 没有来源证据时保持未知。
-
-2026-11-15 [站点评估来源完整性]：页面 manifest 的唯一来源优先作为站点锚点；`seo.json` 和 `api-contract.json` 若声明其他 origin 会被标记为 `origin_mismatch` 并从有效证据中排除，避免错误报告改变 QA 归属或 AI 修复命令。
-
-2026-11-15 [站点评估全页来源扫描]：来源锚点现在扫描全部页面 manifest，不再只检查前 20 页；发现多个 origin 时，SEO/API 报告标记为 `origin_ambiguous` 并拒绝进入有效证据和交付计划。
-
-2026-11-15 [sitemap 范围原因进入 AI 计划]：`site-assessment` 现在把 SEO 报告中的白名单 sitemap 原因、截断原因和受限计数投影到 `seo.sitemap`，并在 SEO/GEO follow-up 中说明 `budget-exhausted`、`url-limit` 等采集边界；伪造字段会被过滤。RFC Editor 复验仍为 `partial`、URL 数 10,000，不能把页面级 SEO/GEO 分数解释成整站收录或 GEO 引用结论。
-
-2026-11-15 [站点评估下一步去重与范围未知项]：当 sitemap 为 `partial/unavailable` 时，`unknowns` 明确加入 `seo-sitemap-scope-limited`；顶层 `nextActions` 按工具和参数去重。RFC Editor 当前重复的严格导出命令已收敛为一条，AI 不再收到重复动作。
-2026-11-15 [站点评估下一步截断元数据]：`site-assessment.result.nextActionsMeta` 现在保留去重后动作的总数、返回数和 `truncated`；顶层仍只返回前 5 条，AI 可回读 `deliveryPlan.items` 获取完整动作，避免把摘要当成全集。
-2026-11-15 [后端检查摘要截断元数据]：B3 摘要现在为检查问题、修复任务、业务规则对比和对比修复任务分别提供 `*Meta`；大规模结果被裁剪时，AI 必须继续读取同一份脱敏报告。
-2026-11-15 [handoff 范围语义复验]：真实 `example.com` 的当前 `handoff --strict --max-pages 1` 通过 1/1 页和 strict 0 阻断，但 `live-export.coverage.scopeLimited=true`；交接报告现在明确写出“当前范围完整、整站范围受限”，并要求提高 `--max-pages` 后复测。
-2026-11-15 [handoff 接通 all-discovered]：一键 handoff 现在支持 `--all-discovered`，把当前侦察发现的全部同源页传给克隆队列；公开 `example.com` 两条路径均真实通过，`--max-pages` 仍只控制侦察预算，范围仍受限时交接报告继续保留 `scopeLimited=true`。
-
-2026-11-15 [SEO 评分口径进入 AI 摘要]：`site-assessment.seo` 现在保留 `scoreMethodVersion` 与 `measurementVersion`；版本缺失或不一致时，AI 必须把分数当作历史观察，避免跨口径比较。
-
-2026-11-15 [SEO 过时口径进入 readiness 门禁]：`scoreMethodStatus` 与 `measurementStatus` 现在会把缺失、旧版和未来版报告标为 `unknown/stale/future`；只在两者都为 `current` 时允许 SEO/GEO readiness 进入 `ready`，旧报告会生成 follow-up。
-
-2026-11-15 [公开案例分数口径进入摘要]：`public_case_summary` 现在同时输出 SEO 评分、测量和 GEO 方法版本状态；Xspark 公开案例因历史证据缺少版本字段而标为 `unknown`，不能与当前报告直接横比。
-
-2026-11-15 [公开案例 proven 语义收紧]：当 SEO 评分或测量口径不是 `current` 时，公开案例的 `proven` 摘要会明确标为“仅历史观察”，避免 AI 把旧分数当成当前验证事实。
-2026-11-15 [公开案例三项能力摘要]：`public_case_summary` 可读取可选的脱敏 `evidence/site-assessment.json`，把克隆、独立部署、后端、SEO/GEO 和 QA 缺陷检测状态分别投影；缺少该证据时克隆、独立部署和后端保持 `unknown`，不从 QA/SEO 结果推断完成。
-2026-11-15 [QA 覆盖定位进入 AI 任务]：`qaTask.latest.coverage` 现在投影最多 50 个页面/视口与检查点的脱敏状态，并保留截断、导航失败、检测器失败和基线状态；AI 可以先补覆盖证据，再处理 finding，不会把总数当成缺陷准确率。
-2026-11-15 [后端缺口账本截断进入 AI 任务元数据]：`api.adapter.gapLedger` 现在为 `gaps`、`knownRoutes` 和 `unknowns` 暴露 `*Meta`；大站摘要超过安全上限时明确标记 `truncated`，AI 必须回读同一份脱敏报告。
-2026-11-15 [QA 覆盖总量与有效量分开]：`qaTask.latest.coverage` 现在用 `pagesMeta`、`checksMeta` 区分原始总量、有效条目、返回条目和截断状态；无效覆盖记录或超过 50 条时，AI 会先补证据，不把列表当成完整 QA 范围。
-2026-11-15 [克隆范围受限进入 AI 任务]：strict 交付若仍绑定 `captured-only`、`untrusted-recon` 或其他受限范围，`cloneTask` 会保留范围缺口和 `allDiscovered` 复测动作；其他更早门禁阻断时仍优先显示对应阻断状态，不再显示为无缺口 `ready`。
-2026-11-15 [readiness 克隆视觉与范围分层]：保留 `readiness.clone.status` 作为页面镜像和多视口验证状态，并新增 `readiness.clone.scope.status` 与 `scopeLimited`。范围受限时视觉状态可以是 `ready`，但范围状态为 `needs_scope_review`，避免 AI 把有界交付理解成整站克隆完成。
-2026-11-15 [公开案例 SEO 行动进入摘要]：`public_case_summary.seo.observedActions` 现在按问题 ID 聚合最多 20 条脱敏的 critical/high/medium SEO 行动项，让 AI 能从真实案例复用优化线索；历史评分和缺少当前方法版本时仍保留为观察，不进入当前通过结论。
-2026-11-15 [GEO 覆盖进入 AI 任务包]：`deliveryPlan.seoGeoTask` 现在投影 `scores.geoConfidence` 与 `coverage.geo`，保留 GEO 页数、已评分页、不可用页、观察权重、总权重、比例和证据置信度；缺失字段保持 `null`，不让 AI 把页面分数误读成完整站点证据。
-
-2026-11-15 [GEO 维度分数进入优化任务]：`seo.geo` 与 `deliveryPlan.seoGeoTask.scores.geoDimensions` 现在保留可回答性、可抽取性、实体清晰度和引用准备度的受限摘要；AI 可按维度缺口安排优化顺序，但总分、覆盖和真实模型引用未知边界不变。
-2026-11-15 [真实 SEO/GEO 效果证据显式保持未知]：`site-assessment` 在 `seoGeoTask.outcomeEvidence` 和顶层 `unknowns` 中分别标出真实搜索/收录结果与模型引用命中率；观察型页面分数不会自动升级为真实效果，并为获授权、可复核实验生成两个 AI 任务。该状态不阻断页面级评分 readiness。
-2026-11-15 [SEO/GEO 外部效果证据入口]：允许在 `workspace/<siteId>/seo/outcome-evidence.json` 提供脱敏的固定样本计数；`site-assessment`、`seo-audit` 任务结果和 `heimdall://site/<siteId>/seo/outcomes` 共用同一来源、origin、时间戳和数值校验。来源不匹配、字段不完整或超过上限时仍为 `unknown`，有效 sidecar 也只进入 `observed`，不直接变成 `verified` 或 readiness 通过。
-2026-11-15 [SEO/GEO 外部效果证据写入能力]：新增 `heimdall_seo_outcomes` / `heimdall seo-outcomes`，从用户指定的脱敏 JSON 中只提取允许的计数和来源类型，按当前站点 origin 原子写入 sidecar；已有 sidecar 必须显式 `--force` 覆盖，秘密级输入和跨 origin 输入直接拒绝。
-
-2026-11-15 [克隆任务接通 AI 重建闭环]：`site-assessment.cloneTask` 现在复用已有 `rebuild init → status → deliver` 和正式门禁/回退语义，明确输出 `study/build/check/refine/deliver` 顺序；没有已捕获页面时保持 `blocked_on_capture`，后端补全仍由 `backendCompletion` 单独承接。
-2026-11-15 [重建闭环义务账本]：`site-assessment.cloneTask.closure` 现在把镜像覆盖、视觉验证、strict 离线交付、交付范围和独立部署列成五项 required obligations；只有全部为 `verified` 才能标为 `ready`，`open/unknown` 必须继续复测或保留限制。
-
-2026-11-15 [重建工作区接通后端补全入口]：生成的 `AGENTS.md` 和 `heimdall-rebuild` 技能现在会先读取 `site-assessment.backendCompletion`，再从脱敏 `backend-task.json` 生成 B3 后端起点；认证、权限、状态机、持久化、写入和外部副作用没有授权证据时继续保持 `unknown`。
-
-2026-11-15 [过期 GEO 置信度隔离]：GEO 方法版本缺失、过期或状态非法时，摘要会把 `confidence` 保留为 `null`；旧分数可以追溯，但不会带着 `high` 置信度进入 AI 任务包。
-2026-11-15 [QA finding 详情进入就绪门禁]：`deliveryPlan.qaTask`、`deliveryPlan.items` 和 `readiness.qa` 现在都要求 `findings.status=observed`；详情缺失、不可用或返回为空时进入 `blocked_on_qa_evidence`，即使摘要 `fileable=0` 也不能解释成零 bug 或 QA ready。
-2026-11-15 [QA 证据输入路径收紧]：站点评估只把实际存在的脱敏 `report.md`、`bugs.md` 放进 `qaTask.inputs` 和修复证据；缺失文件保持 `null` 或省略，不能用推测路径冒充可读取证据。
-2026-11-15 [QA finding 摘要一致性门禁]：当 `run.json.summary.fileable` 与存在的 `findings.json` 脱敏详情数量不一致时，finding 状态标为 `inconsistent`，QA 任务和交付计划继续阻断，不把空详情解释成零 bug。
-2026-11-15 [后端查询缺口进入交付门禁]：适配器的 `unobservedQueryVariants` 和 `uncoveredQueryParameters` 现在与 `uniqueGaps`、缺响应体、未验证写入共享阻断条件；即使路径缺口为 0，AI 仍会收到查询修复任务和完整复测条件。
-
-2026-11-15 [SEO 行动截断进入 AI 任务元数据]：`deliveryPlan.seoGeoTask` 现在同时暴露 `observedActionsMeta` 与 `observedAdvisoriesMeta`；SEO 与 GEO 合并超过 20 条时明确标记 `truncated`，避免 AI 把被裁掉的行动误读成完整列表。medium 线索仍不会单独改变 readiness。
-
-2026-11-15 [SEO/GEO 行动跨来源排序]：合并行动现在按 P0/P1/P2 和影响页数排序，并在 `observedActionsMeta` 中返回 `totalByKind` 与 `returnedByKind`；高优先级 GEO 行动不会因为 SEO 列表先进入摘要而被静默挤掉。
 
 ## 现在的主线
 
@@ -100,89 +16,16 @@
 
 优先复用现有入口、修正真实案例中的误报与漏测，保持核心代码为主体，运行证据放在仓库外。验收子系统保持冻结，作为正式门禁被调用。
 
-2026-11-14 [评分证据失效与扫描复用](ROADMAP.md#可信交付)：单页 `score.json` 绑定 clone 输入哈希；控制台和 AI 读取路径会排除旧分数，并复用多视口验证已经核实的 `inputSha256`，避免对已验证页面重复哈希整棵 clone 树。真实 CSS 变化验收覆盖 API、`site`、`clone`、`site-assessment`，目标链路通过；IANA 8 页与 Datasette 83 页当前 CLI 基线分别为 `site` 中位数 265/349 ms、`site-assessment` 中位数 255/336 ms，历史分数均被排除；并发、内存和浏览器验证累计成本仍待测。
+## 最近一轮实测（2026-11-17）
 
-2026-11-14 [观察型契约落盘与 B3 后端检查](audits/README.md)：真实 Datasette 83 页归档复验修复 `probe contract` 只输出不落盘的问题；契约现在能被 `site-assessment` 读取，B0 空契约保持 `no_observed_api`，不伪造端点。B3 脚手架启动后健康、适配器覆盖、缺口账本 3/3 通过；认证、权限、状态机、业务规则和副作用仍需授权旅程。
+三项能力各用公开真实站点跑了一遍，只修实战暴露的缺陷。过程、数字和中途一次错误见 [真实站点横扫](audits/2026-11-17/real-site-sweep.md)。
 
-2026-11-14 [适配器外联证据贯通]：候选 `health.json` 的适配器路由覆盖与 `serverEgress` 状态现在进入 `site-assessment.backendCompletion`；`not-tested` 会形成独立未知项，`offline-egress` 只有明确 `verified` 才能通过，避免把留出回放通过误读成独立部署安全。
-
-2026-11-14 [最终交付包无外联验收]：新增 `heimdall live-verify <包目录> --site-id <站点>`；它构建最终 Docker 包，在 `network none` 中启动两次，检查离线健康、根路由、可安全触达的 GET/HEAD 适配器路由、缺口账本和包外状态卷，并把当前 `checksums.json` 绑定到脱敏 `adapter-egress-verification.json`。新增可选 `--http-checks FILE`，支持授权的 POST/PATCH/DELETE 前置请求和重启后 GET/JSON Pointer 读回；`site-assessment` 只接受校验和仍匹配的 `verified` 报告，并继续保留 `unverifiedWrites`、认证、权限和业务状态未知项。
-
-2026-11-14 [最终适配器镜像操作复测]：`live-verify` 新增可选 `--operation-plan FILE`；授权计划不会进入交付包或报告，最终镜像 `/app` 快照校验和通过后，复用离线浏览器操作探针复测点击、输入、导航和断言，报告只保留计划哈希、计划数、通过数和失败/未测计数。它补上了交付包离开工作区后的前端操作复测入口；适配器写入、重启读回、认证、权限和副作用仍分别由 HTTP 检查与授权旅程证明。
-
-2026-11-14 [操作复测证据进入 AI 后端任务]：`site-assessment` 现在只投影 `operationProbe` 的范围、计数、计划哈希和状态，不读取操作计划内容；`backendCompletion.adapterEgress` 会同时显示 HTTP 写入/重启读回与最终镜像操作复测，新增 `operation-probe` 确定性检查。没有操作计划时状态明确为 `not-tested`，通过操作复测也不会清除认证、权限、状态机、业务规则和副作用未知项。
-
-2026-11-14 [B3 业务规则复测]：B3 `npm run check` 现在可执行人工确认后的 `state-rules.json.rules`，支持多步 HTTP 流程、状态码、MIME 和 JSON Pointer 断言；草稿必须先标记 `reviewed`，写请求必须设置 `HEIMDALL_ALLOW_WRITES=1`，认证头和请求体只从环境变量读取。`site-assessment.backendCompletion.businessRules` 会汇总规则状态，失败项以脱敏 `business-rule` 修复任务进入交付计划；报告不保存请求体、认证值或响应正文。
-
-同轮增加 `checks.mjs <base> --business-rules-only`：同一份经过人工确认的规则可在获授权源站和候选后端上复测；报告用 `mode` 区分业务规则对照与完整脚手架检查，站点评估不会把前者当成健康或独立部署通过。
-
-2026-11-15 追加 `heimdall backend compare`：离线读取两份 `business-rules-only` 报告，按规则 ID 对齐源站与候选后端，区分通过、候选失败/缺失和不可用源站证据；失败返回退出码 1，报告只保留脱敏状态、步骤和 JSON Pointer，不复制认证值、请求体、响应正文或失败原因。
-
-同轮把 `backend-compare.json` 的安全摘要接入 `site-assessment.deliveryPlan.backendCompletion.businessRuleComparison`；候选等价失败会进入交付计划，原始报告中的未知字段、秘密证据和响应正文不会被投影。
-
-2026-11-14 [静态交付包独立断网验收](audits/2026-11-14/public-static-deployment-verify.md)：`live-verify --static` 复用当前包校验和，在 Docker `network none` 中两次启动 `example.com` 静态包，1/1 live 路由、根路由和健康检查通过；随后从最终镜像复制 `/app`，再次核对校验和，并用真实 Chromium 对同一快照逐页断外联检查，1/1 通过、0 失败、0 未测。`site-assessment.independentDeployment` 只有在容器证据、浏览器证据和当前包校验和都匹配时才标为 `verified`。
-
-2026-11-14 [适配器交付包操作计划复测](audits/2026-11-14/adapter-operation-plan-deployment-verify.md)：受控有状态适配器在 Docker `network none` 中授权写入 1/1、重启读回 1/1；最终镜像快照上的授权浏览器操作计划 1/1、0 失败、0 未测。首次错误 JSON Pointer 被 `afterRestart` 阶段阻断，修正后通过；报告仍保留未覆盖路由、响应正文缺口和未验证写入，不把一次流程通过包装成完整后端等价。
-
-2026-11-14 [留出查询缺口分级](audits/README.md)：适配器留出账本现在区分未观察路径、已知参数名下的未观察查询变体和全新查询参数；即使尚未生成 B3，`site-assessment.deliveryPlan.backendCompletion.repairTasks` 也会把这些类别分别交给 AI，并附带确定性 `verification` 条件。分页 `page=3` / `skip=20` 这类值或组合不会被压成一个笼统缺口；写入任务仍需人工旅程。
-
-2026-11-14 [后端缺口任务完整性](audits/README.md)：修复 `site-assessment` 在没有新运行时路径、但存在缺失响应正文或未验证写入时漏出修复任务的问题；交付计划现在也把未验证写入列为待处理项，并要求复测同时清零路径、响应正文和写入验证状态。
-
-2026-11-14 [独立部署失败诊断](audits/README.md)：`live-verify --http-checks` 失败时现在标明 `beforeRestart` / `afterRestart` 阶段、检查 ID 和安全的断言差异，例如实际与期望状态码或 JSON Pointer；不回显请求体、响应正文或敏感断言值。
-
-2026-11-14 [QA 发现到修复复测](audits/README.md)：`site-assessment.deliveryPlan` 现在为达到提单门槛的 QA 发现生成脱敏修复任务；`new/reopened` 先阻断在人工裁决，`known-bug` 直接进入 `ready_for_fix`，两者都绑定同一站点 QA 重跑，并要求该 finding fingerprint 从新的完整 fileable 结果中消失。
-
-2026-11-14 [GEO 行动项到复测](audits/README.md)：SEO/GEO 交付计划现在按脱敏 action plan 生成 GEO 修复任务，带优先级、影响页数、工作量、报告路径和 checkId 复测条件；`repairTasksTruncated` 保留前 8 条限制，防止 AI 把截断列表误读成全量问题。
-
-2026-11-14 [SEO 规则到复测](audits/README.md)：交付计划现在把 `critical/high` SEO 问题按 rule id 聚合成修复任务，带类别、严重度、受影响路径、建议和审计复测条件；`medium/low/info` 继续留在详细报告中，不自动升级为交付阻断。
-
-2026-11-14 [RFC Editor 公开 SEO/GEO 实测](audits/2026-11-14/rfc-editor-public-seo-geo.md)：6 页公开只读样本 SEO 84、GEO 68.4；sitemap 触及 10,000 URL 上限后保留 partial。`site-assessment` 将克隆、API 契约和 QA 继续标为未知，没有把页面级评分包装成整站交付或后端等价。
-
-2026-11-15 [RFC Editor sitemap 范围门禁复验]：公开只读命令 `pnpm -C core run audit -- https://www.rfc-editor.org/rfc/rfc9110 --max 5` 采集 5 页，SEO 90、GEO 71，sitemap 因预算触顶为 `partial`。复验发现页面级 GEO 证据完整不等于站点范围完整；`site-assessment` 现在会把 `partial/unavailable` sitemap 纳入 SEO/GEO follow-up 和 readiness 门禁，避免无动作页面被误报为完整站点准备度。
-
-2026-11-15 [公开案例站点评估复核](audits/2026-11-15/site-assessment-public-cases.md)：RFC Editor 当前 6/6 页有镜像、6 页多视口验证、SEO 90、GEO 71，但离线交付 `blocked`，12 条浏览器失败、2 个二进制缺口、API `missing`、QA `not_configured`；Xspark 公开案例为 5 页、10 次 QA 检查、QA 门禁通过、SEO 90.8，但 GEO、认证、写入和业务规则仍未知。该复核验证了 AI 交付计划的边界投影，未把页面或 QA 结果包装成后端等价。
-
-2026-11-14 [RFC Editor 公开多页 strict 交付收口复验](audits/2026-11-14/rfc-editor-public-handoff-strict.md)：6 页视觉平均 99.9917%，strict handoff 默认启用 `--heal --materialize-har`；首轮补抓 24 个同源静态资源，浏览器二次探针再补抓 4 个运行时静态资源，静态脚本/图片/字体缺口清零。最终仍因 1 个分析服务、每页 1 个动态 JSON 请求和 254 个未镜像链接阻断，正式包没有被覆盖；`site-assessment` 现在能显示候选 browser failure 证据。
-
-2026-11-14 [公开单页 strict 交接复验](audits/2026-11-14/public-handoff-example-strict.md)：`example.com` 真实运行新版 `handoff --strict` 通过 1/1 页、3/3 视口、strict 0 阻断；独立目录启动的 live 包在 `/`、`/lm/example.com/` 和健康检查返回 HTTP 200。该案例仍没有后端、认证、权限或 QA 证据。
-
-2026-11-14 [公开多页 strict 失败边界](audits/2026-11-14/vitest-public-handoff-strict.md)：`vitest.dev` 三页视觉测量 3/3、平均 99.7%，原始 strict 112 个阻断、隐私预算复测 111 个；同日最新 `--heal --materialize-har` 复验为 96 个阻断，静态/动态资源缺口均为 0，剩余是 3 个外链资产、3 个第三方运行时、87 个未镜像链接和 3 页浏览器失败。新增 `runtimeDataGaps` 正确保持为空，没有把 Iconify、CarbonAds 或 DoubleClick 误判为站内后端缺口，正式包仍未覆盖。
-
-2026-11-13 [64 位整数资源关联实测](audits/2026-11-13/qa-int64.md)：真实 Datasette + SQLite 八场景，修正两次错误通过与三次健康误拒绝；长整数原 token 贯通动态路径、字段引用与 MCP，数字与字符串仍区分。每次仅页面自身两次 GET，绑定值不进入报告。复用原模块和测试，未支持的大整数写法保留未核实，整数常量需在安全范围；生产认证、事务与完整业务仍未验证。源码 CI 8/8，Core 3,332 通过 / 4 条件跳过，Docker 独立 2/2、MCP 7/7。
-
-2026-11-14 [Datasette 独立部署复验](audits/2026-11-13/datasette-standalone.md)：在源站停止后重新导出 83 个 live 页面和 68 条公开只读数据；修复健康扫描把同路径无查询 HAR 错算为查询变体覆盖的假通过。最新候选的 250 条运行路径 0 失败，83 页浏览器探针 9 页发现 `CodeMirror is not defined`，当前复核结果会同时给出 `ReferenceError` 类型和脱敏 `message`，实际 HTTP 错误还带受控 `resourceType`；`site-assessment` 现在把这些有限失败摘要交给 AI 交付计划，形成修复后复测入口，并把 `/library.db` 识别为需要人工授权审核的二进制分发缺口；二进制缺口待授权后会提示 `binaryPaths` 与 `--include-readonly-binaries` 复测路径；真实缺口为 664 个站内链接、`/library.db` 二进制下载、3 条操作流未测和 1 条适配器路由未测；严格发布继续阻断，未宣称整站等价。
-
-2026-11-13 [标题与描述长度实测](audits/2026-11-13/seo-metadata-length.md)：四类固定字符数扣分改为人工检查提示，GEO 摘要项只确认非空文本。四页冻结样本复算中，豆瓣 SEO 46→54、GEO 61.5→65.6，RFC 9309 与 Google 标题指南各恢复 2 分，缺失描述对照不变；相关测试 259/259，托管 CI 8/8，Core 3,332 通过 / 4 条件跳过，Docker 独立 2/2。当前 SEO 评分 **13**、测量 **8**、GEO **8**，仍为 64 条规则；旧基线须换新路径审核，分数变化不代表搜索或引用效果改善。
-
-2026-11-13 [候选 URL 与视口趋势隔离实测](audits/2026-11-13/candidate-trend-identity.md)：完整 URL 保留查询和片段，趋势还要求实际视口集合、参考和分段声明一致，旧混合键不复用。IANA 冻结首页七次受控路由访问中，原先的变好/变差/振荡误导被纠正，逐次分数与通过/失败保持不变；重复 URL 回到自己的前次记录。只改原运行与测试文件，不增加依赖或工具；完整站点和正式包仍需验收。
-
-2026-11-13 [镜像参考缓存与还原度实测](audits/2026-11-13/mirror-reference-integrity.md)：CSS 已改变而 HTML 时间未变时，旧参考仍给 IANA 首页三个视口 100%；改为复用现有内容哈希核对分段、元素、参考图片与拍摄条件后，同一差异分别为 84.744% / 86.599% / 80.993%，恢复为 100%。损坏证据与旧遮罩不复用，趋势按参考 ID 隔离；复用原测试文件，没有新增依赖或运行模块。该轮只验证冻结首页与本地参考，不替代完整站点、正式包或业务验收，SEO/GEO 口径不变。
-
-2026-11-13 [动态资源响应关联实测](audits/2026-11-13/qa-response-bindings.md)：被动观察支持较早响应的类型值引用，核对创建后是否按动态 ID 读取、更新同一资源，不新增请求或写权限。真实 JSON Server 八场景符合预期，路径串号、应答 ID 错误、类型错误及重复请求均保留未完成；默认阻断零业务请求，缺少读取声明的对照仍漏检。复用原模块与两个测试文件，参考依赖及运行证据在仓库外；完整业务与生产认证仍未验证，SEO/GEO 口径不变。
-
-2026-11-13 [HTTP canonical 与冲突声明实测](audits/2026-11-13/seo-http-canonical.md)：RFC Editor 两个真实页面通过 HTTP Link 声明 canonical，原工具均误报缺失；冻结重放后 SEO 21→27、GEO 27.1→33.3，Example Domain 对照不变。HTML 与响应头统一核对并保留来源，不任选冲突目标；非自指或跨域本身改为不扣分观察。当轮 SEO 评分 **12**、测量 **8**、GEO **7**，仍为 64 条规则；目标内容、索引选择与实际引用效果仍未验证。
-
-2026-11-13 [成对 Cookie 与独立会话后端实测](audits/2026-11-13/backend-cookie-session.md)：修复 B3 生成服务丢失同名 Set-Cookie 头的问题，复用 live 运行时已有函数。基于真实 cookie-session 的观察补写有限会话后端，在 Windows 和实际生成的 Node 22 断网、只读根容器中各通过同一组 24 个 HTTP 检查点，替换容器后会话继续有效；7 个镜像运行文件哈希一致，没有原工作区挂载。真实浏览器检出旧头处理造成的会话丢失，健康与恢复版通过；另修 204 空体取消误报及默认匿名探测认证路由的误导。账号选择入口是隔离实验的会话初始化，未实现生产身份认证、撤销或完整权限模型。
-
-2026-11-13 [认证与资源归属实测](audits/2026-11-13/qa-auth-ownership.md)：固定版本真实认证服务的双账号十场景验证匿名拒绝、主人访问、跨账号拒绝、无效令牌及恢复。页面正常但网关放错账号或归属字段错误时，响应声明保留未完成；预期 401/403 不误判登录失效。修复共享脱敏函数对已知 Bearer 裸令牌的遗漏，并在错误消息截断前脱敏，避免留下前缀；实际 JWT 的追加复测通过，两次第三方来源请求未收到认证头。参考依赖和运行证据均在仓库外，复用现有测试文件；该轮未补写认证后端，完整权限模型和其他认证机制仍未验证。
-
-2026-11-13 [写入接口应答实测](audits/2026-11-13/qa-write-responses.md)：现有响应观察贯通 PUT/PATCH/DELETE，CLI、MCP、HTTP 共用声明与执行逻辑；仅观察页面原请求，是否放行仍由既有写策略决定。真实 JSON Server 七场景中，健康/恢复通过，页面正常但写入应答状态、字段或完整性违约均保留未完成；只验页面的对照漏掉 PUT 应答错误，阻断场景没有页面业务 API 请求抵达网关。未增加依赖、模块或测试文件，SEO/GEO 口径不变；该轮未验证认证、权限与完整业务。
-
-2026-11-13 [多语言正文测量与短页误报实测](audits/2026-11-13/seo-multilingual.md)：冻结 Mozilla 宣言的韩、日、中、英四页及 Example Domain，统一初始 HTML 和渲染后正文分词；韩文原计数 206 修正为 1,048，SEO 76→82。固定字数改为不扣分观察；Example Domain 初始 HTML 长于可见正文，移除 40 词下限后 GEO 14.1→22.8。五页在 Windows Node 26 与断网 Node 22 容器中复算一致。该轮 SEO 评分 **11**、测量 **7**、GEO **6**，64 条规则；旧基线保留，分数变化来自工具纠偏，不代表搜索或引用效果提升。
-
-2026-11-13 [分页与分面机制实测](audits/2026-11-13/seo-pagination-mechanism.md)：Hacker News 真实分页共用标题，原先同时被通用与分页规则扣分；两页冻结样本 37→43，补入精确基础地址首页的三页样本 39.3→43.3，WordPress 对照均不变。分页与分面地址比较复用严格 HTTP(S) 资源身份函数，部分或无效 canonical 不再把整组参数页当作已收敛，优化建议按内容与发布意图分情况给出。当轮 SEO 评分口径 **10**、测量口径 **6**、GEO 方法 **5**，仍为 64 条规则；已推送的中间口径 9 单独保留，分数变化不代表站点效果改善。
-
-2026-11-13 [有状态后端与动态资源路由实测](audits/2026-11-13/stateful-backend.md)：以固定版本真实 JSON Server 的 HTTP 观察补写独立后端，冻结实现后在 Windows 与实际生成的 Node 22 断网只读容器中各通过 24/24 HTTP 检查点及一次同卷重启。新增共享的单段参数路由匹配，贯通运行时、B3 契约和严格导出覆盖统计；Heimdall QA 对两种注入故障均返回未完成并分别记录页面违约，健康与还原版通过。仅覆盖本例资源语义，默认参数/写路由检查、认证与权限仍保留未知；SEO/GEO 口径不变。
-
-2026-11-13 [JSON-LD 标准语义实测](audits/2026-11-13/jsonld-semantics.md)：修复 W3C 冻结页面的别名误报，未核实上下文保留未知并阻断基线，两个对照页不变；直接浏览器访问 W3C 的 403 单独保留。该次采用 SEO 评分口径 7、测量口径 6、GEO 方法 5，共 64 条 SEO 规则；分数变化不代表网站搜索效果改善。上一轮[推荐字段评分纠偏](audits/2026-11-13/structured-data-scoring.md)的证据仍保留。
-
-2026-11-13 [生成包 Dockerfile 实测](audits/2026-11-13/generated-docker.md)：修复 B3 镜像默认映射端口不可达、状态目录未接入卷的问题。商品后端 6/6 冻结留出与 IANA 八页本地搜索 21/21 HTTP 检查，在实际生成的镜像、断网只读根且不挂载原工作区时通过；受控账本在同卷替换容器后保留。IANA 未捕获链接继续阻断严格发布，尚不证明完整业务持久化。
-
-2026-11-13 [hreflang 机制实测](audits/2026-11-13/seo-hreflang.md)：完整地址匹配不再丢弃查询与来源差异，语言检查限定 Google 标记形式，`x-default` 改为不扣分建议；Mozilla 冻结重放 82→84，Rust/Python 对照不变。该轮采用 SEO 评分口径 **8**、测量口径 **6**、GEO 方法 **5**，64 条规则；代码表成员、目标等价和双向关系未验证。
-
-2026-11-13 [响应多字段联合验收](audits/2026-11-13/qa-response-fields.md)：单次响应支持 1–20 项 JSON 标量断言，兼容原对象写法且不重发请求。冻结商品数据与本地受控故障六场景通过，覆盖单字段漏检对照、总数错误/缺失、页面错误及恢复；接口不符仍标记未完成，不自动当成产品缺陷。
-
-同轮下游复核发现站点评估会把“接口未核实但零可提单”的 QA 标成就绪，已复用 CI 完整性判断修正。已有六份实际运行记录只读复算后，错误/缺失总数保持待核实，正常/修复记录保持就绪；旧摘要证据不足则保留未知并要求复测。报告与缺陷单引用改用真实运行目录，六案共 12 个证据入口全部可解析。
+| 能力 | 真实案例 | 现在的结果 | 仍未知 |
+| --- | --- | --- | --- |
+| 站点重建与独立交付 | quotes.toscrape.com（含无限滚动页与分页接口） | 侦察按站点自己的地址写法访问，不再因补斜杠跳转丢页（此前 51 个发现页丢 45 个）；6 个发现页克隆 5 个，4/5 页三视口 100%；原站自己 404 的字体不再算克隆缺口 | 无限滚动页如实标为未测量；strict 离线导出仍因外链与未镜像链接阻断 |
+| 后端补写入口 | 同上，`GET /api/quotes?page=N` | 带查询的 GET 接口默认不采集，但契约会报出被拦下的请求数与放行办法；按 `read-data-plan.json` 放行后为 B1：1 个端点、参数与响应字段齐全 | 鉴权、4xx/5xx 形状、写入行为 |
+| SEO/GEO 诊断 | nodejs.org、wordpress.org、runoob、sqlite.org、知乎等 7 站 | 选页按页面类型轮流、入口必查；robots.txt 按 RFC 9309 判断 Googlebot 与回答引擎能否抓取；别名地址与抽样孤儿页不再误报。评分口径 14、测量 9、GEO 方法 9，共 66 条规则 | sitemap 触发预算时不判断整站；被拒只说明 robots 规则，不证明实际抓取或引用 |
+| 前后端缺陷检测 | the-internet 12 页 × 2 视口（含刻意植入的缺陷） | 404 图片与站点自身脚本异常进入提单并带状态码/出错位置；超过 10 秒的请求单独列出；401 入口不再算坏链；同一路由的多页发现保留每个地址 | 认证、权限、状态机与业务规则仍需授权旅程和声明检查点 |
 
 ## 现在能跑什么
 
@@ -225,14 +68,10 @@ pnpm run audit             # core / console / MCP 三套依赖审计
 pnpm check                 # 本地总门禁
 ```
 
-2026-11-04 Hosted Node 22 两分片合计：全量 **3,014 / 3,018 通过，0 失败，4 跳过**。
-`lint` 711 文件、文档 698 个目标 / 140 个文件、冻结验收 14 个文件均通过。
-验收基准 18/18、13 个已知 BUG 全检出且 13/13 定位到注入源码；QA 基准 21/21、0 误报。
-Console 最大生产 chunk 为 477.84 kB，无超过 500 kB 的警告；三套官方 registry 审计均无已知漏洞。
-Node 22 的权威结果由 Hosted CI 的两份真实分片共同组成；2026-11-05 本机完整
-`pnpm check` 通过，快速集为 **1,210 / 1,210**，lint 718 文件，文档 701 个目标 /
-141 个文件，D7 真实浏览器验收 `accepted:true`。新增安装测试后仍以精确提交的
-Hosted CI 结果为最终依据。
+2026-11-17 Hosted Node 22（提交 `2c178cfc`）8 个作业全部通过；全量两分片合计 **3,389 / 3,393 通过，0 失败，4 跳过**。
+同日本机快速集 **1,395 / 1,395**，`lint` 775 文件，冻结验收 14 个文件未动，控制台与 MCP 插件产物均为最新。
+QA 固定基准当日重跑：21 个缺陷检出 21 个、3 个干净对照 0 误报。验收基准 18/18、13 个已知 BUG 全检出并定位到注入源码（2026-11-04 结果，验收子系统此后未改动）。
+以精确提交的 Hosted CI 结果为最终依据；本机结果只说明改动没有破坏快速集。
 
 ## 已知边界（不藏）
 
@@ -264,171 +103,8 @@ Hosted CI 结果为最终依据。
 | 待办与长期维护 | [docs/ROADMAP.md](ROADMAP.md) |
 | 审计与实施记录 | [docs/audits/README.md](audits/README.md)（证据已外部归档） |
 
-## 2026-11-03 审查修复收口
-
-- D7 真实 UI 全链路通过：采集、来源归属、候选、已知 BUG、两项人工成员、部分修复禁关、
-  完全修复后明确关闭、Markdown 下载；最终结果 `accepted:true`，普通控制台错误为 0。
-  同源验收响应在页面 `fetch` 时保留 canonical 字节，不再依赖导航后仍能通过 CDP 回读。
-- 取消整站克隆会级联取消仍在运行的页面 forge；`/px/` 只允许有限同源跳转并剥离 Cookie；
-  克隆渲染资产按目录与 MIME 开放只读 CORS。
-- 恢复 MCP 干净安装、插件产物检查、Windows `pnpm` 参数白名单、原子写文件与 POSIX 目录
-  `fsync`、Console WebGL 星图拆包，并把依赖审计接进总门禁与 CI。
-- 开源治理补齐 MIT、SECURITY、CONTRIBUTING、CHANGELOG、Dependabot，pnpm 固定到
-  `11.28.10`。当前结论仍是“可认真试用和内部验收”，不是“任意站点开箱即成熟产品”。
-
-## 2026-11-05 一键安装与 AI 接入收口
-
-- 新增 `heimdall setup`：按需检查 Node/pnpm、安装三套缺失依赖、Chromium、构建控制台和
-  MCP、复用或启动 `:8900` 单端口引擎、打开 UI，并配置检测到的 Claude Code / Claude
-  Desktop / Codex。
-- `clone-heimdall.cmd` 已改为真正的首次安装器 + 启动器。双击后打开
-  `http://127.0.0.1:8900`，不再依赖 `:5173`；重复双击只复用已就绪部分。
-- `doctor` 扩充为 13 项，增加依赖、控制台、MCP 和客户端检查；`doctor --fix` 与
-  `setup --no-connect --no-open` 共用安全修复实现。
-- `connect` 的自测现在使用与实际写入配置完全相同的 `HEIMDALL_API`；dry-run 不启动
-  MCP，已有配置也会先备份再改，失败仍回滚。
-- 本机实测识别到 Claude Code 插件 `0.2.2`、Claude Desktop 与 Codex；三者均通过
-  `doctor`，完整 MCP 客户端各拉起 18 个工具。
-- Hosted 精确提交 `1dff01cb14d3878f102fc964485b0b8eaa05bf76`：
-  [CI `42016376206`](https://github.com/kael-odin/heimdall/actions/runs/42016376206)
-  8 / 8 job 成功，Docs `42016376116` 成功。
-
-## 2026-10-30 仓库瘦身
-
-- **文档**：450 份 / 558MB → 88 份 / 4.8MB。逐日审计报告与 536MB 证据移出工作树，索引见 [docs/audits/README.md](audits/README.md)，原件在外部归档与 git 历史。
-- **测试**：默认 `pnpm test` 改为快速集（142 个文件 / 1,140 条 / 约 4–5 分钟）；`pnpm test:full` 保留全量；`pnpm test:acceptance` 只跑验收。
-- **工程**：新增 `pnpm check` 一键门禁；根目录空锁文件删除并忽略；Node 固定 22（Docker 同步）；`graphify-out/`、`core/spikes/` 不再出现在 `git status`。
-
-## 2026-10-30 修复包：候选侧数值
-
-- 修复包的每个区域新增 `element.cand`（候选元素矩形 + 计算样式）、`element.styleDiff`（`prop / ref / cand / delta`）与 `element.boxDiff`；区域还会补扫 `element.diffs`，把字号、颜色这类落在更小子元素上的差异带出来。
-- `packet.txt` 打印「候选样式 / 样式差」，例如 `fontSize 参考 52px / 候选 46px（−6）`；匹配依据与置信度写在 `match` 里，匹配不到时仍只给参考值，不猜。
-- F1 夹具验证：字号、背景色、间距三类注入缺陷都能在修复包里给出候选值与带符号差值。
-
-## 2026-10-31 A-3：Claude Code 插件闭环
-
-- Claude Code 插件 `plugin:heimdall:heimdall` 已安装并连通；当前能力注册表有 18 个工具；本阶段新增 QA CI、SEO 审计、SEO 矩阵、站点变更监控和站点评估。
-- 本会话用 MCP 工具完成 F1 重建：6/6 分段 `pass-candidate`，整页 375 99.89% / 768 99.91% / 1440 100%，正式门禁 `passed silver`（验收视觉 3/3、结构 3/3、健康 12/12）。
-- 交付包：`agent/deliver/home-20261030T173510Z-cbc82f/`（状态 passed）。
-- Claude Desktop 界面 `heimdall_doctor` 9/9 通过（2026-10-31，操作者贴回结果）；配置与 stdio 也已验证。
-
-## 2026-11-04 MCP 扩展与 QA CI
-
-- `heimdall connect` 新增 Codex TOML 目标；Claude Desktop 的检测不再要求配置文件预先存在。
-- MCP 新增 `heimdall_seo_audit`、`heimdall_seo_matrix`、`heimdall_site_watch`，并支持读取 SEO、监控和矩阵证据资源。
-- 新增 `heimdall qa ci`：保留人工 QA 报告，同时输出机器可读门禁文件、GitHub Actions 注解和步骤摘要。
-- 新增可复制的 GitHub Actions QA 模板和 Claude Code / Codex 标准工作流文档。
-
-## 2026-11-12 公开案例摘要
-
-- 新增只读 `heimdall_public_case_summary`，CLI、MCP、HTTP 共用同一能力定义。
-- 它只读 `docs/cases/<case>/manifest.json` 和三份脱敏证据摘要，返回页面/视口覆盖、QA 门禁、基线回归、SEO 结果、已证明能力、未覆盖范围和一致性问题。
-- Xspark 公开案例已加入 MCP 回归：5 个页面、10 次页面/视口检查、QA 门禁 `passed`、0 条可提单发现、SEO `90.8 / A`。
-- 这仍是单个公开案例摘要，不代表任意站点的通用准确率；原始 findings、HAR、会话和 Token 不进入工具输出。
-
-## 2026-11-11 GEO 行动计划
-
-- SEO JSON 和 HTML 报告继续保留原有 GEO 分数与 `recommendations` 兼容字段，同时新增 `geo.actionPlan[]`。
-- 每项 GEO 待办带优先级、严重度、影响页数、检查权重、脱敏证据、预计改动面和固定复测方式，Agent 摘要会显示前三项。
-- 已用仓库内 Xspark 官网脱敏 SEO 证据做离线回归；这不是重新访问官网，也不改变 Xspark 原历史报告和检测器决策。
-
-2026-11-12 修正 [GEO 证据完整性](audits/2026-11-12/geo-evidence-integrity.md)：GEO v3 排除失败页的内容整改，仅用首次导航响应核实初始 HTML，按适用检查权重区分完整、部分与不可用；站点评估不再把缺失或旧口径 GEO 判为就绪。三个公开站点、五页真实审计均保留了引用维度的未知项；本轮原始证据全部外置，旧报告保留且须重新审计。
-
-随后升级到 GEO v4：Google 页面级索引与摘要限制和 canonical 分开核实，新增 `nosnippet` / `max-snippet:0` 证据并保持爬虫作用域。SEO 评分与采集口径均为 5，已有基线与趋势按版本隔离；缺少新字段的旧报告继续保留未知。三站五页真实复测、同批前后对照及本地故障注入通过，分数变化只代表方法调整；真实检索和模型引用效果仍未验证。详见同一报告的 v4 章节。
-
-## 2026-11-11 B1 契约增强
-
-2026-11-12 根据真实分页留出失败，补齐 `probe contract` 与 `probe adapter` 的公开只读查询许可：复用 `read-data-plan.json`，通过 `--include-readonly-data` 显式启用。商品和作品两组原件在实际 CLI 中由 B0 / 无法生成变为 B1 / 可生成，但各自留出仍失败，未宣称分页业务已实现。来源混杂、无效计划和带认证的公开候选继续拒绝，详见[真实 API 报告](audits/2026-11-12/backend-public-api.md)。
-
-随后以三次训练和完整脱敏商品快照补写一个站点专用读取实现：相同六个留出上，观察回放为 0/6，补写后共享 B2 与独立逐值比较均为 6/6；Windows 和无外联 Linux 包独立运行通过。分页错位副本揭示结构检查边界，现已用显式 GET 查询响应断言贯通实际 QA CLI：真实数据加受控页面共 9 次调用，健康/修复通过，后端错位以未完成阻断，前端错位按实际损失触发门禁。每次只有一个后端 GET，报告不记录查询值；缺少 `loss` 的发现仍按既有政策降级。它仍只是公开读取案例，后端就绪保持人工审查；下一步接入更完整的交付旅程和其他真实业务。
-
-- 显式使用 `--include-api-har` 或 `--include-api-bodies` 时，清洗 HAR 会为 API 请求保留请求体 Schema 和鉴权形态摘要；默认模式仍不扩大隐私范围。
-- `api-contract.json` 与 `health.apiContract` 现在能告诉 AI 哪些端点观察到请求 Schema、出现过哪类鉴权，以及哪些结论仍未知。
-- 请求值、认证值、响应示例、刷新规则、权限、状态机和真实副作用仍不会进入契约；当前仍是观察型 B1，不是后端替代。
-
-## 2026-11-11 B2 最小验证环
-
-- `heimdall probe adapter --site S --include-api-bodies` 会按端点做确定性训练/留出拆分：样本数至少 3 的端点保留至少 1 条留出样本，重复请求不算独立样本。
-- 观察回放适配器只从训练集生成；适配器目录仍只含 `manifest.json` 和 `index.mjs`，验证结果写在上级的 `adapter-report.json`，不会破坏可部署适配器的两文件约束。
-- `adapter-report.json` 对留出请求核对状态码、MIME、脱敏 JSON 形状和训练集中稳定字段，并单列未观察路径、未覆盖参数、样本不足和留出集为空。通过阈值为留出等价度至少 90%；没有留出样本时是 `not-validated`，不是通过。
-- 该环只证明观察数据上的有限泛化，不证明认证、权限、状态机、业务规则、持久化或真实副作用。Xspark 试点目前只有脱敏 QA 聚合证据，没有可作为 API 留出样本的公开 HAR，因此不把 Xspark 的 38/71、2/4 统计硬塞进 B2 API 结论。
-
-## 2026-11-11 站点评估包
-
-- 新增只读 `heimdall_site_assessment`：一次返回镜像页数、多视口验证、SEO/GEO 摘要、公开 API 契约、适配器留出验证、可选 QA 最近运行、证据分类和下一步。
-- 它只读取清洗后的公开报告与 manifest，不读取原始 HAR、登录档、操作计划或适配器源码；`verified`、`observed`、`inferred`、`unknown` 分开输出。
-- 评估结果新增 `deliveryPlan`：按页面/资产、视觉验证、SEO/GEO、API 契约、B2 适配器、QA 检查点和认证/权限/状态未知项分组，给出 `capture`、`ai_review_with_open_actions`、`human_review` 或 `ready` 阶段；动作和复测条件都带安全属性，不把建议动作冒充已执行。
-- 该能力是 AI 的导航层，不替代克隆、SEO、QA 或后端实现；没有镜像时总体状态仍是 `needs_capture`，适配器通过也只表示观察样本的有限验证。
-- 修正站点评估的总体状态：`overall` 现在跟随 `deliveryPlan.decision.stage`，区分 `needs_capture`、`needs_human_review`、`ready_for_ai_review` 和 `ready`；新增 `readiness` 摘要，按 clone/SEO/GEO/backend/QA 给出状态、证据和下一步，避免“有一页镜像就看起来已经准备好”的误导。
-
-## 2026-11-12 后端补全任务包
-
-- `deliveryPlan.backendCompletion` 现在把 B1/B2 之间的下一步压成一个只读任务包：已观察端点、响应形状证据、认证/权限/状态/副作用未知项、需要人工授权的业务旅程、建议生成的本地文件、测试数据和验证命令。
-- 端点和响应形状只来自清洗后的 `api-contract.json`；适配器留出验证通过时只标记回放证据，仍不声称真实后端等价。
-- `inferred` 是 AI 可以据此起草的内容，`invented` 单独计数且当前为空；没有观察型契约时任务包明确为 `blocked_on_observation`，不会自动发明业务 API。
-- MCP 提示词已要求 AI 同时读取 `deliveryPlan.backendCompletion`，继续沿用 `requiresHumanApproval` 和确定性复测边界；本轮没有新增独立 MCP 工具。
-
-## 2026-11-12 适配器缺口账本
-
-- 生成的观察回放适配器现在携带脱敏路由元数据；它能区分已声明路由、未覆盖查询参数和未观察查询变体，但不会保存查询值或请求体。
-- 运行包含适配器的包时，未声明请求会按 `method + pathname + query parameter names` 聚合写入包外 `HEIMDALL_RUNTIME_DATA_DIR/adapter-gap-ledger.json`；重复请求只增加 `count`。
-- `/__heimdall/adapter-gaps` 返回账本，`/__heimdall/health` 返回摘要；账本会给出最近似已知路由，并把缺响应体、未验证写入、认证/权限未知保留为未决项。
-- `adapter-report.json.gapLedger` 记录训练/留出阶段的离线缺口；`heimdall_site_assessment` 读取它或同级 `adapter-gap-ledger.json`，把缺口变成 `api-adapter-gap-ledger` 待办。它仍不证明真实后端业务等价。
-
-## 2026-11-12 B3 最小服务脚手架
-
-- 新增 CLI-only 命令 heimdall backend scaffold <siteId> [--out D] [--force]；它不进入能力注册表，因此 MCP 工具仍保持 18 个。
-- 生成物包括 package.json、server.mjs、checks.mjs、脱敏 api-contract.json、state-rules.json、Dockerfile 和人话 README；有合法 B2 适配器时只复制 runtime-adapter/manifest.json 与 index.mjs。
-- 生成服务提供 GET /__heimdall/health、GET /__heimdall/contract 和 GET /__heimdall/adapter-gaps。没有适配器的已观察路由返回 501，避免把空壳误报成完成；适配器仍只是观察样本回放。
-- `checks.mjs` 不再只看服务能否启动：会逐条检查观察路由覆盖、已观察状态码、MIME 和有限 JSON 字段结构，并读取运行时缺口账本；结果落盘为脚手架目录内的脱敏 `backend-check.json`。
-- `backend-check.json` 的失败项现在附带 `repairTask`，并汇总为 `repairTasks`；任务区分路由缺失、响应契约、查询参数缺口和写入验证，不携带请求值。
-- `heimdall_site_assessment` 会读取 `backend-check.json` 的安全摘要，把未运行、失败、未完成和通过分开返回，并把脱敏修复任务交给 `deliveryPlan.backendCompletion.repairTasks`；这仍不证明认证、权限、状态机或真实副作用。
-- [公开 API 实测](audits/2026-11-12/backend-public-api.md)修复了必填 JSON 字段被小写化的误报，以及 `number` 放过非数值的漏报；健康→本地注入两类缺陷→恢复复验已跑通。原工作区移开时独立包仍通过检查，但一个接口的一次观察没有留出验证，后端业务等价仍未证明；旧包需要在新目录重新生成并迁移定制代码。
-- 同轮远端 CI 暴露显示读取的两处原子发布竞态；已在共享读取器保留同次请求固定版本，Linux 35 项回归、双平台独立进程压力和真实控制台流程通过。原地篡改、托管记录与固定来源仍拒绝不一致事实，详见同一实测记录的“后续 CI 复验”。
-- 后续用 DummyJSON 30 条商品和芝加哥艺术博物馆 12 条作品复测，修复可空、混合类型的契约丢失与健康响应误报；两个独立包通过，三类本地类型缺陷均检出。检查支持有限组合 schema，超深或分支超限拒绝生成；每接口只有一次响应，留出仍为 `not-validated`，详见同一实测记录的“后续真实接口”。
-- state-rules.json 的认证、权限、状态机、持久化和副作用规则默认留空，invented 数量为 0；AI 或开发者必须在授权旅程后补规则，再用 npm run check 和既有验证套件复测。
-- `heimdall_site_assessment` 现在会识别默认 `backend-scaffold` 是否已完整生成，并把缺失或半成品转成一个带人工确认边界的下一步动作，避免 AI 只看到抽象的建议文件。
-- B3 脚手架现在同时落盘 `backend-task.json`，把脱敏 observed 端点、未知边界、修复护栏和确定性复测命令交给 AI；`site-assessment` 暴露 `api.scaffold.aiTask` 与 `deliveryPlan.backendCompletion.scaffold.aiTask`，旧脚手架仍保持兼容。
-
-## 2026-11-12 QA 实战指标总线
-
-- 新增只读能力 `heimdall_qa_metrics`，CLI 别名为 `heimdall qa metrics`；它可读取脱敏聚合 JSON、单个 `run.json` 或 QA 工作区运行摘要。
-- 结果统一给出复核报警、误报占比、经典 FPR 可用性、定向 oracle 漏报率、运行时长 p50/p95、失败分类和覆盖量；百分比从分子分母重算，不信任输入里的旧百分比。
-- 定向 oracle 现在同时按 `family` 输出混淆矩阵和漏报率，AI 可以区分接口、权限、表单、安全或业务规则哪一类在漏报；缺失、`unknown`、`unclassified` 仍不能进入扩展决策。
-- 经典 FPR 只有在正常样本穷举且有 TN 时才计算；没有这个条件就明确显示不可计算。Xspark 现有证据仍为误报占已复核报警 `38/71 = 53.52%`，定向漏报 `2/4 = 50%`，不是全站 FPR 或全站漏报率。
-- `detectorExpansion` 复用冻结的保守决策规则，并自动暴露给 CLI、MCP 和 HTTP；当前 Xspark 离线重算仍是 `blocked`，下一步是补完整证据、压已有规则误报和增加业务检查点。
-- `qa_metrics` 的定向 oracle 不再写死 Xspark 两类：只要样本声明了非空领域名，就可用于接口、权限、表单、安全或其他业务流程；通用检测器仍只在重复跨项目、完整测量和低误报证据下进入 `consider`。
-- `heimdall_site_assessment` 会复用同一个指标内核，从匹配站点的脱敏 `run.json` 汇总 QA 覆盖、运行时长、失败分类和检测器决策；缺少报警标签或定向 oracle 时仍明确显示不可计算并保持 `collect-more-evidence`，不会改变既有 readiness 阶段。
-- 2026-11-15 `qa_metrics.followUp` 与 `site-assessment.deliveryPlan.items` 共用受白名单限制的 `qa-metrics-decision`：补证据、修已有检测器、增加业务检查点、人工评估通用检测器或保持观察分别给出下一步与复测条件。复测要求完整证据，不能用切换决策名称清除误报或领域漏报；不自动修改检测器。普通运行摘要不含人工 oracle，仍需单独提供已复核的脱敏聚合。
-- 2026-11-15 `site-assessment.deliveryPlan.seoGeoTask` 给 AI 提供脱敏的 SEO/GEO 优化任务包：保留当前评分/测量口径、采集范围、observed 行动项、事实核实护栏和复测门禁；unknown、stale、partial、unavailable 不会被包装成通过，分数也不会被解释为排名或模型引用成功。
-- 2026-11-15 `site-assessment.deliveryPlan.qaTask` 给 AI 提供前后端缺陷检测任务包：绑定匹配站点的 QA 完整性、脱敏 finding、人工 verdict、前端页面范围和后端契约/适配器范围；零可提单问题、视觉通过或页面无报错都不会被包装成零 bug 或后端等价。
-- 2026-11-15 `site-assessment.deliveryPlan.cloneTask` 给 AI 提供克隆与独立交付任务包：绑定页面/镜像覆盖、多视口还原度、strict 离线导出、动态/二进制缺口和 Docker network none 部署核验；视觉分数和 strict 通过都不会被包装成功能或后端等价。
-
-## 2026-10-31 产品打磨
-
-- `rebuild init` 不再固定抢 5199：不传 `--port` 时自动找空闲端口；显式传了而端口被占用则直接报错，不偷偷换。
-- `compare` 的摘要第一屏直接给「首要差异」，例如 `fontSize 参考 52px / 候选 46px（-6）`，代理不必先翻修复包全文。
-- AI 活动页新增「最近一次修复包」：显示最近一次**有差异**的区域与样式差；最新一次是干净收尾时，会同时标出「最新一次无差异」。
-- `styleDiff` 兼容旧参考索引：缺逐边值时从 `padding/margin/border/gap` 简写推导，避免把「没记录」误报成 0。
-
-## 2026-11-01 无参照物检测：QA 从“跑不通”扩到“跑得通但不对”
-
-- `qa run` 默认在每个页面跑 23 个页面内检测器，分六类：无障碍（`alt`、可访问名、表单标签、重复 `id`、标题层级、`lang`、`iframe title`、`tabindex`）、布局（文字裁切、图片拉伸、点击目标过小）、内容（占位/调试文案、模板变量、乱码、无效值）、安全（混合内容、`_blank` 缺 `noopener`、http 表单、疑似密钥）、性能（LCP、CLS、过大图片）、可用性（白屏）。发现走同一套指纹、证据门槛、裁决记忆与 `bugs.md`。
-- `qa run --explore` 显式开启有界交互探索：每页最多 6 个控件、60 秒预算，找“点击无反应 / 点出异常 / 点出 404”；跳过破坏性文案、表单提交、外链、下载，HTTP 请求按站点策略处理。方法和文案过滤不能保证操作没有副作用。默认关闭，因为它会改变页面状态。
-- `qa baseline` 把一次运行登记为基线，之后每次运行对同站同页同视口截图做比对，低于阈值生成 `regression` 发现（附基线截图、本次截图、差异图）；`--no-baseline` 关闭。
-- 固定注入基准 `node core/scripts/benchmark-qa.mjs`：21 个缺陷案例 + 3 个健康案例，最近一次 21/21 检出、0 误报，单页静态检测约 2.1 秒、含交互段约 11 秒。夹具与口径见[基准说明](competition/qa-detection-benchmark.md)。
-- Xspark 真实试点已把失败分类、测量完整性和检测器扩展判断机器化：历史 20 次运行仍为冻结分母，补充复测存在不完整证据，当前先补证据、修现有规则和增加业务检查点，通用检测器扩展暂时阻断。详见 [试点报告](audits/2026-11-05/xspark-pilot.md)。
-- 2026-11-12 Xspark 授权真实复测完成五入口、10 次完整运行：新基线后的官网/仪表板没有稳定可提单回归，两套后台重复出现已有无障碍名称问题；精确单页仍有受限出口阻断，D13 不计为通过。详见 [真实复测记录](audits/2026-11-12/xspark-live-recheck.md)。
-- 2026-11-12 IANA 公开站点试点：真实 Chromium 完成 8 页、24 视口视觉验证；原候选包的严格离线交付仍被 2 个动态第三方脚本、2 个未解析资源、223 个未捕获链接引用和 8 页未执行浏览器离线探针阻断。详见 [试点记录](audits/2026-11-12/iana-public-pilot.md)。
-- 2026-11-12 修正 strict 诊断流程后已在 IANA 副本复测：8/8 页浏览器探针执行、0 未测，补抓 jQuery 后 7 页通过、首页仍受 Google 搜索外联阻断；未捕获链接与跨域别名跳转门禁继续保留，严格离线交付仍未通过。
-- 2026-11-13 在同批捕获的另一副本中补写了范围明确的 8 页本地全文搜索：新候选离线浏览器 8/8、声明旅程 7/7、接口检查 12/12 通过，搜索适配器 1/1 路由已执行。导出现在可在未捕获链接存在时继续诊断已知旅程；248 个缺失链接仍阻断严格发布，旧正式包保留。Google 排名与全站覆盖未验证，修改后交互镜像不沿用旧视觉结论。
-- 本地搜索包随后完成 Windows/Linux 各 21 项 HTTP 检查，Linux 断外联；三视口实际 QA CI 21/21 通过。两轮布局迭代使像素相似度从 90.954%/92.331%/93.402% 提升到 99.842%/99.909%/99.946%，高度差清零；快速裁判仍为 near/bronze，未达 silver 或正式通过。源码 `c5059eaa` 的完整 CI 8/8 成功，独立运行、视觉及原采集哈希证据见同一试点记录。
-- 每次完成 `live` 导出后会写脱敏 `live-export.json`，站点评估通过 `clone.delivery` 和 `readiness.delivery` 暴露最近结果、失败候选包引用及复测动作，视觉通过时也能看到离线失败。`last_check_passed` 只指上次完成的导出，输入改变后须重跑；旧记录缺失、非严格发布与无效记录均不推断严格通过。
-- IANA 试点复盘后修复了健康扫描对 `&quot;` / `&amp;` 等 HTML 实体编码 CSS 引用的归一化；用原候选包离线复扫，8 页保持不变，`image001.png` 假缺口消失，未解析资源降为 1 条。该原候选包的 Google CSE 运行时脚本和未捕获页面仍阻断 strict，历史试点报告保留原始证据，不把这次复扫写成“已通过”。
-- 验收子系统未改动：`FROZEN-VERIFIER.sha256` 的 14 个文件字节不变。
-- 原 IANA 试点的 1,213 个文件、约 406 MiB 已迁到仓库外归档，逐文件哈希一致；同一实测报告保留历史位置和新的证据路径，工作树不再保存这批运行产物。
-
 ## 历史归档
 
-- 逐日审计报告与证据：`docs/audits/README.md` 索引，原始文件在 `D:/Github-Star/heimdall-evidence-archive/2026-10-30/` 与 git 历史。
-- 截至 2026-10-13 的开发记录、旧路线图、旧使用说明：`docs/archive/`。
+- 2026-11-15 及以前按日期追加的状态记录：[archive/STATUS-log-through-2026-11-15.md](archive/STATUS-log-through-2026-11-15.md)。
+- 逐日审计报告与证据：[audits/README.md](audits/README.md) 索引；运行产物在仓库外 `D:/Github-Star/heimdall-evidence-archive/<日期>/`，更早的原件见 git 历史。
+- 截至 2026-10-13 的开发记录、旧路线图、旧使用说明：[archive/](archive/README.md)。

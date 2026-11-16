@@ -293,6 +293,6 @@ try {
     await stop(chromiumProcess); await stop(engine); await close(target);
     save('engine.log', engineLog); save('chromium.log', chromiumLog); save('target-requests.json', targetRequests); save('browser-requests.json', browserRequests); save('layouts.json', layouts); save('browser-errors.json', { pageErrors, httpErrors, consoleMessages });
     const profilePath = resolve(profile), prefix = resolve(tmpdir()) + (process.platform === 'win32' ? '\\' : '/');
-    assert.ok(profilePath.startsWith(prefix) && profilePath.includes('heimdall-browser-candidates-cdp-')); fs.rmSync(profilePath, { recursive: true, force: true }); if (failed) process.exitCode = 1;
+    assert.ok(profilePath.startsWith(prefix) && profilePath.includes('heimdall-browser-candidates-cdp-')); fs.rmSync(profilePath, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); if (failed) process.exitCode = 1;
   }
 }

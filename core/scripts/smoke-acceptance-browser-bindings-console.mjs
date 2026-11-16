@@ -339,7 +339,7 @@ try {
     save('layouts.json', layouts); save('browser-errors.json', { pageErrors: errors, expectedResourceErrors });
     const resolvedProfile = resolve(profile), prefix = resolve(tmpdir()) + (process.platform === 'win32' ? '\\' : '/');
     assert.ok(resolvedProfile.startsWith(prefix) && resolvedProfile.includes('heimdall-browser-bindings-cdp-'));
-    fs.rmSync(resolvedProfile, { recursive: true, force: true });
+    fs.rmSync(resolvedProfile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
     if (failed) process.exitCode = 1;
   }
 }

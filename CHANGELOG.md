@@ -6,6 +6,13 @@ All notable changes to Heimdall are recorded here.
 
 ### Added
 
+- SEO audits now evaluate `robots.txt` (RFC 9309): pages Googlebot may not crawl are
+  reported, and GEO checks whether answer-engine crawlers can fetch each page. Training-only
+  crawlers are listed as evidence and not scored. Score method 14, measurement 9, GEO method 9.
+- QA reports requests that take ten seconds or never return, and keeps every affected page
+  when findings of one route template are merged.
+- `probe contract` reports how many same-origin GET API requests were withheld for lack of an
+  approval, so an empty contract no longer reads as "this site has no API".
 - `heimdall connect codex` now writes a bounded `[mcp_servers.heimdall]` TOML
   section after backing up the Codex config.
 - MCP now exposes deterministic SEO audit, SEO comparison matrix and site-watch
@@ -21,6 +28,14 @@ All notable changes to Heimdall are recorded here.
 
 ### Fixed
 
+- Recon, clone, SEO audit and site watch visit the address a site actually links or lists.
+  Visiting slash-stripped keys caused redirects that dropped 45 of 51 pages on a real site.
+- SEO page sampling rotates over page types instead of taking the first N sitemap entries;
+  alias addresses (`/` and `/index.html`) are one canonical finding, and orphan pages are only
+  judged when the whole sitemap was audited.
+- QA files a visible image the server answers with 404/410 and an uncaught exception from the
+  site's own script; links answering 401/403/429 are no longer broken links.
+- CSS assets the source itself answers 404/410 for are no longer counted as clone gaps.
 - Source and offline read-only data comparison now reads the observed CDP
   response directly instead of allowing Playwright to refetch an empty body.
   Missing provenance and mismatched browser/protocol observations block strict
