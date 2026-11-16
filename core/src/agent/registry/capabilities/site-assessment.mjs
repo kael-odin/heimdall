@@ -2183,7 +2183,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   if (api.contract.status === 'missing' || api.contract.status === 'invalid' || api.contract.status === 'no_observed_api') {
     const noObservedApi = api.contract.status === 'no_observed_api';
     const action = noObservedApi
-      ? plannedAction('cli:shell', { command: `heimdall journey start --site ${siteId}` }, '契约已存在但没有业务 API 证据；先由人在可见浏览器中录制获授权旅程，再重新生成契约。')
+      ? plannedAction('heimdall_journey', { action: 'start', siteId }, '契约已存在但没有业务 API 证据；先由人在可见浏览器中录制获授权旅程，再重新生成契约。')
       : plannedAction('cli:shell', { command: `heimdall probe contract --site ${siteId}` }, '先生成观察型 API 契约草稿', { requiresHumanApproval: false });
     add({
       id: 'api-contract', kind: 'api_contract_gap', basis: 'unknown', status: 'open',

@@ -16,6 +16,7 @@
  *   heimdall://run/{runId}/packet             修复包文本视图
  *   heimdall://run/{runId}/crop/{regionId}/composite.png
  *   heimdall://job/{jobId}                    （由能力层向引擎取）
+ *   heimdall://journey/{siteId}/{journeyId}   脱敏获授权旅程元数据
  */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -28,6 +29,7 @@ import { referenceDir } from './evidence/reference.mjs';
 import { briefDir } from './brief/brief.mjs';
 import { locateRun } from './evidence/compare.mjs';
 import { crop, downscale, readPng, encodePng } from './evidence/image.mjs';
+import { assertJourneyId, journeyRoot } from './journey-store.mjs';
 
 export const RESOURCE_TEMPLATES = Object.freeze([
   { uriTemplate: 'heimdall://sites', name: 'sites', title: '本机站点清单', mimeType: 'application/json' },
@@ -41,6 +43,7 @@ export const RESOURCE_TEMPLATES = Object.freeze([
   { uriTemplate: 'heimdall://run/{runId}/packet', name: 'packet-text', title: '修复包文本视图', mimeType: 'text/plain' },
   { uriTemplate: 'heimdall://run/{runId}/crop/{regionId}/composite.png', name: 'crop', title: '区域裁剪对比图（参考 · 候选 · 差异）', mimeType: 'image/png' },
   { uriTemplate: 'heimdall://job/{jobId}', name: 'job', title: '任务状态', mimeType: 'application/json' },
+  { uriTemplate: 'heimdall://journey/{siteId}/{journeyId}', name: 'journey', title: '脱敏获授权旅程元数据', mimeType: 'application/json' },
 ]);
 
 const SAFE_FILE = (root, file) => {
@@ -113,6 +116,12 @@ export function resolveUri(uri) {
     }
   }
   if (parts[0] === 'job' && JOB_ID.test(parts[1] ?? '') && parts.length === 2) return { kind: 'job', mime: 'application/json', jobId: parts[1] };
+  if (parts[0] === 'journey' && parts.length === 3) {
+    const siteId = assertSiteId(parts[1]);
+    const journeyId = assertJourneyId(parts[2]);
+    return { kind: 'journey', mime: 'application/json', siteId, journeyId,
+      file: SAFE_FILE(DATA_ROOT, join(journeyRoot(siteId), journeyId, 'journey.json')) };
+  }
   throw new CapabilityError('not_found', '不认识的资源地址', { nextActions: [nextAction('heimdall_overview', null, '从总览开始')] });
 }
 

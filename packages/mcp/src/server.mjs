@@ -11,7 +11,7 @@
  * 图片（裁剪对比图、参考截图）以 image content 追加；isError = !ok（附录 A §1.2）。
  */
 import { readFileSync } from 'node:fs';
-import { McpServer, fromJsonSchema } from '@modelcontextprotocol/server';
+import { McpServer, ResourceTemplate, fromJsonSchema } from '@modelcontextprotocol/server';
 import { CAPABILITIES, annotationsOf, toolName } from '../../../core/src/agent/registry/index.mjs';
 import { invoke } from '../../../core/src/agent/registry/invoke.mjs';
 import { validate } from '../../../core/src/agent/json-schema.mjs';
@@ -83,9 +83,8 @@ export function createServer(ctxBase = {}) {
       });
     }
     for (const t of RESOURCE_TEMPLATES) {
-      if (!t.uriTemplate.includes('{')) {
-        server.registerResource(t.name, t.uriTemplate, { title: t.title, mimeType: t.mimeType }, async (uri) => readResource(uri.href ?? String(uri)));
-      }
+      const uri = t.uriTemplate.includes('{') ? new ResourceTemplate(t.uriTemplate, { list: undefined }) : t.uriTemplate;
+      server.registerResource(t.name, uri, { title: t.title, mimeType: t.mimeType }, async (resourceUri) => readResource(resourceUri.href ?? String(resourceUri)));
     }
     for (const p of PROMPTS) {
       server.registerPrompt(p.name, { title: p.title, description: p.description, argsSchema: fromJsonSchema(p.argsSchema, coreValidator) },

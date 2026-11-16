@@ -16,7 +16,7 @@ import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const EXPECTED = [
   'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
-  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'seo_outcomes', 'site_watch', 'site_assessment', 'public_case_summary',
+  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'seo_outcomes', 'site_watch', 'site_assessment', 'public_case_summary', 'journey',
 ];
 
 function tempRoot() {

@@ -22,7 +22,7 @@ const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('../../../core/', import.meta.url));
 const PUBLIC_CASE = join(CORE, '..', 'docs', 'cases', 'xspark', '2026-11-04');
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_qa_metrics', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_seo_outcomes', 'heimdall_site_watch', 'heimdall_site_assessment', 'heimdall_public_case_summary'];
+  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_qa_metrics', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_seo_outcomes', 'heimdall_site_watch', 'heimdall_site_assessment', 'heimdall_public_case_summary', 'heimdall_journey'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -36,6 +36,14 @@ function fixtureRoot() {
   writeFileSync(join(root, 'workspace', 'example.test', 'watch', 'watch.json'), JSON.stringify({ origin: 'https://example.test', summary: { total: 1 } }));
   mkdirSync(join(root, 'workspace', '_matrix', 'a-vs-b'), { recursive: true });
   writeFileSync(join(root, 'workspace', '_matrix', 'a-vs-b', 'matrix.json'), JSON.stringify({ sites: [{ host: 'https://a.test' }] }));
+  const journeyId = 'journey-1794787993231-f8a2e67d';
+  const journeyDir = join(root, 'workspace', 'example.test', 'agent', 'journeys', journeyId);
+  mkdirSync(join(journeyDir, 'steps'), { recursive: true });
+  writeFileSync(join(journeyDir, 'journey.json'), JSON.stringify({ schema: 'heimdall.journey/1', id: journeyId, siteId: 'example.test',
+    origin: 'https://example.test', startedAt: '2026-11-16T00:00:00.000Z', finishedAt: '2026-11-16T00:01:00.000Z', steps: 1,
+    network: { sanitizedEntries: 1, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1 } }));
+  writeFileSync(join(journeyDir, 'steps', '0001.json'), JSON.stringify({ type: 'navigate', path: '/' }));
+  writeFileSync(join(journeyDir, 'network.journey.har'), 'Bearer mcp-secret');
   // 秘密级文件：任何资源读取都不能把它交出去
   writeFileSync(join(page, 'network.har'), '{"log":{"entries":[]}}');
   return root;
@@ -173,8 +181,13 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
 
       const { resources } = await client.listResources();
       assert.ok(resources.some(r => r.uri === 'heimdall://sites'));
+      const { resourceTemplates } = await client.listResourceTemplates();
+      assert.ok(resourceTemplates.some(r => r.uriTemplate === 'heimdall://journey/{siteId}/{journeyId}'));
       const sites = await client.readResource({ uri: 'heimdall://sites' });
       assert.deepEqual(JSON.parse(sites.contents[0].text).sites.map(s => s.siteId), ['example.test']);
+      const journey = await client.readResource({ uri: 'heimdall://journey/example.test/journey-1794787993231-f8a2e67d' });
+      assert.equal(JSON.parse(journey.contents[0].text).id, 'journey-1794787993231-f8a2e67d');
+      assert.doesNotMatch(journey.contents[0].text, /Bearer mcp-secret/);
 
       const seo = await client.callTool({ name: 'heimdall_artifact', arguments: { uri: 'heimdall://site/example.test/seo' } });
       assert.equal(seo.isError, false);

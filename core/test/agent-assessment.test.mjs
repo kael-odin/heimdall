@@ -769,8 +769,8 @@ test('site-assessment does not repeat contract probing after a B0 contract is pe
     const { result } = envelope;
     const apiItem = result.deliveryPlan.items.find(item => item.id === 'api-contract');
     assert.equal(result.api.contract.status, 'no_observed_api');
-    assert.equal(apiItem.action.tool, 'cli:shell');
-    assert.match(apiItem.action.args.command, /heimdall journey start --site example\.test/);
+    assert.equal(apiItem.action.tool, 'heimdall_journey');
+    assert.deepEqual(apiItem.action.args, { action: 'start', siteId: 'example.test' });
     assert.equal(apiItem.action.requiresHumanApproval, true);
     assert.match(apiItem.action.reason, /录制获授权旅程/);
     assert.equal(envelope.nextActions.some(item => item.args?.command?.includes('probe contract')), false);

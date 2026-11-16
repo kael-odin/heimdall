@@ -22,7 +22,6 @@ export const AGENT_COMMANDS = Object.freeze(CAPABILITIES.map(c => c.id));
 export const CLI_ONLY = Object.freeze({
   setup: { usage: 'setup [--registry URL] [--port 8900] [--no-open] [--no-connect] [--connect codex,claude-desktop] [--force-install] [--json]', desc: '按需安装依赖与 Chromium，构建控制台/MCP，启动单端口引擎并连接 AI 客户端' },
   backend: { usage: 'backend scaffold <siteId> [--out D] [--force] [--json] | backend compare <source-check.json> <candidate-check.json>', desc: '生成 B3 后端脚手架，或对照源站与候选后端的脱敏业务规则结果' },
-  journey: { usage: 'journey start <url|siteId> [--site S] [--name NAME] [--allow-insecure-http]', desc: '由人在可见浏览器中录制获授权旅程，保存脱敏步骤和观察型 API 契约' },
   rebuild: { usage: 'rebuild init <url|siteId> [--page P] [--stack html-css|vite-react-ts-tailwind] [--fidelity …] [--gate …] [--dir D] [--force] [--model-class …] | rebuild status [--project .] | rebuild deliver [--project .] [--out D] [--no-mirror]', desc: '生成重建工作区（--force 覆盖脚手架文件，评测用）；查看进度；按 Floor=Mirror 交付' },
   connect: { usage: 'connect <claude-code|claude-desktop|cursor|vscode|codex> [--api URL] [--remove] [--dry-run] [--yes]', desc: '把 Heimdall MCP 写进客户端配置（先备份，再用同一份配置自测）' },
   probe: { usage: 'probe sizes|outline|har|contract|adapter [--site S] [--max N] [--include-readonly-data]', desc: '复现体量、大纲、接口统计；生成观察型契约或本地回放适配器' },
@@ -107,6 +106,19 @@ export function argsFor(id, { flags, positional }) {
       break;
     case 'public_case_summary':
       set('casePath', positional[0] ?? (flags['case-path'] ? String(flags['case-path']) : undefined));
+      break;
+    case 'journey':
+      set('action', positional[0] ?? 'list');
+      if ((positional[0] ?? 'list') === 'start') {
+        const target = positional[1] ?? flags.url ?? flags.site;
+        if (target && /^https?:\/\//i.test(target)) set('url', target); else set('siteId', target ?? flags['site-id']);
+      } else {
+        set('siteId', positional[1] ?? flags['site-id']);
+        set('journeyId', positional[2] ?? flags['journey-id']);
+      }
+      set('name', flags.name); set('limit', num(flags.limit)); set('maxSteps', num(flags['max-steps']));
+      if (flags['no-steps']) a.includeSteps = false;
+      if (flags['allow-insecure-http']) a.allowInsecureHttp = true;
       break;
     case 'qa_findings': {
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
@@ -229,7 +241,11 @@ export async function runAgentCommand(id, argv, { out = (s) => process.stdout.wr
   const noWait = flags['no-wait'] === true || flags.wait === false;
   const timeoutMs = flags.timeout !== undefined ? Math.max(1, Number(flags.timeout)) * 1000 : null;
   const onProgress = json ? (p) => out(JSON.stringify({ kind: 'progress', ...p }) + '\n') : (p) => err(`… ${p.message ?? p.stage}\n`);
-  const ctx = { client: 'cli', onProgress, detachEngine: noWait };
+  const ctx = { client: 'cli', onProgress, detachEngine: noWait,
+    ...(id === 'journey' && args.action === 'start' ? {
+      interactive: true,
+      journeyIO: { stdin: process.stdin, stdout: { write: s => (json ? err(s) : out(s)) }, stderr: { write: err } },
+    } : {}) };
   let env = await invoke(id, args, ctx);
   // 长任务：默认等到结束（--wait），--no-wait 立即返回 jobId；--timeout 到点返回 timeout + jobId（退出码 4）
   if (env.ok && env.jobId && !noWait && cap?.longRunning && !['succeeded', 'failed', 'cancelled'].includes(env.result?.status)) {

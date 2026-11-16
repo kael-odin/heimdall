@@ -22441,7 +22441,8 @@ var FALLBACK_TOOLS = [
   ["seo_outcomes", true],
   ["site_watch", false],
   ["site_assessment", true],
-  ["public_case_summary", true]
+  ["public_case_summary", true],
+  ["journey", false]
 ].map(([id, readOnly]) => ({
   id,
   tool: `heimdall_${id}`,

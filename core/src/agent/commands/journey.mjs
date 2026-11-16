@@ -12,7 +12,7 @@ import { writeAtomicFileSync } from '../../acceptance/atomic-file.mjs';
 import { sanitizeHar } from '../../live/har.mjs';
 import { buildObservedApiContract } from '../../live/contract.mjs';
 import { assertSiteOrigin, readSiteOrigin, siteIdForOrigin } from '../../site-origin.mjs';
-import { parseArgs } from '../cli.mjs';
+import { parseArgs } from '../parse-args.mjs';
 
 const MAX_STEPS = 500;
 const SAFE_STEP_TEXT = /^[^\u0000-\u001f\u007f]{0,160}$/;
@@ -154,7 +154,7 @@ export async function start(value, flags = {}, io = {}) {
     if (answer === 'cancel' || answer === 'q') {
       rmSync(journeyDir, { recursive: true, force: true });
       stderr.write('已取消，未生成旅程契约。\n');
-      return 2;
+      return { status: 'cancelled', siteId: target.siteId, journeyId, exitCode: 2 };
     }
   } finally {
     if (context) await context.close().catch(() => {});
@@ -175,7 +175,13 @@ export async function start(value, flags = {}, io = {}) {
   }
   stdout.write(`旅程已保存：${journeyDir}\n`);
   stdout.write(`观察型契约：${artifacts.contract.summary.status}${contractPath ? `，${contractPath}` : ''}\n`);
-  return 0;
+  return {
+    status: 'succeeded', siteId: target.siteId, journeyId,
+    path: `workspace/${target.siteId}/agent/journeys/${journeyId}`,
+    contractStatus: artifacts.contract.summary.status,
+    ...(contractPath ? { contractPath: `workspace/${target.siteId}/api-contract.json` } : {}),
+    exitCode: 0,
+  };
 }
 
 export async function run(argv) {
@@ -185,6 +191,6 @@ export async function run(argv) {
     process.stdout.write('用法：heimdall journey start <url|siteId> [--site S] [--name NAME] [--allow-insecure-http]\n');
     return sub ? 2 : 0;
   }
-  try { return await start(positional[0] ?? flags.url ?? flags.site, flags); }
+  try { return (await start(positional[0] ?? flags.url ?? flags.site, flags)).exitCode ?? 0; }
   catch (error) { process.stderr.write(`${error.message}\n`); return 3; }
 }

@@ -77,7 +77,7 @@ const FALLBACK_TOOLS = [
   ['overview', true], ['site', true], ['brief', true], ['artifact', true], ['compare', false], ['jobs', true], ['clone', false], ['doctor', true],
   ['qa_status', true], ['qa_run', false], ['qa_findings', true],
   ['qa_ci', false], ['qa_metrics', true],
-  ['seo_audit', false], ['seo_matrix', false], ['seo_outcomes', true], ['site_watch', false], ['site_assessment', true], ['public_case_summary', true],
+  ['seo_audit', false], ['seo_matrix', false], ['seo_outcomes', true], ['site_watch', false], ['site_assessment', true], ['public_case_summary', true], ['journey', false],
 ].map(([id, readOnly]) => ({
   id, tool: `heimdall_${id}`, title: id,
   description: `Heimdall ${id}. The engine is not reachable right now, so the full schema is unavailable; start the engine (heimdall serve) and reconnect.`,

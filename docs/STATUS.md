@@ -6,9 +6,11 @@
 
 面向获授权网站，采集证据、辅助 AI 重建与独立部署，度量还原度，诊断 SEO/GEO，并按充分的需求与接口信息检测前后端缺陷。
 
+2026-11-16 [获授权旅程接入统一能力层]：新增 `heimdall_journey`，统一提供脱敏旅程的 list/read，以及需要人工在可见浏览器完成的 start；CLI start 复用真实 Chromium 录制器，MCP/HTTP 在没有人工输入通道时诚实返回 `waiting_input` 和需人工批准的 CLI 下一步。新增 `heimdall://journey/{siteId}/{journeyId}` 资源模板；原始 HAR、Cookie、Authorization、请求体和响应值继续被秘密路径和脱敏边界拦截。
+
 2026-11-16 [B0 契约动作路由]：已有观察型契约但没有业务 API 证据时，`site-assessment` 不再重复建议 `probe contract`；下一步明确为人在可见浏览器中录制获授权旅程，再重新生成契约。`missing` 或 `invalid` 契约仍先走观察型探针。
 
-2026-11-16 [获授权旅程录制入口]：新增 CLI-only 的 `heimdall journey start <url|siteId>`；它打开可见 Chromium，记录不含输入值的步骤，原始 `network.journey.har` 只留在秘密路径，结束后用统一 HAR 清洗器生成带旅程来源的 B0/B1 契约。没有业务接口时只保留 B0，不覆盖已有有效契约；真实生产认证、权限、写入和状态旅程仍待授权验收。
+2026-11-16 [获授权旅程录制入口]：`heimdall journey start <url|siteId>` 打开可见 Chromium，记录不含输入值的步骤，原始 `network.journey.har` 只留在秘密路径，结束后用统一 HAR 清洗器生成带旅程来源的 B0/B1 契约。没有业务接口时只保留 B0，不覆盖已有有效契约；真实生产认证、权限、写入和状态旅程仍待授权验收。
 
 2026-11-16 [B3 业务规则会话链路]：生成的 `checks.mjs` 现在为每条 `state-rules.json` 规则维护独立内存 Cookie jar，按 Cookie 路径和 Secure 属性发送，处理响应中的 Cookie 轮换及 `Max-Age=0` 删除；步骤可用 `redirect: "manual"` 核对登录或退出的 3xx。受控脚手架已实测登录、读取、轮换、退出、退出后 401 和手动重定向 9 条业务规则，报告不含 Cookie 值。它提高授权旅程的复测能力，仍不代表生产认证、撤销、并发或完整权限模型。
 
