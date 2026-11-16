@@ -47,6 +47,8 @@ function collectFonts(mirrorClone, outFonts) {
     for (const block of readFileSync(cssFile, 'utf8').match(/@font-face\s*\{[^}]*\}/g) ?? []) {
       let ok = true;
       const rewritten = block.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/g, (m, u) => {
+        // about:invalid 是克隆阶段标出的“原站自己就 404”的字体：重建不该声明它，也不算镜像缺文件
+        if (/^about:/i.test(u)) { ok = false; return m; }
         if (/^(?:https?:)?\/\//i.test(u) || u.startsWith('data:')) { if (!u.startsWith('data:')) { missing.push(u); ok = false; } return m; }
         const src = join(dirname(cssFile), u.split(/[?#]/)[0]);
         if (!existsSync(src)) { missing.push(u); ok = false; return m; }

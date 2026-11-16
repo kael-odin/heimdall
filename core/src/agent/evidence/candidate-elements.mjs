@@ -247,3 +247,56 @@ export function styleEvidenceForRegion(regionBox, elements, index, { max = 3, se
 }
 
 export { styleDiffOf, boxDiffOf };
+
+/**
+ * 内容缺口：参考元素自己的文字在候选页的可见文本里找不到，或出现的次数更少。
+ *
+ * 像素区域只能说“这一块不一样”，一个整段缺失会变成一条覆盖整段的 missing-content，
+ * 施工方得从裁剪图里猜少了哪些东西。这里直接给出“少的是哪些参考元素的文字”，每条都能对回元素 ID。
+ * 做法取自 craft-anything 的 text likeness（缺失的标题与文字只作指引、不进分数），口径换成 Heimdall 的元素证据。
+ *
+ * 只报“少”，不报“多”。短文字按子串计数会偏多，所以只会少报、不会误报。
+ * 元素的文字是它自己的文本节点拼起来的，中间可以隔着行内子元素（“Made with ❤ by Zyte”的 p 自己是“Made with by”），
+ * 所以按词依次匹配、词与词之间容许隔一小段，而不是要求整句连续出现。
+ * 标题排最前；其余按“缺的次数 × 文字长度”排，整段正文和成组缺失的条目先于零散的短链接；同分保持页面顺序。
+ */
+export function contentGaps(refElements, candidateText, { max = 12 } = {}) {
+  const haystack = normalizeText(candidateText);
+  const GAP = 40;   // 相邻两个词之间最多隔这么多字符（够放一个行内子元素的文字）
+  const occurrences = (words, limit) => {
+    let count = 0, from = 0;
+    while (count < limit) {
+      const start = haystack.indexOf(words[0], from);
+      if (start < 0) break;
+      let pos = start + words[0].length, found = true;
+      for (let i = 1; i < words.length && found; i += 1) {
+        // 只在紧邻的窗口里找下一个词：常见首词配上缺失的后续词时，不去扫完整个页面
+        const at = haystack.slice(pos, pos + GAP + words[i].length).indexOf(words[i]);
+        if (at < 0) found = false; else pos += at + words[i].length;
+      }
+      if (found) { count += 1; from = pos; } else from = start + 1;
+    }
+    return count;
+  };
+  const groups = new Map();
+  for (const e of refElements ?? []) {
+    const text = normalizeText(e?.text);
+    if (text.length < 2) continue;
+    const group = groups.get(text) ?? { ref: e.ref ?? null, tag: e.sel ?? null, sectionId: e.sectionId ?? null, text: e.text, refCount: 0 };
+    group.refCount += 1;
+    groups.set(text, group);
+  }
+  const missing = [];
+  for (const [text, group] of groups) {
+    const candCount = occurrences(text.split(' '), group.refCount);
+    if (candCount < group.refCount) missing.push({ ...group, candCount });
+  }
+  const heading = (g) => /^h[1-6]$/.test(g.tag ?? '');
+  const weight = (g) => (g.refCount - g.candCount) * Math.min(80, normalizeText(g.text).length);
+  missing.sort((a, b) => heading(b) - heading(a) || weight(b) - weight(a));
+  return {
+    total: missing.reduce((sum, g) => sum + g.refCount - g.candCount, 0),
+    elements: missing.length,
+    missing: missing.slice(0, max),
+  };
+}

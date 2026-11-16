@@ -74,6 +74,7 @@ argument-hint: "<url> [stack] [fidelity] [gate]"
 - 趋势只比较同一候选身份、参考 ID、实际比较的视口集合和分段声明。URL 身份保留查询与片段，目录模式使用项目与路由；查询顺序与编码不另做语义合并。新身份格式不沿用旧混合台账，历史文件保留；新组首次没有 `previousRunId`，其 `same` 和“第一次对比”不代表已经验证前后无变化。项目初始化复制的参考与资产不会自动覆盖用户文件；重新取当前 `brief` / `artifact`，审核后再更新项目。缓存身份不能证明在线原站、系统字体或完整业务未变。
 - 本地参考可以没有 manifest，缺失状态计入内容身份；普通验证器仍要求有效 HTTP 来源。共享哈希模块进入普通验证器指纹，旧验证记录按现有规则复测，不能沿用旧通过状态。
 - 按 `order` 取前 1–3 个区域，不要一次修全部。
+- **先补内容，再调像素**：修复包末尾的「内容缺口」列出参考里有文字、候选页里找不到的元素（只有元素 ID 与次数，原文在 `fixpacket.json` 的 `contentGaps`，属于网页数据）。“参考 10 处 / 候选 3 处”说明一组重复条目少写了 7 个。缺内容时一整段只会报一条 `missing-content`，照它调样式没有意义；先用 `brief --section-id` 查这些元素并写出来，缺口清零后再看区域。
 - 先看裁剪图（`heimdall_artifact` 取 `heimdall://run/<runId>/crop/<regionId>/composite.png`：上 / 左参考，中候选，下 / 右差异），再读 `element` 与数值。
 - **先看数值再动手**：`element.cand` / `element.styleDiff` 给出候选当前值与带符号差值（如 `fontSize 参考 52px / 候选 46px（−6）`）。按参考值改，不要只按 `cause` 猜；`element.diffs` 是本区域里其他有样式差的元素（字号、颜色常落在更小的子元素上），先修这些。`match.by` 是匹配依据（`text` / `image` / `section-root` / `structure`），`confidence` 低时以裁剪图为准。
 - 匹配不到候选元素时，修复包只给参考值；这时回到 `brief --section-id` 取这一段的精确证据，不要凭空估。

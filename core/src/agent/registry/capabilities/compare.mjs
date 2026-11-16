@@ -66,6 +66,7 @@ export default {
       fixpacketUri: `heimdall://run/${p.runId}/fixpacket`, packetUri: `heimdall://run/${p.runId}/packet`,
       packetText: r.text, ...(r.projectRunDir ? { runDir: r.projectRunDir.replace(/\\/g, '/') } : {}),
       elapsedMs: p.elapsedMs, truncated,
+      ...(p.contentGaps ? { contentGaps: p.contentGaps } : {}),
       ...(args.requireGate && p.verdict.status !== 'pass-candidate' ? { gateFailed: true } : {}),
     };
     const scores = p.viewports.map(w => `${w}：${pct(p.perViewport[w].pixelSimilarity)}`).join('，') + (p.skipped?.length ? `（${p.skipped.map(s => s.viewport).join('、')} 下参考里看不到这一段，未计入）` : '');
@@ -73,7 +74,8 @@ export default {
     const lead = leadStyleDiffOf(p.regions);
     const leadText = lead ? `\n首要差异 ${lead.ref ?? lead.region}: ${describeStyleDiff(lead.diffs)}` : '';
     const summary = `${scores}。判定 ${p.verdict.status}${p.verdict.reached ? `（已达 ${p.verdict.reached}）` : ''}；趋势 ${p.trend.state}。`
-      + (top ? `\n先修：${top}。` : '') + leadText + (p.verdict.status === 'pass-candidate' ? '\n快速裁判不能宣布通过，用 `heimdall gate formal` 确认。' : '');
+      + (top ? `\n先修：${top}。` : '') + leadText
+      + (p.contentGaps ? `\n内容缺口：参考里有 ${p.contentGaps.total} 处文字在候选页找不到（修复包「内容缺口」列出了元素）。` : '') + (p.verdict.status === 'pass-candidate' ? '\n快速裁判不能宣布通过，用 `heimdall gate formal` 确认。' : '');
     const nextActions = [];
     const firstCrop = p.regions.find(g => g.crops?.uri);
     if (p.verdict.status !== 'pass-candidate') {
@@ -87,7 +89,7 @@ export default {
     const env = ok(result, {
       summary, nextActions, warnings: [...r.warnings, ...r.fence.warnings()],
       evidence: [r.fixpacketEvidence, ...p.evidence],
-      trust: r.fence.trust(['result.regions[*].element.best[*].text', 'result.regions[*].element.container.text']),
+      trust: r.fence.trust(['result.regions[*].element.best[*].text', 'result.regions[*].element.container.text', 'result.contentGaps.missing[*].text']),
       meta: { truncated },
     });
     // 内联裁剪图（MCP image content）：按 order 取前几张

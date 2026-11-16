@@ -11,6 +11,8 @@ All notable changes to Heimdall are recorded here.
   crawlers are listed as evidence and not scored. Score method 14, measurement 9, GEO method 9.
 - QA reports requests that take ten seconds or never return, and keeps every affected page
   when findings of one route template are merged.
+- Fix Packets list content gaps: reference elements whose text the candidate page lacks, with
+  element ids and counts in the text view and the fenced text in `fixpacket.json`.
 - `probe contract` reports how many same-origin GET API requests were withheld for lack of an
   approval, so an empty contract no longer reads as "this site has no API".
 - `heimdall connect codex` now writes a bounded `[mcp_servers.heimdall]` TOML

@@ -24,7 +24,7 @@ import { ensurePlan } from '../brief/brief.mjs';
 import { crop, readPng } from './image.mjs';
 import { analyzeViewport, writeCrop, verdictOf, packetText, GATES } from './fixpacket.mjs';
 import { ensureReference, readElements, readMask } from './reference.mjs';
-import { readCandidateElements, enrichElementHints, styleEvidenceForRegion } from './candidate-elements.mjs';
+import { readCandidateElements, enrichElementHints, styleEvidenceForRegion, contentGaps } from './candidate-elements.mjs';
 import { PROFILE, launchBrowser, openPage, shoot, sectionBox, viewportOf } from './capture.mjs';
 import { collectLargeBitmaps, evaluateAntiCheat, referenceShapes, textCoverage, visibleText } from '../gate/anticheat.mjs';
 
@@ -161,7 +161,7 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
     if (sectionIds?.length && wanted.length !== sectionIds.length) {
       throw new CapabilityError('not_found', '有分段 ID 不在分段计划里', { nextActions: [nextAction('heimdall_brief', { siteId, page, detail: 'sections' }, '列出分段')] });
     }
-    const perViewport = {}, regions = [], evidence = [], skipped = [], antiChecks = [], candidateTexts = [], vpHealth = [];
+    const perViewport = {}, regions = [], evidence = [], skipped = [], antiChecks = [], candidateTexts = [], vpHealth = [], gaps = {};
     let sectionMode = null;
     // 参考正文只取一次：整页范围才判覆盖率（单段重建本来就不该有整页文本）
     const referenceText = sectionIds?.length ? '' : (() => {
@@ -230,7 +230,9 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
       // 反作弊（E7-18）：候选页里占大面积的位图 vs 参考截图；整页范围再算一次正文覆盖率
       let bitmaps = [], candidateText = '';
       try { bitmaps = await collectLargeBitmaps(opened.page, {}); } catch { bitmaps = []; }
-      if (referenceText) { try { candidateText = await opened.page.evaluate(() => (document.body?.innerText ?? '').slice(0, 200_000)); } catch { candidateText = ''; } }
+      try { candidateText = await opened.page.evaluate(() => (document.body?.innerText ?? '').slice(0, 200_000)); } catch { candidateText = ''; }
+      // 单段模式下 elements 已经只剩这一段的参考元素；候选文本取整页，写在别处的文字不算缺
+      gaps[width] = contentGaps(elements, candidateText);
       antiChecks.push({ width, bitmaps, shapes });
       if (referenceText) candidateTexts.push(candidateText);
       let layout = null;
@@ -354,12 +356,20 @@ export async function fastCompare(args, { browser: sharedBrowser, onProgress, re
       brokenImages: Math.max(...vpHealth.map(h => h.brokenImages ?? 0)),
       overflowPx: Math.max(...vpHealth.map(h => Math.max(0, (h.scrollWidth ?? 0) - (h.innerWidth ?? 0)))),
     } : null;
+    // 内容缺口只给缺得最多的那个视口的清单（多数缺口与视口无关），每个视口的数量另列
+    const gapViewport = Object.keys(gaps).map(Number).filter(w => perViewport[w]).sort((a, b) => gaps[b].total - gaps[a].total || b - a)[0];
+    const contentGapReport = gapViewport !== undefined && gaps[gapViewport].total ? {
+      viewport: gapViewport, total: gaps[gapViewport].total, elements: gaps[gapViewport].elements,
+      perViewport: Object.fromEntries(Object.keys(gaps).filter(w => perViewport[w]).map(w => [w, gaps[w].total])),
+      missing: gaps[gapViewport].missing.map(g => ({ ...g, text: fence.inline(g.text, 80, 'contentGaps.text') })),
+    } : null;
     const packet = {
       schema: 'heimdall.fixpacket/1', runId, siteId, page, generatedAt: new Date().toISOString(), elapsedMs: Date.now() - t0, mode: 'fast',
       candidate: candidate?.url ? { kind: 'url', ref: candidate.url, route: route ?? '/' } : { kind: 'dir', ref: projectDir, url: candUrl, route },
       reference: { refId: ref.meta.refId, capturedAt: ref.meta.capturedAt, mirrorIdentity: ref.meta.mirrorIdentity, profile: PROFILE },
       scope: wanted ? { sectionIds: wanted.map(s => s.id), mode: sectionMode } : { page: true },
       viewports: viewports.filter(w => perViewport[w]), ...(skipped.length ? { skipped } : {}), perViewport, regions, order, trend, verdict, anticheat, ...(pagehealth ? { pagehealth } : {}),
+      ...(contentGapReport ? { contentGaps: contentGapReport } : {}),
       evidence: evidence.filter(Boolean),
     };
     writeFileAtomic(join(outDir, 'fixpacket.json'), JSON.stringify(packet, null, 1));

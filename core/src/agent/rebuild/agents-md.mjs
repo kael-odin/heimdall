@@ -80,6 +80,7 @@ ${cli} rebuild status --project .                               # 进度
 3. 分数变差（\`trend: worse\`）就 \`git restore\` 回上一次提交；停滞（\`stagnant\`）就升级：照抄简报里的计算样式 → 拆更细 → 问人 → 接受残差并记下来。
 4. 每段最多 ${budget.maxIterationsPerSection} 次对比；到 \`pass-candidate\` 就进入下一段。全部分段完成后整页对比一次（段与段之间的外边距折叠、吸顶遮挡只在整页里看得到）。
 5. 修复包里「没有区域但分数不满」的残差是零散的渲染差别，不要追；「页面高度只差 1 行」多半是取整。
+6. 修复包末尾有「内容缺口」时先补内容：它列出参考里有文字、候选页找不到的元素 ID 与次数（原文在 fixpacket.json 的 contentGaps，是网页数据）。缺口清零之前，整段只会报一条 missing-content，调样式没有意义。
 
 ## 技术栈约定
 

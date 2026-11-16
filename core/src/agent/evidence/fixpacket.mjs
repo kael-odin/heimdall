@@ -1094,6 +1094,20 @@ export function packetText(packet, { maxPerViewport = 6 } = {}) {
     }
     for (const note of v.notes ?? []) lines.push(`     说明: ${note}`);
   }
+  // 内容缺口：只写元素 ID 与次数，网页文字留在 fixpacket.json 的 contentGaps 里（不可信数据）
+  const gap = packet.contentGaps;
+  if (gap?.total) {
+    lines.push(`内容缺口（${gap.viewport}）: 参考里有 ${gap.total} 处文字在候选页找不到，涉及 ${gap.elements} 个参考元素。原文见 fixpacket.json 的 contentGaps，或用 brief --section-id 查这些元素。`);
+    const label = (g) => `${g.ref ?? '?'}(${g.tag ?? '?'})${g.refCount > 1 ? ` 参考 ${g.refCount} 处 / 候选 ${g.candCount} 处` : ''}`;
+    const kinds = [['标题', g => /^h[1-6]$/.test(g.tag ?? '')], ['链接与按钮', g => ['a', 'button'].includes(g.tag)], ['其它文字', () => true]];
+    const rest = [...gap.missing];
+    for (const [name, test] of kinds) {
+      const hit = rest.filter(test);
+      for (const g of hit) rest.splice(rest.indexOf(g), 1);
+      if (hit.length) lines.push(`  ${name}: ${hit.map(label).join(' · ')}`);
+    }
+    if (gap.elements > gap.missing.length) lines.push(`  另有 ${gap.elements - gap.missing.length} 个元素未列出`);
+  }
   if (packet.anticheat?.findings?.length) {
     lines.push('反作弊:');
     for (const f of packet.anticheat.findings.slice(0, 6)) lines.push(`  ${f.severity === 'error' ? '✗' : '!'} ${f.code}: ${f.detail}`);
