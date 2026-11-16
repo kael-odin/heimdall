@@ -18,6 +18,8 @@
 
 2026-11-16 [SEO sitemap 状态保守收敛]：`site-assessment` 现在只把 `complete` 和 `not_found` 视为 sitemap 范围已确认；缺失或非法状态统一保留为 `unknown`，并同步阻断 SEO/GEO readiness、closure 和站点级完成结论，避免损坏摘要被误判为完整覆盖。
 
+2026-11-16 [SEO/GEO readiness 口径统一]：补齐 `readiness.geo` 对缺失或非法 sitemap 状态的门禁；现在 `readiness.seo` 与 `readiness.geo` 不会再对同一份范围不完整的报告给出相反结论。
+
 2026-11-16 [GEO 行动元数据一致性]：脱敏 GEO 摘要现在保证 `actionPlanMeta.total` 不小于实际行动项数量；超过 8 条的返回会明确保持 `truncated`，不会再出现“返回项多于总数”或把截断列表当成完整行动包的矛盾。
 
 2026-11-16 [公开案例 QA 证据门禁]：`public_case_summary` 只有在逐条 finding 摘要确实存在、数量为 0 且未截断时，才会把无站点评估摘要的 QA fallback 标为 `ready_for_declared_scope`；仅有 `fileable=0` 或通过门禁的运行摘要现在保持 `observed`。

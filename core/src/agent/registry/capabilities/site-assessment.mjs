@@ -2456,7 +2456,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.status === 'complete' && seo.geo.actionItems === 0;
   const seoStatus = seo.status !== 'observed' ? 'needs_report' : seoComplete ? 'ready' : 'needs_follow_up';
   const seoItem = item('seo-report', 'seo-geo-follow-up');
-  const sitemapIncomplete = ['partial', 'unavailable'].includes(seo.completeness?.sitemapCoverage);
+  const sitemapIncomplete = !COMPLETE_SITEMAP_COVERAGES.has(seo.completeness?.sitemapCoverage);
   const seoMethodIncomplete = seo.status === 'observed'
     && (seo.scoreMethodStatus !== 'current' || seo.measurementStatus !== 'current');
   const geoStatus = seo.status !== 'observed' || seo.geo.status === 'unknown' ? 'needs_report'

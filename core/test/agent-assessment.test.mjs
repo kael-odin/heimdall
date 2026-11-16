@@ -331,6 +331,7 @@ test('site-assessment: unknown sitemap coverage cannot look complete', () => {
       assert.equal(result.seo.completeness.sitemapCoverage, null);
       assert.equal(result.deliveryPlan.seoGeoTask.closure.requiredObligations.find(item => item.id === 'sitemap-scope').state, 'unknown');
       assert.equal(result.readiness.seo.status, 'needs_follow_up');
+      assert.equal(result.readiness.geo.status, 'needs_follow_up');
       assert.ok(result.unknowns.some(item => item.id === 'seo-sitemap-scope-limited'));
     }
   } finally { rmSync(root, { recursive: true, force: true }); }
