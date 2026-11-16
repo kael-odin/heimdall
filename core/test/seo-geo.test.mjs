@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { evaluateGeoPage, evaluateGeoSite, GEO_DIMENSIONS, GEO_METHOD_VERSION } from '../src/seo/geo.mjs';
+import { parseRobots } from '../src/seo/robots.mjs';
+
+const robots = { ok: true, status: 200, groups: [] };
 
 const page = (over = {}) => ({
   url: 'https://example.com/guide',
@@ -31,8 +34,29 @@ const page = (over = {}) => ({
 
 test('GEO 引用维度权重与页面总权重一致', () => {
   const citation = evaluateGeoPage(page()).dimensions.citation;
-  assert.equal(GEO_DIMENSIONS.citation.weight, 20);
-  assert.equal(citation.checks.reduce((sum, check) => sum + check.weight, 0), 20);
+  assert.equal(GEO_DIMENSIONS.citation.weight, 24);
+  assert.equal(citation.checks.reduce((sum, check) => sum + check.weight, 0), 24);
+  const complete = evaluateGeoSite({ pages: [page()], robots }).pages[0];
+  assert.equal(complete.coverage.totalWeight, 100);
+  for (const [key, dimension] of Object.entries(complete.dimensions)) assert.equal(dimension.totalWeight, GEO_DIMENSIONS[key].weight, key);
+});
+
+test('GEO 回答引擎抓取准入按 robots.txt 核对，训练爬虫只列证据', () => {
+  const access = (site, over) => evaluateGeoPage(page(over), { robots: site }).dimensions.citation.checks.find(item => item.id === 'geo-citation-ai-crawlers');
+  const groups = parseRobots(['User-agent: GPTBot', 'Disallow: /', '', 'User-agent: PerplexityBot', 'User-agent: Bytespider', 'Disallow: /guide'].join('\n'));
+  const blocked = access({ ok: true, groups });
+  assert.equal(blocked.status, 'fail');
+  assert.match(blocked.evidence, /PerplexityBot（Perplexity）：Disallow: \/guide/);
+  assert.doesNotMatch(blocked.evidence, /Bytespider（/, 'a Chinese answer engine is not counted against an English page');
+  assert.match(blocked.evidence, /训练抓取被拒：GPTBot/);
+  assert.match(access({ ok: true, groups }, { lang: 'zh-CN' }).evidence, /Bytespider（/);
+  const trainingOnly = access({ ok: true, groups: parseRobots('User-agent: GPTBot\nDisallow: /') });
+  assert.equal(trainingOnly.status, 'pass', 'refusing training crawlers does not stop answer citations');
+  assert.match(trainingOnly.evidence, /不计分/);
+  assert.equal(access({ ok: false, status: 404 }).status, 'pass', 'no robots.txt means no restriction');
+  for (const site of [undefined, { ok: false, status: 503 }, { ok: false, status: 429 }, { ok: false, status: null }]) assert.equal(access(site).status, 'unknown');
+  const plan = evaluateGeoSite({ pages: [page()], robots: { ok: true, groups } }).actionPlan;
+  assert.deepEqual(plan.map(item => [item.id, item.priority]), [['geo-citation-ai-crawlers', 'P0']]);
 });
 
 test('GEO 健康页面得分高且四个维度都有证据', () => {
@@ -101,7 +125,7 @@ test('GEO Google 索引和摘要限制独立于 canonical，旧采集保留未�
 
 test('GEO 仅首次导航响应能证明初始 HTML，未知证据贯通站点维度', () => {
   for (const raw of [null, { ok: true, wordCount: 360 }, { ok: true, wordCount: 360, source: 'refetch' }]) {
-    const result = evaluateGeoSite({ pages: [page({ raw })] });
+    const result = evaluateGeoSite({ pages: [page({ raw })], robots });
     const dimension = result.pages[0].dimensions.answerability;
     assert.equal(dimension.checks.find(item => item.id === 'geo-answer-server-visible').status, 'unknown');
     assert.equal(result.status, 'partial');
@@ -123,7 +147,7 @@ test('GEO 采集失败和 HTTP 错误页不生成内容整改，混合站点保�
     assert.deepEqual(result.actionPlan, []);
     assert.ok(Object.values(result.dimensions).every(d => d.status === 'unknown'));
     assert.ok(Object.values(result.dimensions).flatMap(d => d.checks).every(c => !c.suggestion));
-    const site = evaluateGeoSite({ pages: [page(), failed] });
+    const site = evaluateGeoSite({ pages: [page(), failed], robots });
     assert.equal(site.score, 100);
     assert.equal(site.status, 'partial');
     assert.equal(site.coverage.pagesScored, 1);
@@ -141,14 +165,14 @@ test('GEO 采集失败和 HTTP 错误页不生成内容整改，混合站点保�
 
 test('GEO 不适用检查不降低覆盖率，部分未知也不能四舍五入成完整', () => {
   const input = page({ jsonld: [{ semanticStatus: 'complete', types: ['Organization'], items: [{ name: 'Example', author: 'Team' }] }] });
-  const result = evaluateGeoSite({ pages: [input] });
+  const result = evaluateGeoSite({ pages: [input], robots });
   assert.equal(result.status, 'complete');
   assert.equal(result.coverage.totalWeight, 96);
   assert.equal(result.coverage.ratio, 1);
   assert.equal(result.dimensions.citation.status, 'complete');
-  const partial = evaluateGeoSite({ pages: [{ ...input, links: { external: 0 } }] });
+  const partial = evaluateGeoSite({ pages: [{ ...input, links: { external: 0 } }], robots });
   assert.equal(partial.status, 'partial');
-  assert.equal(partial.coverage.ratio, 0.958);
+  assert.equal(partial.coverage.ratio, 0.979);
   assert.equal(partial.dimensions.citation.status, 'partial');
 });
 

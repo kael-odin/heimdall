@@ -42,6 +42,9 @@ const OUT = join(BASE, 'watch');
 mkdirSync(join(OUT, 'history'), { recursive: true });
 
 try {
+  const baselinePath = join(OUT, 'baseline.json');
+  const baseline = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, 'utf8')) : null;
+
   // ---------- 目标页面 ----------
   let targets = [];
   const atlasPath = join(BASE, 'recon', 'atlas.json');
@@ -57,7 +60,8 @@ try {
       throw new Error(`sitemap discovery incomplete (${sitemap.coverage}: ${sitemap.reasons.join(', ')}); watch comparison and baseline update skipped`);
     }
     const browser = await chromium.launch();
-    try { targets = await discoverTargets(browser, origin, { max: MAX, sitemapUrls: sitemap.sitemapUrls }); }
+    try { targets = await discoverTargets(browser, origin, { max: MAX, sitemapUrls: sitemap.sitemapUrls, spelled: sitemap.spelled, entry: new URL(targetUrl).href,
+      known: Object.values(baseline?.pages ?? {}).map(p => p.url) }); }
     finally { await browser.close(); }
   }
   const seen = new Set();
@@ -103,8 +107,6 @@ try {
   }
 
   const snapshot = snapshotFromPages(host, pages, new Date().toISOString(), unstableMap);
-  const baselinePath = join(OUT, 'baseline.json');
-  const baseline = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, 'utf8')) : null;
   const diff = baseline ? diffSnapshots(baseline, snapshot) : { added: [], removed: [], changed: [], unchanged: pages.length, bySeverity: { high: 0, medium: 0, low: 0, info: 0 }, hasChanges: false };
 
   const report = {

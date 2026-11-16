@@ -4,6 +4,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluatePage, evaluateSite, scoreIssues, countBySeverity } from '../src/seo/rules.mjs';
+import { parseRobots, robotsAllows } from '../src/seo/robots.mjs';
+import { sampleOrder } from '../src/seo/collect.mjs';
 
 function page(over = {}) {
   return {
@@ -173,6 +175,65 @@ test('seo: site-level duplicates, sitemap gaps and orphans are flagged', () => {
   assert.ok(ids.includes('links-orphan'));
   assert.ok(ids.includes('index-sitemap-missing-page'));
   assert.ok(ids.includes('index-robots-missing'));
+});
+
+test('seo: alias addresses of one page are a canonical problem, not duplicate metadata', () => {
+  const urls = ['https://example.com/', 'https://example.com/index.html'];
+  const pages = urls.map(url => page({ url, finalUrl: url, canonical: '' }));
+  const duplicates = { title: { Home: urls }, description: { Same: urls }, text: { 'abc:300': urls } };
+  const ids = (input) => evaluateSite(input).map(issue => issue.id);
+  assert.deepEqual(ids({ pages, duplicates }), ['content-duplicate'], 'duplicate title and description are symptoms of the same cause');
+  assert.deepEqual(ids({ pages: pages.map(p => ({ ...p, canonical: urls[0] })), duplicates }), [], 'one shared canonical already resolves the aliases');
+  assert.deepEqual(ids({ pages: [pages[0], { ...pages[1], canonical: urls[1] }], duplicates }), ['content-duplicate']);
+  const third = [...urls, 'https://example.com/page-2.html'];
+  assert.deepEqual(ids({ pages, duplicates: { title: { Home: third }, text: { 'abc:300': urls } } }), ['content-duplicate', 'content-title-duplicate'],
+    'aliases count once; another page sharing the title is still reported');
+  const wall = ['https://example.com/', 'https://example.com/signin?next=%2Ffollow'];
+  assert.deepEqual(ids({ pages: wall.map(url => page({ url, finalUrl: url })), duplicates: { text: { 'abc:300': wall } } }), [],
+    'the same body at unrelated paths is usually a login wall, not an address to merge');
+  const spelled = [page({ url: 'https://example.com/news', finalUrl: 'https://example.com/news/' }), page({ url: 'https://example.com/news/', finalUrl: 'https://example.com/news/' })];
+  assert.deepEqual(ids({ pages: spelled, duplicates: { text: { 'abc:300': spelled.map(p => p.url) } } }), [], 'two spellings that land on one address are one page');
+});
+
+test('seo: robots.txt rules follow RFC 9309 and gate Googlebot crawling', () => {
+  const groups = parseRobots(['# staging', 'User-agent: *', 'Disallow: /private/', 'Allow: /private/press', 'Disallow: /*.pdf$', 'Disallow:', '',
+    'User-agent: GPTBot', 'User-agent: PerplexityBot', 'Disallow: /'].join('\n'));
+  const allowed = (token, path) => robotsAllows(groups, token, 'https://example.com' + path).allowed;
+  assert.equal(allowed('Googlebot', '/pricing'), true);
+  assert.equal(allowed('Googlebot', '/private/a'), false);
+  assert.equal(allowed('Googlebot', '/private/press/2026'), true, 'the longest matching rule wins');
+  assert.equal(allowed('Googlebot', '/files/a.pdf'), false);
+  assert.equal(allowed('Googlebot', '/files/a.pdf?download=1'), true, '$ anchors the end of the address');
+  assert.equal(allowed('perplexitybot', '/private/press'), false, 'a group that names the crawler replaces the * group');
+  assert.deepEqual(robotsAllows(groups, 'GPTBot', 'https://example.com/pricing'), { allowed: false, rule: 'Disallow: /', agent: 'gptbot' });
+  const at = (path, robots) => evaluatePage(page({ url: 'https://example.com' + path, finalUrl: 'https://example.com' + path }), { ...site, robots })
+    .find(issue => issue.id === 'index-robots-blocked');
+  assert.equal(at('/private/a', { ok: true, groups })?.severity, 'high');
+  assert.match(at('/private/a', { ok: true, groups }).message, /User-agent: \* 分组的 Disallow: \/private\//);
+  assert.equal(at('/pricing', { ok: true, groups }), undefined);
+  for (const robots of [{ ok: false, status: 503 }, { ok: false, status: 429 }, { ok: false, status: 404 }, undefined]) {
+    assert.equal(at('/private/a', robots), undefined, 'no rules were read, so nothing is reported as blocked');
+  }
+});
+
+test('seo: a redirect that only adds the trailing slash is not charged to a normalised audit address', () => {
+  const hop = { url: 'https://example.com/news', finalUrl: 'https://example.com/news/', redirectCount: 1, canonical: 'https://example.com/news/' };
+  const redirect = (over) => evaluatePage(page({ ...hop, ...over }), site).some(issue => issue.id === 'index-redirect');
+  assert.equal(redirect({}), false);
+  assert.equal(redirect({ urlGiven: true }), true, 'an address the site itself links or lists does redirect');
+  assert.equal(redirect({ finalUrl: 'https://example.com/blog/' }), true);
+  assert.equal(redirect({ redirectCount: 2 }), true);
+});
+
+test('seo: a page quota is spread over page types instead of the first N addresses', () => {
+  const urls = ['/en/download/a', '/en/download/b', '/en/download/c', '/en/blog', '/en/blog/x/1', '/en/blog/x/2', '/zh/about', '/en/about', '/fr/about']
+    .map(path => 'https://example.com' + path);
+  const paths = (entry) => sampleOrder(urls, 'https://example.com' + entry).map(url => new URL(url).pathname);
+  assert.deepEqual(paths('/en').slice(0, 5), ['/en/download/a', '/en/blog', '/en/blog/x/1', '/en/about', '/en/download/b'],
+    'the entry section comes first and each page type takes one turn');
+  assert.deepEqual(paths('/en').slice(-2), ['/zh/about', '/fr/about'], 'other sections only fill what is left');
+  assert.deepEqual(paths('/en/blog/x/1').slice(0, 2), ['/en/blog/x/1', '/en/blog/x/2'], 'a leaf entry scopes to its own directory');
+  assert.deepEqual(paths('/').slice(0, 4), ['/en/download/a', '/en/blog', '/en/blog/x/1', '/zh/about']);
 });
 
 test('seo: missing robots and unlocated sitemap are observations, not automatic score penalties', () => {

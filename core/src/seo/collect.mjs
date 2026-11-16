@@ -105,10 +105,40 @@ export async function fetchRobotsAndSitemaps(origin, options = {}) {
   return { ...result, sitemapUrls: new Set(result.urls) };
 }
 
-/** 目标 URL 解析：优先 sitemap，其次轻量 BFS 爬取 */
-export async function discoverTargets(browser, origin, { max = 30, sitemapUrls = new Set() } = {}) {
+/**
+ * 配额内的选页顺序：入口所在栏目优先，「栏目 + 层级」相同的算一类页面，各类轮流出一个。
+ * 按 sitemap 或导航的原顺序截取，配额会耗在同一类页面上（前 N 个下载页、前 N 个标签页），分数只代表那一类。
+ */
+export function sampleOrder(urls, entry) {
+  const pathOf = (url) => { try { return new URL(url).pathname; } catch { return '/'; } };
+  const entryPath = pathOf(entry), asDir = entryPath.replace(/\/?$/, '/');
+  const paths = urls.map(pathOf);
+  // /en 这类入口本身是栏目；/rfc/rfc9110 这类入口是栏目里的一页，栏目取它的上一级
+  const scope = paths.some(path => path.startsWith(asDir) && path !== asDir) ? asDir : entryPath.replace(/[^/]*$/, '');
+  const taken = new Map();
+  return urls.map((url, index) => {
+    const inside = paths[index].startsWith(scope);
+    const rest = (inside ? paths[index].slice(scope.length) : paths[index]).split('/').filter(Boolean);
+    const kind = `${inside}/${rest[0] ?? ''}/${rest.length}`;
+    const turn = taken.get(kind) ?? 0;
+    taken.set(kind, turn + 1);
+    return { url, self: canonUrl(url) === canonUrl(entry), inside, turn, index };
+  }).sort((a, b) => b.self - a.self || b.inside - a.inside || a.turn - b.turn || a.index - b.index).map(item => item.url);
+}
+
+/**
+ * 目标 URL 解析：known（基线里已有的页面）必查并排在最前，其余配额优先取 sitemap，没有 sitemap 时轻量 BFS。
+ * known 在前：重跑时页面集合保持稳定，「页面消失」才表示真的消失。
+ * 入口：用户点名了具体页面（地址带路径或查询）就必查；只给站点根地址时由 sitemap 决定，根地址在清单里则排第一 ——
+ * 站点没有列出的根地址不硬塞进样本（根地址 404 或跳走的站点，会让每次审计都不完整）。
+ */
+export async function discoverTargets(browser, origin, { max = 30, sitemapUrls = new Set(), spelled = new Map(), entry = origin + '/', known = [] } = {}) {
   const targets = [];
   const seen = new Set();
+  // 去重用归一化地址，访问用站点自己的写法：归一化会去掉结尾斜杠，照它访问等于审计自己制造一次跳转
+  const written = new Map(spelled);
+  const note = (url) => { const key = canonUrl(url); if (key && !written.has(key)) written.set(key, url.split('#')[0]); };
+  written.set(canonUrl(entry), entry.split('#')[0]);
   const push = (url, depth = 99) => {
     const clean = canonUrl(url);
     if (!isSameOriginUrl(clean, origin) || seen.has(clean)) return;
@@ -116,18 +146,22 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
     seen.add(clean);
     targets.push({ url: clean, depth });
   };
-  for (const u of sitemapUrls) { if (targets.length >= max) break; push(u); }
+  for (const u of known) push(u, 0);
 
-  if (targets.length === 0) {
+  if (sitemapUrls.size) {
+    const named = new URL(entry);
+    if (named.pathname !== '/' || named.search) push(entry, 0);
+    for (const u of sampleOrder([...targets.map(t => t.url), ...sitemapUrls], entry)) { if (targets.length >= max) break; push(u); }
+  } else {
     const ctx = await browser.newContext({ viewport: DEFAULT_VIEWPORT, userAgent: UA, ...sessionContext(new URL(origin).hostname) });
     await restoreSessionStorage(ctx, new URL(origin).hostname);
     const page = await ctx.newPage();
-    const queue = [{ url: origin + '/', depth: 0 }];
-    const visited = new Set();
+    const queue = [{ url: entry, depth: 0 }];
+    const queued = new Set([entry]);
     while (queue.length && targets.length < max) {
-      const job = queue.shift();
-      if (visited.has(job.url)) continue;
-      visited.add(job.url);
+      const waiting = new Set(queue.map(job => job.url));
+      const next = sampleOrder([...targets.map(t => t.url), ...waiting], entry).find(url => waiting.has(url));
+      const job = queue.splice(queue.findIndex(item => item.url === next), 1)[0];
       try {
         await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await page.waitForTimeout(300);
@@ -142,12 +176,12 @@ export async function discoverTargets(browser, origin, { max = 30, sitemapUrls =
         // 结构性 URL（分页/分面）优先入队：它们通常排在页尾，按 DOM 顺序会被配额挤掉，
         // 而这类页面正是审计最该覆盖的
         const uniq = [...new Set(links)].sort((a, b) => (isStructuralUrl(b) ? 1 : 0) - (isStructuralUrl(a) ? 1 : 0));
-        for (const u of uniq) queue.push({ url: u, depth: job.depth + 1 });
+        for (const u of uniq) { note(u); if (!queued.has(u)) { queued.add(u); queue.push({ url: u, depth: job.depth + 1 }); } }
       } catch {}
     }
     await ctx.close();
   }
-  return targets.slice(0, max);
+  return targets.slice(0, max).map(target => ({ ...target, url: written.get(target.url) ?? target.url, given: written.has(target.url) }));
 }
 
 /** 单页采集 */
@@ -419,6 +453,7 @@ export async function collectSite(origin, targets, { concurrency = 2, onProgress
       if (!t) break;
       const page = await collectPage(b, t.url);
       page.depth = t.depth ?? 0;
+      if (t.given) page.urlGiven = true;   // 地址是站点或用户给出的原样写法，不是归一化键
       pages.push(page);
       onProgress?.(page, pages.length, targets.length);
     }

@@ -6,13 +6,14 @@
  */
 
 import { GEO_METHOD_VERSION } from './method.mjs';
+import { ANSWER_CRAWLERS, TRAINING_CRAWLERS, robotsAllows, robotsKnown } from './robots.mjs';
 export { GEO_METHOD_VERSION };
 
 export const GEO_DIMENSIONS = Object.freeze({
-  answerability: { label: '可回答性', weight: 30 },
+  answerability: { label: '可回答性', weight: 26 },
   extractability: { label: '可抽取性', weight: 25 },
   entity: { label: '实体清晰度', weight: 25 },
-  citation: { label: '引用准备度', weight: 20 },
+  citation: { label: '引用准备度', weight: 24 },
 });
 
 const ENTITY_TYPES = new Set([
@@ -136,6 +137,23 @@ function schemaInfo(page) {
   };
 }
 
+/** 回答引擎能否抓取本页：按 robots.txt 逐个核对回答爬虫；训练爬虫只列为证据，不计分。 */
+function crawlerAccess(page, robots) {
+  if (!robotsKnown(robots)) {
+    return { status: 'unknown', message: 'robots.txt 未取得可用结论，回答引擎的抓取准入尚未核对。', evidence: Number.isFinite(robots?.status) ? `robots.txt HTTP ${robots.status}` : '' };
+  }
+  const url = page.finalUrl || page.url, groups = robots.groups ?? [];
+  const audience = ANSWER_CRAWLERS.filter(crawler => !crawler.zh || /^zh(?:[-_]|$)/i.test(page.lang ?? ''));
+  const blocked = audience.map(crawler => ({ ...crawler, ...robotsAllows(groups, crawler.token, url) })).filter(crawler => !crawler.allowed);
+  const training = TRAINING_CRAWLERS.filter(token => !robotsAllows(groups, token, url).allowed);
+  const note = training.length ? `；训练抓取被拒：${training.join('、')}（发布方选择，不计分）` : '';
+  return blocked.length
+    ? { status: 'fail', message: `robots.txt 拒绝 ${blocked.length} 个回答引擎抓取本页，对应产品读不到页面内容。`,
+      evidence: blocked.map(crawler => `${crawler.token}（${crawler.product}）：${crawler.rule}`).join(' | ') + note }
+    : { status: 'pass', message: 'robots.txt 未拒绝已核对的回答引擎抓取本页；实际抓取与引用仍未验证。',
+      evidence: `${robots.ok ? '已核对' : `robots.txt 返回 HTTP ${robots.status}，视为不限制；涉及`} ${audience.map(crawler => crawler.token).join('、')}${note}` };
+}
+
 function check(id, weight, status, title, message, evidence, suggestion, severity = 'medium') {
   return { id, weight, status, title, message, evidence: evidence ?? '', suggestion: suggestion ?? '', severity };
 }
@@ -161,7 +179,7 @@ function dimensionResult(key, checks) {
   };
 }
 
-export function evaluateGeoPage(page = {}) {
+export function evaluateGeoPage(page = {}, site = {}) {
   const schema = schemaInfo(page);
   const h1 = Array.isArray(page.h1) ? page.h1 : [];
   const headings = Array.isArray(page.headings) ? page.headings : [];
@@ -178,13 +196,14 @@ export function evaluateGeoPage(page = {}) {
     && typeof meta.noindex === 'boolean' && typeof meta.nosnippet === 'boolean';
   const googleRestricted = meta.noindex === true || meta.nosnippet === true;
   const links = page.links ?? {};
+  const access = crawlerAccess(page, site.robots);
 
   const checks = {
     answerability: [
       check('geo-answer-title', 6, page.title && h1.length ? 'pass' : 'fail', '主题入口清晰',
         page.title && h1.length ? '页面同时提供 title 和 H1。' : '页面缺少 title 或 H1，回答引擎难以确认主题。',
         `${page.title ? 'title 有值' : 'title 缺失'}；H1 ${h1.length} 个`, '补齐唯一、具体的 title 和 H1。', 'high'),
-      check('geo-answer-body', 10, wordCount == null ? 'unknown' : wordCount >= 120 ? 'pass' : 'fail', '正文长度参考',
+      check('geo-answer-body', 6, wordCount == null ? 'unknown' : wordCount >= 120 ? 'pass' : 'fail', '正文长度参考',
         wordCount == null ? '正文长度未采集。' : '以 120 个分词单位作准备度启发式，不能据此判断答案质量或引用效果。',
         wordCount == null ? '' : `可见正文约 ${wordCount} 个分词单位`, '按用户问题核对答案完整性，长度仅为人工检查提示。', 'medium'),
       check('geo-answer-headings', 6, headings.length >= 2 ? 'pass' : 'fail', '内容有可导航分段',
@@ -239,7 +258,9 @@ export function evaluateGeoPage(page = {}) {
         googleRestricted ? [...(robots?.noindex ?? []), ...(robots?.nosnippet ?? [])].join(' | ') || page.robotsMeta || page.xRobots || '索引或摘要限制'
           : robotsKnown ? 'Googlebot：noindex=false，nosnippet=false；canonical 独立检查' : '',
         '确认是否希望参与 Google 搜索摘要与 AI 搜索；仅在限制与发布意图不符时调整相关指令，再重新审计。', 'high'),
-      check('geo-citation-links', 4, links.external > 0 ? 'pass' : 'unknown', '有外部参考线索',
+      check('geo-citation-ai-crawlers', 6, access.status, 'AI 回答引擎可抓取本页', access.message, access.evidence,
+        '确认是否希望被对应产品引用；需要时在 robots.txt 为这些爬虫放行本页路径，再重新审计。训练爬虫可按版权策略单独决定。', 'high'),
+      check('geo-citation-links', 2, links.external > 0 ? 'pass' : 'unknown', '有外部参考线索',
         links.external > 0 ? '发现外部链接，可作为引用线索。' : '没有发现外部参考链接，暂不据此判定为缺陷。',
         links.external > 0 ? `${links.external} 个外部链接` : '', '需要引用时提供指向一手资料的稳定链接；外链存在不等于模型一定采信。', 'low'),
     ],
@@ -303,7 +324,7 @@ export function evaluateGeoPage(page = {}) {
 
 export function evaluateGeoSite(site = {}) {
   const pages = Array.isArray(site.pages) ? site.pages : [];
-  const pageResults = pages.map(page => ({ page, result: evaluateGeoPage(page) }));
+  const pageResults = pages.map(page => ({ page, result: evaluateGeoPage(page, site) }));
   const dimensions = {};
   for (const key of Object.keys(GEO_DIMENSIONS)) {
     const results = pageResults.map(entry => entry.result.dimensions[key]).filter(dimension => dimension.score != null);
@@ -351,7 +372,7 @@ export function evaluateGeoSite(site = {}) {
     caveats: [
       '这是基于已采集页面的可解释启发式，不是搜索排名或模型引用概率预测。',
       '没有执行真实模型问答、引用命中率实验或跨模型对照。',
-      'Google 页面级指令检查不覆盖 robots.txt、实际收录、data-nosnippet 或单独授权例外，也不推断其他 AI 爬虫的策略。',
+      '抓取准入只按 robots.txt 核对已列出的回答爬虫，不覆盖防火墙与限流、实际收录、data-nosnippet 或单独授权例外；未列出的 AI 产品未核对。',
       'canonical 与结构化数据作为结构线索计分，不是 Google AI 搜索的特殊必备标记。',
       'JSON-LD 未成功展开或字段投影受限时，未观察到的相关信号保留未知；旧采集也需重新核实语义。',
       '未采集页面、登录后内容和未核实的初始 HTML 不进入本次 GEO 结论。',

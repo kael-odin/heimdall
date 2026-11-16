@@ -1,6 +1,7 @@
 import { gunzipSync } from 'node:zlib';
 import { SaxesParser } from 'saxes';
 import { canonUrl } from '../url-canon.mjs';
+import { parseRobots } from '../seo/robots.mjs';
 import { UA } from '../ua.mjs';
 
 export const DEFAULT_SITEMAP_LIMITS = Object.freeze({
@@ -110,9 +111,9 @@ export async function discoverSitemapUrls(origin, { fetchImpl = fetch, limits = 
     offOriginSitemaps: 0, offOriginPages: 0,
     unknownFormats: 0, bytesRead: 0, truncated: [], limits: budget,
   };
-  const robots = { ok: false, status: null, sitemaps: [] };
+  const robots = { ok: false, status: null, sitemaps: [], groups: [] };
   const reasons = new Set();
-  const pages = new Set();
+  const pages = new Map();   // 归一化地址 → sitemap 里的原样写法（带不带结尾斜杠由站点决定）
   const queue = [];
   const queued = new Set();
   const deadline = Date.now() + budget.maxDurationMs;
@@ -175,6 +176,7 @@ export async function discoverSitemapUrls(origin, { fetchImpl = fetch, limits = 
     stats.robotsStatus = robots.status = response.status ?? null;
     robots.ok = response.body !== undefined && !/^\s*(?:<!doctype\s+html|<html\b)/i.test(response.body);
     if (robots.ok) {
+      robots.groups = parseRobots(response.body);
       for (const line of response.body.split(/\r?\n/)) {
         const match = /^\s*sitemap\s*:\s*(\S+)/i.exec(line);
         if (!match) continue;
@@ -235,7 +237,7 @@ export async function discoverSitemapUrls(origin, { fetchImpl = fetch, limits = 
       const canonical = canonUrl(page);
       if (pages.has(canonical)) continue;
       if (pages.size >= budget.maxUrls) { truncated.add('url-limit'); break; }
-      pages.add(canonical);
+      pages.set(canonical, page);
     }
   }
   stats.truncated = [...truncated].sort();
@@ -245,5 +247,5 @@ export async function discoverSitemapUrls(origin, { fetchImpl = fetch, limits = 
   stats.coverage = coverage;
   stats.reasons = [...reasons].sort();
   stats.urlCount = pages.size;
-  return { urls: [...pages], stats, robots, coverage, reasons: stats.reasons };
+  return { urls: [...pages.keys()], spelled: pages, stats, robots, coverage, reasons: stats.reasons };
 }

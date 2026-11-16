@@ -9,6 +9,7 @@
 import { validateStructuredData } from './structured.mjs';
 import { paginationPageIssues, paginationSiteIssues, samePaginationSeries } from './pagination.mjs';
 import { canonUrl, httpResourceUrl } from '../url-canon.mjs';
+import { robotsAllows, robotsKnown } from './robots.mjs';
 
 export const CATEGORIES = {
   index: '抓取与索引',
@@ -37,8 +38,12 @@ export function evaluatePage(page, site = {}) {
 
   // ---------- 抓取与索引 ----------
   if (page.status >= 400) A('index-http-error', 'index', 'critical', '页面返回错误状态', `HTTP ${page.status}`, page.finalUrl, '修复服务端错误或从站点移除该链接');
-  if (page.redirectCount > 0) A('index-redirect', 'index', page.redirectCount > 1 ? 'medium' : 'low', '页面存在重定向', `重定向 ${page.redirectCount} 次`, `${page.url} → ${page.finalUrl}`, '将链接直接指向最终 URL，减少跳转损耗');
+  // 审计地址若是去掉结尾斜杠的归一化键（星图、基线），只差这个斜杠的一次跳转是审计造成的，不算到站点头上
+  const slashOnly = !page.urlGiven && page.redirectCount === 1 && canonUrl(page.url) === canonUrl(page.finalUrl);
+  if (page.redirectCount > 0 && !slashOnly) A('index-redirect', 'index', page.redirectCount > 1 ? 'medium' : 'low', '页面存在重定向', `重定向 ${page.redirectCount} 次`, `${page.url} → ${page.finalUrl}`, '将链接直接指向最终 URL，减少跳转损耗');
   if (site.noindexIntent !== true && page.meta.noindex) A('index-noindex', 'index', 'high', '页面被标记 noindex', '通用或 Googlebot 指令含 noindex / none（Google 网页搜索口径）', page.robotsEvidence?.noindex?.join('\n') || page.robotsMeta || page.xRobots, '若页面需要收录，移除相关限制；若有意为之，请在报告中标注为豁免');
+  const crawl = robotsKnown(site.robots) ? robotsAllows(site.robots.groups ?? [], 'Googlebot', page.finalUrl || page.url) : null;
+  if (crawl && !crawl.allowed) A('index-robots-blocked', 'index', 'high', 'robots.txt 禁止 Googlebot 抓取本页', `User-agent: ${crawl.agent} 分组的 ${crawl.rule}`, page.finalUrl || page.url, '若页面需要收录，放开这条 Disallow；若有意屏蔽，把它移出 sitemap 与站内链接，并在报告中标注为豁免。被屏蔽的页面读不到正文，页面上的 noindex 与 canonical 也不会生效');
   const canonicalConflict = page.canonicalEvidence?.conflict === true;
   if (!page.canonical && !canonicalConflict) A('index-canonical-missing', 'index', 'medium', '缺少 canonical', '未找到可用的 HTML 或 HTTP Link rel=canonical', '', '按重复内容和索引意图确认是否需要声明 canonical');
   else {
@@ -184,13 +189,29 @@ export function evaluateSite(site = {}) {
   const S = (id, category, severity, title, message, evidence, suggestion, pages = null) =>
     out.push(mk(null, id, category, severity, title, message, evidence, suggestion, pages));
 
-  const dupTitle = Object.entries(site.duplicates?.title ?? {}).filter(([, urls]) => urls.length > 1);
+  // 同一页面以别名地址重复出现（/ 与 /index.html、带不带结尾斜杠）：标题、描述重复只是症状，要处理的是规范地址。
+  // 只认别名：不同路径正文相同多半是登录墙或错误模板（实测知乎 / 与 /signin），给不出「归并地址」这个结论。
+  const canonicalOf = new Map((site.pages ?? []).map(p => [p.url, httpResourceUrl(p.canonical)]));
+  const landedOn = new Map((site.pages ?? []).map(p => [p.url, canonUrl(p.finalUrl || p.url)]));
+  const aliases = Object.values(site.duplicates?.text ?? {}).flatMap(urls => Object.values(Object.groupBy(urls, aliasKey)))
+    .filter(urls => new Set(urls.map(url => landedOn.get(url) ?? url)).size > 1);
+  for (const urls of aliases) {
+    const declared = new Set(urls.map(url => canonicalOf.get(url) ?? ''));
+    if (declared.size === 1 && !declared.has('')) continue;
+    S('content-duplicate', 'content', 'medium', '同一页面有多个可访问地址', `${urls.length} 个别名地址的可见正文完全一致，且没有声明同一个 canonical`, urls.slice(0, 5).join('\n'),
+      '保留一个规范地址：其余地址 301 到它，或声明指向它的 canonical；站内链接统一使用规范地址', urls);
+  }
+  // 别名只算一页：剩下仍有多页共用标题或描述，才是元数据重复
+  const extra = new Set(aliases.flatMap(urls => urls.slice(1)));
+  const distinct = (entries) => entries.map(([value, urls]) => [value, urls.filter(url => !extra.has(url))]).filter(([, urls]) => urls.length > 1);
+
+  const dupTitle = distinct(Object.entries(site.duplicates?.title ?? {}));
   for (const [value, urls] of dupTitle) {
     const pagination = samePaginationSeries(urls);
     S('content-title-duplicate', 'content', pagination ? 'info' : 'medium', 'title 重复', `${urls.length} 个页面使用同一 title`, `${trim(value, 70)}\n${urls.slice(0, 5).join('\n')}`,
       pagination ? '同一分页序列允许共用标题；可按读者区分页码的需求调整，不作为强制 SEO 修复' : '为每个页面编写独立 title', urls);
   }
-  const dupDesc = Object.entries(site.duplicates?.description ?? {}).filter(([, urls]) => urls.length > 1);
+  const dupDesc = distinct(Object.entries(site.duplicates?.description ?? {}));
   for (const [, urls] of dupDesc) {
     const pagination = samePaginationSeries(urls);
     S('content-description-duplicate', 'content', pagination ? 'info' : 'medium', 'description 重复', `${urls.length} 个页面使用同一 description`, urls.slice(0, 5).join('\n'),
@@ -222,6 +243,14 @@ export function countBySeverity(issues) {
 }
 
 function safeHost(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } }
+
+/** 同一页面的别名写法：只差目录索引文件名或结尾斜杠，查询串相同。 */
+function aliasKey(url) {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname.replace(/\/(?:index|default)\.(?:html?|php|aspx?|jsp)$/i, '/').replace(/\/+$/, '') + u.search;
+  } catch { return String(url); }
+}
 
 /** Google annotation syntax only, not BCP 47 validity or ISO code-table membership. */
 function hasGoogleHreflangSyntax(code) {

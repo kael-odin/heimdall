@@ -135,11 +135,15 @@ try {
   log('fetching robots/sitemap...');
   sitemap = await fetchRobotsAndSitemaps(origin);
 
+  // 基线里记过的页面必须“真的被查过”才算消失。否则 --max 截断、或这次 atlas 恰好没扫到
+  // 某个老页面时，diff 会报 critical 的 "页面消失" —— 页面还在，只是这轮没去看它。
+  // 并入后仍受 MAX 约束，且不改变 source 口径（它只说明"目标从哪来"）。
+  const baselinePages = Object.keys(!legacyBaseline && !baselineMethodMismatch ? baseline?.pages ?? {} : {});
   if (targets.length < 2) {
     log('discovering targets (sitemap/BFS)...');
     const browser = await chromium.launch();
     try {
-      targets = await discoverTargets(browser, origin, { max: MAX, sitemapUrls: sitemap.sitemapUrls });
+      targets = await discoverTargets(browser, origin, { max: MAX, sitemapUrls: sitemap.sitemapUrls, spelled: sitemap.spelled, entry: new URL(targetUrl).href, known: baselinePages });
     } finally { await browser.close(); }
   }
   // 去重：/ 与无尾斜杠、以及 sitemap 中的重复 URL 只审计一次
@@ -150,10 +154,6 @@ try {
     seenTargets.add(key);
     return true;
   });
-  // 基线里记过的页面必须“真的被查过”才算消失。否则 --max 截断、或这次 atlas 恰好没扫到
-  // 某个老页面时，diff 会报 critical 的 "页面消失" —— 页面还在，只是这轮没去看它。
-  // 并入后仍受 MAX 约束，且不改变 source 口径（它只说明"目标从哪来"）。
-  const baselinePages = Object.keys(!legacyBaseline && !baselineMethodMismatch ? baseline?.pages ?? {} : {});
   let baselineOnly = 0;
   for (const url of baselinePages) {
     if (targets.length >= MAX) break;
@@ -202,7 +202,10 @@ try {
       if (known.has(key) && key !== p.url.replace(/\/$/, '')) inlinks.set(key, (inlinks.get(key) ?? 0) + 1);
     }
   }
-  const orphans = pages.filter(p => (p.depth ?? 0) > 0 && (inlinks.get(p.url.replace(/\/$/, '')) ?? 0) === 0).map(p => p.url);
+  // 入链只在本次审计的页面之间统计：抽样时「这几页没链到它」不等于没有入链（实测 wordpress.org 6 页样本报出 5 个孤儿页），
+  // 只有 sitemap 完整且全部审计过，才谈得上孤儿页。
+  const exhaustive = sitemap.coverage === 'complete' && pages.length >= sitemap.sitemapUrls.size;
+  const orphans = exhaustive ? pages.filter(p => (p.depth ?? 0) > 0 && (inlinks.get(p.url.replace(/\/$/, '')) ?? 0) === 0).map(p => p.url) : [];
 
   const group = (keyFn) => {
     const map = {};
@@ -215,7 +218,8 @@ try {
     origin,
     pages,
     robots: sitemap.robots,
-    duplicates: { title: group(p => p.title), description: group(p => p.description), h1: group(p => (p.h1 ?? []).join('|')) },
+    duplicates: { title: group(p => p.title), description: group(p => p.description), h1: group(p => (p.h1 ?? []).join('|')),
+      text: group(p => p.status >= 200 && p.status < 400 && p.wordCount >= 30 && p.textHash ? `${p.textHash}:${p.wordCount}` : '') },
     orphans,
   };
 
