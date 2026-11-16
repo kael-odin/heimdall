@@ -44,6 +44,7 @@ function card(f, { withVerdictHint = true } = {}) {
   const shot = f.evidence?.screenshot;
   if (shot) lines.push(`- 截图：[${shot}](${shot})`);
   if (f.evidence?.url) lines.push(`- 地址：${f.evidence.url}`);
+  if (f.pages?.length) lines.push(`- 同类页面 ${f.pages.length} 个：${f.pages.map(p => `${esc(p.url)}${p.observed ? `（${esc(p.observed).slice(0, 80)}）` : ''}`).join('；')}`);
   if (f.triage?.status === 'known-bug') lines.push(`- 已知问题：${f.triage.reason}（${String(f.triage.at).slice(0, 10)} 记为真问题）`);
   if (f.triage?.status === 'reopened') lines.push(`- 重新打开：${f.triage.note ?? ''}；原裁决「${VERDICT_LABEL[f.triage.verdict]}」：${f.triage.reason}`);
   if (f.notes?.length) lines.push(`- 说明：${f.notes.join('；')}`);

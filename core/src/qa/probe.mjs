@@ -230,7 +230,7 @@ function pageFactsInPage({ loggedOutText }) {
     }
   }
   const images = [...document.images].filter(img => img.complete && img.naturalWidth === 0 && visible(img) && img.currentSrc)
-    .map(img => ({ src: img.currentSrc, alt: (img.alt ?? '').slice(0, 80) })).slice(0, 30);
+    .map(img => { const r = img.getBoundingClientRect(); return { src: img.currentSrc, alt: (img.alt ?? '').slice(0, 80), shown: r.width >= 8 && r.height >= 8 }; }).slice(0, 30);
   const links = [...document.querySelectorAll('a[href]')].filter(visible)
     .map(a => ({ href: a.href, text: (a.innerText || a.getAttribute('aria-label') || '').trim().slice(0, 60) }))
     .filter(l => /^https?:/.test(l.href)).slice(0, 400);
@@ -264,31 +264,43 @@ async function openContext(browser, { login, viewport, origin, writes, writeAllo
 
 const isClientBlocked = value => /blockedbyclient|ERR_BLOCKED_BY_CLIENT/i.test(value);
 
+/** 异常栈顶帧落在被测站点自己的脚本（含页面内联）时返回「地址:行:列」；第三方脚本或拿不到栈返回 null */
+function siteFrame(stack, origin) {
+  const top = String(stack ?? '').split('\n').find(line => /^\s*at\s/.test(line))?.trim() ?? '';
+  const hit = /(https?:\/\/[^\s)]+?):(\d+):(\d+)\)?$/.exec(top);
+  try { return hit && new URL(hit[1]).origin === origin ? `${safeUrl(hit[1])}:${hit[2]}:${hit[3]}` : null; } catch { return null; }
+}
+
 function watch(page, health, origin, secrets) {
   page.on('console', m => { if (m.type() === 'error') health.console.push(clip(scrubSecrets(m.text(), secrets))); });
-  page.on('pageerror', e => health.pageErrors.push(clip(scrubSecrets(e.message, secrets))));
+  page.on('pageerror', e => health.pageErrors.push({ message: clip(scrubSecrets(e.message, secrets)), at: siteFrame(e.stack, origin) }));
   page.on('response', r => {
     if (r.status() >= 400) health.http.push({ status: r.status(), url: safeUrl(r.url()), sameOrigin: r.url().startsWith(origin), type: r.request().resourceType() });
   });
+  page.on('request', req => health.timing.set(req, { since: Date.now() }));
+  page.on('requestfinished', req => { const t = health.timing.get(req); if (t) t.done = Date.now(); });
   page.on('requestfailed', req => {
+    health.timing.delete(req);
     const why = req.failure()?.errorText ?? '';
     const method = req.method().toUpperCase(), url = safeUrl(req.url());
     if (isClientBlocked(why)) {
       if (!health.blockedRequests.has(req)) {
         health.clientBlocked.push({ method, url, why: clip(why, 80), type: req.resourceType() });
       }
-    } else if (READ_METHODS.has(method) && !/ERR_ABORTED/i.test(why)) health.failed.push({ url, why: clip(why, 80) });
+    } else if (READ_METHODS.has(method) && !/ERR_ABORTED/i.test(why)) health.failed.push({ url, why: clip(why, 80), type: req.resourceType() });
   });
   page.on('dialog', d => d.dismiss().catch(() => {}));
 }
 
-async function checkLinks(context, links, origin, { site, login, limit = 60, timeout = 8000 } = {}) {
+async function checkLinks(context, links, origin, { site, login, self, limit = 60, timeout = 8000 } = {}) {
   const seen = new Map();
   for (const l of links) {
     let u;
     try { u = new URL(l.href); } catch { continue; }
     if (u.origin !== origin) continue;
     u.hash = '';
+    // 指向本页的锚点（#content）不是另一个地址：本页打不开已由「页面打不开」报告，不再重复成坏链
+    if (u.href === self) continue;
     if (!seen.has(u.href)) seen.set(u.href, l.text);
     if (seen.size >= limit) break;
   }
@@ -305,7 +317,15 @@ async function checkLinks(context, links, origin, { site, login, limit = 60, tim
   }
   return { checked: seen.size, broken };
 }
-const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [], blockedRequests: new WeakSet(), clientBlocked: [] });
+const emptyHealth = () => ({ console: [], pageErrors: [], http: [], failed: [], blocked: [], blockedRequests: new WeakSet(), clientBlocked: [], timing: new Map(), stalled: [] });
+
+/** 耗时 10 秒以上才返回、或到现在仍未返回的请求（主文档、长连接与媒体流除外）。要在关闭上下文之前取：关闭会把未返回的记成中止 */
+export function stalledRequests(health) {
+  const now = Date.now();
+  return [...health.timing].map(([req, t]) => ({ req, open: !t.done, seconds: Math.floor(((t.done ?? now) - t.since) / 1000) }))
+    .filter(x => x.seconds >= 10 && !['document', 'eventsource', 'websocket', 'media', 'ping'].includes(x.req.resourceType())).slice(0, 3)
+    .map(x => ({ url: safeUrl(x.req.url()).split('?')[0], method: x.req.method(), type: x.req.resourceType(), open: x.open, seconds: x.seconds }));
+}
 
 /**
  * 跑一遍无参照物检测：先读 Web Vitals，再把检测器注入页面执行。
@@ -452,7 +472,13 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
       note: '这是测试环境问题，不是产品问题：重新登录后再跑' });
     return out;
   }
-  for (const msg of health.pageErrors.slice(0, 5)) out.push({ kind: 'console', path, title: `页面脚本异常：${clip(msg, 90)}`, target: 'pageerror', match: msg, basis: 'failed', tier: 'tolerable', observed: msg, evidence: ev() });
+  // 站点自己的脚本抛出未捕获异常才升级；本次加载有请求被策略/客户端拦下或脚本、接口请求失败时，异常可能是测试环境造成的，保持可容忍
+  const undisturbed = !health.blocked.length && !health.clientBlocked.length && !health.failed.some(f => ['script', 'xhr', 'fetch'].includes(f.type));
+  for (const e of health.pageErrors.slice(0, 5)) {
+    const own = e.at && undisturbed;
+    out.push({ kind: 'console', path, title: `页面脚本异常：${clip(e.message, 90)}`, target: 'pageerror', match: e.message, basis: 'failed', tier: own ? 'degrade' : 'tolerable',
+      ...(own ? { loss: '访客打开页面时站点自身脚本抛出未捕获异常，出错位置之后的逻辑没有执行' } : {}), observed: e.at ? `${e.message}（${e.at}）` : e.message, evidence: ev() });
+  }
   // 浏览器给每个 4xx/5xx 自动打一条 "Failed to load resource"，网络记录已经覆盖，再报一次就是重复
   const consoleMsgs = [...new Set(health.console)].filter(msg =>
     !(health.http.length && /^Failed to load resource: the server responded with a status of \d{3}/.test(msg))
@@ -470,12 +496,28 @@ function findingsForPage({ site, pageUrl, path, health, facts, links, loginInfo,
       target: r.url.split('?')[0], basis: r.status >= 500 ? 'failed' : 'wrong', tier: isDoc ? 'wall' : 'tolerable', observed: key, evidence: ev({ status: r.status, type: r.type }) });
   }
   for (const f of health.failed.slice(0, 5)) out.push({ kind: 'network', path, title: `请求失败：${f.url.split('?')[0].slice(-80)}`, target: f.url.split('?')[0], basis: 'failed', tier: 'tolerable', observed: f.why, evidence: ev() });
+  for (const r of health.stalled) out.push({ kind: 'network', path, title: `请求${r.open ? '超过' : '耗时'} ${r.seconds} 秒${r.open ? '仍未返回' : ''}：${r.url.slice(-80)}`, match: `慢请求：${r.url}`, target: r.url, basis: 'friction', tier: 'tolerable',
+    observed: `${r.method} ${r.type} ${r.open ? '已等待' : '耗时'} ${r.seconds} 秒；长轮询等有意保持的连接需人工排除`, evidence: ev({ type: r.type }) });
   out.push(...clientBlockedFindings(health, { path, ev }));
-  for (const b of links?.broken ?? []) out.push({ kind: 'broken-link', path, title: `链接打不开（${b.status || '无响应'}）：「${b.text || b.href.slice(-40)}」`,
-    target: b.href.split('?')[0], basis: 'failed', tier: 'degrade', loss: `访客点「${b.text || '这个链接'}」到达错误页`, observed: `${b.status} ${b.href}`, evidence: ev() });
+  for (const b of links?.broken ?? []) {
+    const label = `「${b.text || b.href.slice(-40)}」`;
+    // 401/403/429 是需要登录、权限不足或被限流（WAF 也常这样回 HEAD），不等于链接失效
+    const gated = [401, 403, 429].includes(b.status);
+    out.push({ kind: 'broken-link', path, title: `${gated ? '链接未放行' : '链接打不开'}（${b.status || '无响应'}）：${label}`,
+      // Keep fingerprints compatible with verdicts recorded before the wording changed.
+      match: `链接打不开（${b.status || '无响应'}）：${label}`,
+      target: b.href.split('?')[0], basis: gated ? 'friction' : 'failed', tier: gated ? 'tolerable' : 'degrade',
+      ...(gated ? {} : { loss: `访客点「${b.text || '这个链接'}」到达错误页` }),
+      observed: `${b.status} ${b.href}${gated ? '；需要登录、权限不足或被限流，未据此认定链接失效' : ''}`, evidence: ev() });
+  }
   for (const img of facts?.images ?? []) {
     if (health.clientBlocked.some(f => f.method === 'GET' && f.url.split('?')[0] === img.src.split('?')[0])) continue;
-    out.push({ kind: 'broken-image', path, title: `图片没加载出来：${img.alt || img.src.split('/').pop().slice(0, 60)}`, target: img.src.split('?')[0], basis: 'cosmetic', tier: 'tolerable', observed: img.src, evidence: ev() });
+    // 服务器明确回 404/410 的可见图片是确定缺失；网络错误、5xx、403 可能是瞬时或环境差异，保持可容忍
+    const status = health.http.find(r => r.type === 'image' && r.url.split('?')[0] === img.src.split('?')[0])?.status;
+    const missing = img.shown && (status === 404 || status === 410);
+    out.push({ kind: 'broken-image', path, title: `图片没加载出来：${img.alt || img.src.split('/').pop().slice(0, 60)}`, target: img.src.split('?')[0],
+      basis: missing ? 'failed' : 'cosmetic', tier: missing ? 'degrade' : 'tolerable', ...(missing ? { loss: '访客在这个位置看到的是裂图' } : {}),
+      observed: status ? `${status} ${img.src}` : img.src, evidence: ev() });
   }
   if (facts && facts.overflowPx > 2) out.push({ kind: 'overflow', path, title: `横向溢出 ${Math.round(facts.overflowPx)}px（${viewport.width} 宽）`, target: facts.culprit ?? 'body',
     basis: viewport.width < 500 ? 'friction' : 'cosmetic', tier: 'tolerable', observed: `最先越界的元素：${facts.culprit ?? '未定位'}`, viewport: `${viewport.width}x${viewport.height}`, evidence: ev() });
@@ -565,7 +607,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
           facts = await page.evaluate(pageFactsInPage, { loggedOutText });
           facts.images = facts.images.map(img => ({ ...img, src: safeUrl(img.src) }));
           loginIssue = loginProblem({ site, login, path: p.path, finalUrl: page.url(), facts });
-          if (linkCheck && !loginIssue && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { site, login, limit: linkLimit });
+          if (linkCheck && !loginIssue && viewport === viewports[0]) links = await checkLinks(context, facts.links, site.origin, { site, login, self: page.url().split('#')[0], limit: linkLimit });
           if (detect && !navError && !loginIssue) {
             const result = await runDetectors(page, { viewport, loginName: login?.name, options: detectOptions });
             detected = result.detections;
@@ -573,6 +615,7 @@ export async function probeSite({ site, login, pages, checks = [], viewports, se
           }
         } catch (e) { navError = navError ?? clip(scrubSecrets(e.message, login.secrets), 200); }
         const screenshot = shoot ? await shoot(page, `page-${p.path}-${viewport.width}`) : null;
+        health.stalled = stalledRequests(health);
         const finalUrl = page.url();
         await context.close().catch(() => {});
         out.pages.push({ path: p.path, name: p.name ?? null, url: safeUrl(pageUrl), finalUrl: safeUrl(finalUrl), viewport, navError, title: facts?.title ?? null,

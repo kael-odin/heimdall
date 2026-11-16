@@ -35,6 +35,16 @@ const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 
 const num = (v) => (v === undefined || v === true ? undefined : Number(v));
 const list = (v) => (v === undefined || v === true ? undefined : String(v).split(',').map(s => s.trim()).filter(Boolean));
+/**
+ * Git Bash（MSYS）会把以 / 开头的参数改写成 Windows 路径（/a,/b → C:/Program Files/Git/a,/b），原值无法可靠还原，只能说清楚怎么写。
+ * 写成 //a 可以绕开改写；列表里的 //a,//b 会原样传进来，这里折回 /a。
+ */
+const sitePaths = (v) => {
+  const paths = list(v)?.map(p => p.replace(/^\/{2,}/, '/'));
+  const rewritten = paths?.find(p => /^[A-Za-z]:[\\/]/.test(p));
+  if (rewritten) throw new Error(`页面路径 ${rewritten} 是 Windows 路径：Git Bash 改写了以 / 开头的参数。把路径写成 //a,//b，或在命令前加 MSYS_NO_PATHCONV=1`);
+  return paths;
+};
 
 /** 把命令行翻译成能力入参 */
 export function argsFor(id, { flags, positional }) {
@@ -79,7 +89,7 @@ export function argsFor(id, { flags, positional }) {
     case 'qa_status': set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined); break;
     case 'qa_run':
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
-      set('site', positional[0] ?? flags.site); set('pages', list(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
+      set('site', positional[0] ?? flags.site); set('pages', sitePaths(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
       set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
       if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
       if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;
@@ -87,7 +97,7 @@ export function argsFor(id, { flags, positional }) {
       break;
     case 'qa_ci':
       set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
-      set('site', positional[0] ?? flags.site); set('pages', list(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
+      set('site', positional[0] ?? flags.site); set('pages', sitePaths(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
       set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
       if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
       if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;

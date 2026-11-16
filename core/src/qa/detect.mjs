@@ -85,7 +85,8 @@ export function detectInPage(options = {}) {
     formNames = null,
   } = options;
   const t = {
-    tapTargetPx: 24, mobileTapTargetPx: 44, oversizedImageRatio: 2, textClippedRatio: 0.3, ...thresholds,
+    lcpMs: 2500, cls: 0.1, tapTargetPx: 24, mobileTapTargetPx: 44, oversizedImageRatio: 2, textClippedRatio: 0.3,
+    ...Object.fromEntries(Object.entries(thresholds).filter(([, value]) => Number.isFinite(value))),
   };
   const found = [];
   const counts = {};
@@ -529,7 +530,7 @@ export function detectInPage(options = {}) {
 
   const perf = window.__heimdallPerf;
   if (perf) {
-    if (Number.isFinite(perf.lcp) && perf.lcp > (t.lcpMs ?? 2500)) {
+    if (Number.isFinite(perf.lcp) && perf.lcp > t.lcpMs) {
       push('perf-lcp', {
         kind: 'perf', basis: 'friction', tier: 'tolerable', target: 'largest-contentful-paint',
         title: `最大内容绘制 ${Math.round(perf.lcp)}ms，超过 ${t.lcpMs}ms`,
@@ -538,7 +539,7 @@ export function detectInPage(options = {}) {
         viewport: `${innerWidth}x${innerHeight}`,
       });
     }
-    if (Number.isFinite(perf.cls) && perf.cls > (t.cls ?? 0.1)) {
+    if (Number.isFinite(perf.cls) && perf.cls > t.cls) {
       push('perf-cls', {
         kind: 'perf', basis: 'friction', tier: 'tolerable', target: 'cumulative-layout-shift',
         title: `布局偏移 CLS ${perf.cls.toFixed(3)}，超过 ${t.cls}`,

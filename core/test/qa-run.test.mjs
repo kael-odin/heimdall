@@ -23,7 +23,7 @@ import { writeBaseline, readBaseline, baselineFile } from '../src/qa/baseline.mj
 import { invoke } from '../src/agent/registry/invoke.mjs';
 import { fingerprintOf } from '../src/qa/findings.mjs';
 import { newQaPage, qaBrowserLaunchOptions, routeQaRequest } from '../src/qa/http-policy.mjs';
-import { normalizeCheck } from '../src/qa/probe.mjs';
+import { normalizeCheck, stalledRequests } from '../src/qa/probe.mjs';
 import { matchBenchmarkFinding } from '../scripts/benchmark-qa.mjs';
 
 const PAGES = {
@@ -92,7 +92,9 @@ const PAGES = {
     <img src="/blocked-image.png" alt="blocked image"><script src="/blocked-script.js"></script>
     <script>fetch('/real-failure').catch(() => {}); fetch('/blocked-query', { method: 'POST' }).catch(() => {});
       fetch('/policy-write', { method: 'POST' }).catch(() => {}).then(() => fetch('/policy-write', { method: 'POST' }).catch(() => {}));
-      console.error('fixture actual error');</script></html>`,
+      console.error('fixture actual error');</script><script>null.boom;</script></html>`,
+  '/script-error': `<!doctype html><html lang="zh-CN"><title>脚本异常对照</title><h1>脚本异常对照</h1>
+    <a href="#top">回到顶部</a> <a href="/guarded-401">会员区</a><script>null.boom;</script></html>`,
   '/check-rows': `<!doctype html><html lang="zh-CN"><title>表格检查对照</title><h1>表格检查对照</h1>
     <div id="bad"><span class="date">2026-11-08</span><span class="date">2026-11-09T08:09:10Z</span></div>
     <div id="good"><span class="date" style="visibility:hidden">measurement</span><span class="date">2026-11-08</span><span class="date">2026-11-09</span></div>
@@ -161,6 +163,27 @@ test('qa distinguishes client-blocked resources from real network and script fai
     assert.ok(!findings.some(f => f.kind === 'console' && /ERR_BLOCKED_BY_CLIENT/i.test(f.observed)));
     assert.ok(findings.some(f => f.kind === 'network' && f.confidence !== 'environment' && f.target.endsWith('/real-failure')));
     assert.ok(findings.some(f => f.kind === 'console' && f.observed.includes('fixture actual error')));
+    assert.equal(findings.find(f => f.target === 'pageerror').tier, 'tolerable', 'an exception on a load with blocked requests may be caused by the test setup');
+    const clean = await runQa(loadWorkspace(root), { site: 'web', pages: ['/script-error', '/missing/1', '/missing/2'], viewports: [1280],
+      detect: false, baseline: false }, { browser });
+    const thrown = clean.findings.find(f => f.target === 'pageerror');
+    assert.equal(thrown.tier, 'degrade', "an uncaught exception from the site's own script on an undisturbed load is worth filing");
+    assert.match(thrown.observed, /\/script-error:\d+:\d+/, 'the throwing script location is kept as evidence');
+    const gated = clean.findings.find(f => f.kind === 'broken-link');
+    assert.match(gated.title, /链接未放行（401）/);
+    assert.equal(gated.tier, 'tolerable', 'a link that asks for a login is not a broken link');
+    assert.equal(clean.run.coverage.pages[0].counts.linksChecked, 1, 'a same-page anchor is not checked as another address');
+    const unopened = clean.findings.filter(f => f.kind === 'navigation');
+    assert.equal(unopened.length, 1, 'pages of one route template share a finding');
+    assert.deepEqual(unopened[0].pages.map(p => new URL(p.url).pathname), ['/missing/1', '/missing/2']);
+    assert.match(readFileSync(clean.files.report, 'utf8'), /同类页面 2 个/);
+    const request = (type, url = 'https://x.test/api/list?token=abc') => ({ resourceType: () => type, url: () => url, method: () => 'GET' });
+    const now = Date.now();
+    assert.deepEqual(stalledRequests({ timing: new Map([
+      [request('xhr'), { since: now - 12_500 }], [request('fetch'), { since: now - 31_000, done: now - 1_000 }],
+      [request('script'), { since: now - 9_000 }], [request('eventsource'), { since: now - 60_000 }], [request('document'), { since: now - 60_000 }],
+    ]) }).map(r => [r.type, r.open, r.seconds, r.url]), [['xhr', true, 12, 'https://x.test/api/list'], ['fetch', false, 30, 'https://x.test/api/list']],
+    'only requests that took ten seconds or never returned are reported, without query values');
     assert.match(readFileSync(output.files.report, 'utf8'), /存在环境问题/);
     assert.doesNotMatch(readFileSync(output.files.report, 'utf8'), /登录状态失效/);
     assert.match(readFileSync(output.files.bugs, 'utf8'), /受环境拦截影响的资源/);
@@ -1071,6 +1094,9 @@ test('qa e2e: probe, login profile, real clipboard, verdict memory across runs, 
     const link = first.findings.find(f => f.kind === 'broken-link');
     assert.equal(link.tier, 'degrade');
     assert.ok(fileable(link), 'a broken same-origin link is worth filing');
+    const image = first.findings.find(f => f.kind === 'broken-image');
+    assert.equal(image.tier, 'degrade', 'a visible image the server answers with 404 is missing for every visitor');
+    assert.match(image.observed, /^404 /);
     const bugs = readFileSync(first.files.bugs, 'utf8');
     assert.match(bugs, /链接打不开/);
     assert.doesNotMatch(bugs, /横向溢出|控制台报错/, 'tolerable findings stay out of bugs.md');

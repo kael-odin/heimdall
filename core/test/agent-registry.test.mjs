@@ -89,6 +89,8 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   assert.deepEqual(argsFor('qa_ci', parseArgs(['web', '--fail-on', 'degrade', '--max-findings', '3', '--github'])), {
     site: 'web', failOn: 'degrade', maxFindings: 3, github: true,
   });
+  assert.deepEqual(argsFor('qa_run', parseArgs(['web', '--pages', '//a,//b/c,/d'])).pages, ['/a', '/b/c', '/d'], 'the // escape for Git Bash folds back to a site path');
+  assert.throws(() => argsFor('qa_run', parseArgs(['web', '--pages', 'C:/Program Files/Git/a,/b'])), /MSYS_NO_PATHCONV/, 'a path rewritten by Git Bash is explained, not passed on');
   assert.deepEqual(argsFor('qa_metrics', parseArgs(['--file', 'metrics.json', '--site', 'web', '--limit', '4'])), {
     file: resolve('metrics.json'), site: 'web', limit: 4,
   });

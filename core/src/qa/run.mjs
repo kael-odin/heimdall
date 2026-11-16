@@ -98,7 +98,10 @@ export function triage(ws, findings, { environment } = {}) {
   return triaged.map(f => (f.id ? f : { ...f, id: `F${++n}` }));
 }
 
-/** 同一次运行里指纹相同的发现合并（多个视口看到同一个问题只算一条） */
+/**
+ * 同一次运行里指纹相同的发现合并（多个视口看到同一个问题只算一条）。
+ * 路径模板会把 /item/1 与 /item/2 归成同一条：各自的地址与实测值留在 pages 里，报告不能只剩第一页。
+ */
 function dedupe(findings) {
   const byFp = new Map();
   for (const f of findings) {
@@ -107,6 +110,10 @@ function dedupe(findings) {
     prev.seen++;
     const vp = f.viewport ?? f.evidence?.viewport;
     if (vp && !prev.viewports.includes(vp)) prev.viewports.push(vp);
+    const url = f.evidence?.url;
+    if (!url || !prev.evidence?.url || url === prev.evidence.url) continue;
+    prev.pages ??= [{ url: prev.evidence.url, ...(prev.observed ? { observed: prev.observed } : {}) }];
+    if (prev.pages.length < 12 && !prev.pages.some(p => p.url === url)) prev.pages.push({ url, ...(f.observed ? { observed: f.observed } : {}) });
   }
   return [...byFp.values()];
 }
