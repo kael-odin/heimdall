@@ -114,6 +114,14 @@ test('live/contract: empty or static-only input is explicit B0', () => {
   assert.equal(contract.coverage.invented, 0);
 });
 
+test('live/contract: journey provenance is retained without exposing response values', () => {
+  const contract = buildObservedApiContract([
+    { method: 'GET', url: 'https://x.test/api/session', status: 200, mimeType: 'application/json', ...body({ ok: true, token: 'do-not-copy' }) },
+  ], { siteId: 'x.test', origin: 'https://x.test', journeys: ['journey-1'] });
+  assert.deepEqual(contract.sources.journeys, ['journey-1']);
+  assert.doesNotMatch(JSON.stringify(contract), /do-not-copy/);
+});
+
 test('live/har: contract-only sanitization keeps query names and drops query values', () => {
   const result = sanitizeHar({ log: { entries: [{
     request: { method: 'GET', url: 'https://x.test/api/items?page=2&filter=all' },

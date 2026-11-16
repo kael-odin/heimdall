@@ -2,7 +2,7 @@
 
 更新：2026-11-16。这里记录当前仍需完成或长期维护的工作。2026-10-13 前的逐项历史与已完成条目在 [归档路线图](archive/ROADMAP-through-2026-10-13.md)；本轮修复前证据、复验及剩余边界见 [审查报告](./audits/README.md)。
 
-持续目标为站点重建与独立交付、SEO/GEO 诊断优化、基于充分业务信息的前后端缺陷检测，优先级、当前口径和边界见 [当前主线](STATUS.md#现在的主线)。[GEO 证据完整性及 Google 摘要指令](audits/2026-11-12/geo-evidence-integrity.md)和 [JSON-LD 标准语义实测](audits/2026-11-13/jsonld-semantics.md)已修正真实样本的误报；真实模型引用、爬虫访问策略与授权业务旅程继续保留为未完成工作。
+持续目标为站点重建与独立交付、SEO/GEO 诊断优化、基于充分业务信息的前后端缺陷检测，优先级、当前口径和边界见 [当前主线](STATUS.md#现在的主线)。[GEO 证据完整性及 Google 摘要指令](audits/2026-11-12/geo-evidence-integrity.md)和 [JSON-LD 标准语义实测](audits/2026-11-13/jsonld-semantics.md)已修正真实样本的误报；CLI-only 的获授权旅程录制入口已落地，但真实模型引用、爬虫访问策略、生产认证和写入业务旅程仍未完成。
 
 本机旧产物已做[只读盘点](./audits/README.md)：历史 atlas 可比较的 641 个 URL 中 397 个有对应克隆，62 份原工作区多视口验证均为旧口径。按 2026-10-15 最新验证器指纹的[隔离批处理快照](./audits/README.md)，407 个带克隆页中 **2 页完整测量**（`angular.dev/ai` 90.55% B、`home` 94.80% B）、**3 页未测成**（`apify.com/ideas`、`jobs`、`apify-instagram-scraper` 渲染未收敛）、**402 页待测**；另有 1 页 `no_clone`，不计入分母。旧的[四页已测快照](./audits/README.md)只供追溯，不能沿用 Apify 旧分数。新批处理已支持超长页分段截图，但该页仍须解决采集完成条件。批处理只做三视口视觉验证，不包含交互；原件保持只读，运行状态在被 Git 忽略的 `core/workspace/_runs/historical-v2-batch/`。以下任务不得原地覆盖旧证据。
 

@@ -334,7 +334,7 @@ export function summarizeObservedApiContract(contract) {
   };
 }
 
-export function buildObservedApiContract(entries, { siteId = '', origin = '', pages = 0, generatedAt = new Date().toISOString() } = {}) {
+export function buildObservedApiContract(entries, { siteId = '', origin = '', pages = 0, journeys = [], generatedAt = new Date().toISOString() } = {}) {
   const { groups, apiEntries, excluded } = collectEntries(entries, origin);
   const sortedGroups = [...groups.values()].sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
   const paths = {};
@@ -376,7 +376,7 @@ export function buildObservedApiContract(entries, { siteId = '', origin = '', pa
   };
   const contract = {
     schema: 'heimdall.contract/1', siteId, generatedAt, tier,
-    sources: { pages, journeys: [], harEntries: entries?.length ?? 0, apiEntries, excluded },
+    sources: { pages, journeys: Array.isArray(journeys) ? journeys.slice(0, 100) : [], harEntries: entries?.length ?? 0, apiEntries, excluded },
     openapi, observations, fixtures: [], unknowns,
     coverage: {
       endpoints: {
