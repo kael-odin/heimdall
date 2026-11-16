@@ -225,6 +225,7 @@ function observedRequestAuth(req) {
   const schemes = new Set();
   for (const header of req?.headers ?? []) {
     const name = String(header.name ?? '').toLowerCase();
+    if (name.startsWith(':')) continue;   // HTTP/2 伪头（:authority、:path…）不是请求头，别把 :authority 读成鉴权
     if (name === 'authorization') {
       const scheme = String(header.value ?? '').trim().split(/\s+/, 1)[0].toLowerCase();
       schemes.add(scheme === 'bearer' || scheme === 'basic' || scheme === 'digest' ? scheme : 'authorization');
@@ -319,7 +320,9 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
     const publicReadOnly = publicData || publicBinary;
     let reason = null;
     // Query names may be retained for approved public GET data; default API capture still needs explicit approval.
-    const contractUrl = contractOnly && (publicReadOnly || method !== 'GET') ? safeContractUrl(parsed) : null;
+    // 契约模式只看形状：同源 GET 接口带普通查询名（?page=2）也要进来，否则站点唯一的后端在契约里是 0 个端点。
+    // safeContractUrl 去掉所有查询值、丢弃敏感查询名和私有路径段；进契约的条目不保留任何响应体。
+    const contractUrl = contractOnly && (publicReadOnly || method !== 'GET' || safeContractUrl(parsed)) ? safeContractUrl(parsed) : null;
     if (publicReadOnly && !safePublicDataUrl(parsed)) reason = 'privateUrl';
     else if (!publicReadOnly && !(contractUrl || safeReplayUrl(parsed))) reason = 'privateUrl';
     else if (publicReadOnly && (method !== 'GET' || status < 200 || status >= 300 || req.postData)) reason = 'nonStatic';
@@ -338,6 +341,12 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
     }
     let body = null;
     const text = res.content?.text;
+    // 未被批准为公开只读数据的条目只贡献接口形状：响应体一律不落盘
+    if (!publicReadOnly && contractOnly) {
+      entries.push(contractEntry({ method, url: contractUrl, status, mimeType, requestBody: includeApiBodies ? observedRequestBody(req) : null,
+        requestAuth: includeApiBodies ? observedRequestAuth(req) : [], res }));
+      continue;
+    }
     if (typeof text === 'string' && text.length) {
       if (publicBinary && (res.content?.encoding !== 'base64' || text.length > MAX_PUBLIC_BINARY_BASE64_CHARS
         || !isBase64(text))) {
@@ -381,6 +390,17 @@ export function sanitizeHar(har, { includeApiBodies = false, contractOnly = fals
     });
   }
   return { version: 1, generatedAt: new Date().toISOString(), entries, privacy: { excluded, examples, includeApiBodies } };
+}
+
+/** 契约专用条目：只有方法与去值地址，没有任何响应体或敏感头。 */
+function contractEntry({ method, url, status, mimeType, requestBody, requestAuth, res }) {
+  const headers = {};
+  for (const h of res.headers ?? []) {
+    const name = String(h.name ?? '').toLowerCase();
+    if (SAFE_RESPONSE_HEADERS.includes(name)) headers[name] = h.value;
+  }
+  return { method, url, status, mimeType, headers,
+    ...(requestBody ? { requestBody } : {}), ...(requestAuth?.length ? { requestAuth } : {}) };
 }
 
 /** 合并多页 HAR（同 key 第一条优先；页面顺序 = 参数顺序） */

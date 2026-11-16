@@ -19,7 +19,7 @@ import { chromium } from 'playwright';
 import { WORKSPACE } from '../paths.mjs';
 import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
 import { fetchRobotsAndSitemaps, discoverTargets, collectSite } from '../seo/collect.mjs';
-import { snapshotFromPages, diffSnapshots } from './diff.mjs';
+import { snapshotFromPages, diffSnapshots, normalizeUrl } from './diff.mjs';
 import { renderWatchHtml } from './report.mjs';
 import { emit } from '../emit.mjs';
 import { makeArgs } from '../args.mjs';
@@ -51,7 +51,8 @@ try {
   if (existsSync(atlasPath)) {
     try {
       const atlas = JSON.parse(readFileSync(atlasPath, 'utf8'));
-      targets = (atlas.nodes ?? []).filter(n => !['auth', 'legal'].includes(n.type)).slice(0, MAX).map(n => ({ url: n.url, depth: n.depth ?? 0 }));
+      targets = (atlas.nodes ?? []).filter(n => !['auth', 'legal'].includes(n.type)).slice(0, MAX)
+        .map(n => ({ url: typeof n.href === 'string' && normalizeUrl(n.href) === normalizeUrl(n.url) ? n.href : n.url, depth: n.depth ?? 0 }));
     } catch {}
   }
   if (targets.length < 2) {

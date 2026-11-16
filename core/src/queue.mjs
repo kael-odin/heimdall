@@ -68,6 +68,11 @@ const atlasRows = atlas.nodes
   .map(n => ({ url: canonUrl(n?.url), type: n?.type }))
   .filter(n => n.url && /^https?:$/.test(new URL(n.url).protocol) && new URL(n.url).origin === workspaceOrigin);
 const discoveredTargets = ALL_DISCOVERED ? new Set(atlasRows.map(n => n.url)) : null;
+// 侦察记下的实际访问地址（与身份只差结尾斜杠）：克隆照它访问，不再因补斜杠的跳转离开源站
+const visitUrl = (() => {
+  const spelled = new Map(atlas.nodes.filter(n => typeof n?.href === 'string' && canonUrl(n.href) === canonUrl(n.url)).map(n => [canonUrl(n.url), n.href]));
+  return url => spelled.get(url) ?? url;
+})();
 if (ALL_DISCOVERED && !discoveredTargets.size) {
   console.error('[queue] --all-discovered 的 atlas 没有有效同源页面');
   process.exit(2);
@@ -176,7 +181,7 @@ if (INCREMENTAL && !FORCE) {
         const q = pool.shift();
         const fpPath = join(BASE, 'pages', q.name, 'fingerprint.json');
         const prev = existsSync(fpPath) ? (() => { try { return JSON.parse(readFileSync(fpPath, 'utf8')); } catch { return null; } })() : null;
-        const next = await sourceFingerprint(q.url);
+        const next = await sourceFingerprint(visitUrl(q.url));
         const { action, reason } = incrementalDecision(prev, next);
         if (action === 'reforge') { q.status = 'pending'; q.reforgeReason = reason; changed++; }
         else if (reason === 'unreachable') unknown++; else same++;
@@ -264,7 +269,7 @@ async function worker(id) {
         const r = await fetch(`${API}/api/forge`, {
           method: 'POST',
           headers: HEADERS,
-          body: JSON.stringify({ url: job.url, hostPost: false, parentTaskId: PARENT_TASK_ID }),
+          body: JSON.stringify({ url: visitUrl(job.url), hostPost: false, parentTaskId: PARENT_TASK_ID }),
           signal: AbortSignal.timeout(10_000),
         });
         const body = await r.json().catch(() => ({}));

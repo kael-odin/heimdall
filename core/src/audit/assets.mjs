@@ -19,7 +19,7 @@ import { emit } from '../emit.mjs';
 import { scanCssRefs } from '../css-refs.mjs';
 import { renderAssetGapsHtml } from './assets-report.mjs';
 
-const IGNORE = /^(data:|#|mailto:|javascript:|tel:|about:blank)/i;
+const IGNORE = /^(data:|#|mailto:|javascript:|tel:|about:)/i;
 const TRACKING = /(t\.co|analytics\.twitter|facebook\.|doubleclick|googletagmanager|google-analytics|cookiepro|cookiebot|hs-scripts|clarity\.ms|hotjar|segment\.|mixpanel|bat\.bing)/i;
 const META_LINK = /link\[(canonical|alternate|author|me|dns-prefetch|preconnect|agent-skills|api-catalog|service-desc|agents-md|auth-md|ai-catalog|service-doc|mcp-server-card|stylesheet)\]/;
 const VISUAL_KINDS = /^(img|img-srcset|img-lazy|img-lazy-srcset|source-srcset|source-src|video|video-poster|audio|icon|svg-use|object|embed|inline-style|css-url)$/;

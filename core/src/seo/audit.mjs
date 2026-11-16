@@ -122,7 +122,10 @@ try {
       targets = (atlas.nodes ?? [])
         .filter(n => isSameOriginUrl(n.url, origin) && !['auth', 'legal'].includes(n.type))
         .slice(0, MAX)
-        .map(n => ({ url: n.url, depth: n.depth ?? 0 }));
+        .map(n => {
+          const spelled = typeof n.href === 'string' && canonUrl(n.href) === canonUrl(n.url);
+          return { url: spelled ? n.href : n.url, depth: n.depth ?? 0, ...(spelled ? { given: true } : {}) };
+        });
       log(`reuse atlas: ${targets.length} pages`);
     } catch {}
   }

@@ -129,6 +129,32 @@ test('live/har: contract-only sanitization keeps query names and drops query val
   assert.doesNotMatch(result.entries[0].url, /2|all/);
 });
 
+test('live/har: unapproved GET APIs still contribute their shape to a contract, never their bodies', () => {
+  // A site whose whole backend is a paginated JSON GET used to read as "0 endpoints": the entry fell through
+  // to the replay-URL whitelist, which only knows asset keys (v, w, q…) and rejects ?page=.
+  const entry = (path, text, headers = []) => ({
+    request: { method: 'GET', url: 'https://x.test' + path, headers },
+    response: { status: 200, content: { mimeType: 'application/json', text } },
+  });
+  const entries = [
+    entry('/api/quotes?page=1', '{"quotes":[{"author":"Ada","email":"ada@example.com"}]}'),
+    entry('/api/quotes?page=2', '{"quotes":[]}'),
+    entry('/api/items/users/7?limit=5', '{"id":7}'),
+    entry('/api/search?token=abc', '{"q":1}'),
+    entry('/api/me', '{"name":"x"}', [{ name: ':authority', value: 'x.test' }, { name: 'priority', value: 'u=0' }]),
+  ];
+  const result = sanitizeHar({ log: { entries } }, { includeApiBodies: true, contractOnly: true });
+  const byUrl = new Map(result.entries.map(item => [item.url, item]));
+  assert.deepEqual([...byUrl.keys()], ['https://x.test/api/quotes?page=', 'https://x.test/api/search', 'https://x.test/api/me'],
+    'values are dropped, a private path segment (users) stays out, a private query name (token) is dropped with its endpoint kept');
+  for (const kept of byUrl.values()) { assert.equal(kept.body ?? null, null, 'no response body without an approval'); assert.equal(kept.kind, undefined); }
+  const contract = buildObservedApiContract(result.entries, { origin: 'https://x.test' });
+  assert.equal(contract.openapi.paths['/api/quotes'].get.parameters[0].name, 'page');
+  assert.equal(contract.summary.endpoints, 3);
+  assert.deepEqual(contract.summary.authSchemes, [], 'an HTTP/2 :authority pseudo-header is not an auth scheme');
+  assert.doesNotMatch(JSON.stringify(contract), /ada@example\.com|"Ada"/);
+});
+
 test('live/har: approved binary downloads require base64, stay bounded, and need manual review', () => {
   const origin = 'https://x.test';
   const binary = value => ({

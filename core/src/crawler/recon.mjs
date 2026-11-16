@@ -109,11 +109,14 @@ const depthSkipped = new Set();
 let linkObservedPages = 0;
 let linkObservationTimedOutPages = 0;
 let documentMimeInferredPages = 0;
-// 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充
-const bfsQueue = [{ url: canonUrl(LANDING), depth: 0 }];
+// 双队列：BFS 发现优先（保证结构层页面入图），sitemap 仅作补充。
+// url 是去重身份（归一化，去掉结尾斜杠），href 是站点给出的原样写法：访问用 href。
+// 照归一化地址访问会多出一次补斜杠的跳转，而这一跳在代理后的站点常带着错误的协议或端口离开源站
+// （实测 quotes.toscrape.com：/tag/love → http://…/tag/love/，45 个页面因此被当成“离开源站”丢掉）。
+const bfsQueue = [{ url: canonUrl(LANDING), depth: 0, href: LANDING }];
 const smQueue = [];
 const bfsSeen = new Set([canonUrl(LANDING)]);   // 仅 BFS 自身去重，sitemap 不得预占
-for (const u of sitemapSame) smQueue.push({ url: u, depth: 99 });
+for (const u of sitemapSame) smQueue.push({ url: u, depth: 99, href: sitemap.spelled.get(u) });
 
 // 节点 id 用 url 的稳定哈希（实现与理由见 ../url-canon.mjs 的 stableNodeId）：
 // 此前是自增序号，并发下 id 跟着"谁先加载完"漂移，同一个站点两次侦察结果对不上。
@@ -170,17 +173,17 @@ async function observeRenderedLinks(page) {
     quietMs: LINK_OBSERVE_QUIET_MS, maxMs: LINK_OBSERVE_MAX_MS });
 }
 
-async function visit({ url, depth }) {
+async function visit({ url, depth, href = url }) {
   if (nodes.has(url) && nodes.get(url).directNavigation !== 'unverified-client-route') return;
   const page = await ctx.newPage();
   try {
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
+    const response = await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     if (!response || response.status() < 200 || response.status() >= 300
       || response.status() === 204 || response.status() === 205) {
       throw new Error(`HTTP ${response?.status() ?? 'no-response'}`);
     }
     const initialLanded = canonUrl(page.url());
-    if (!initialLanded || new URL(initialLanded).origin !== ORIGIN) throw new Error('navigation left site origin');
+    if (!initialLanded || new URL(initialLanded).origin !== ORIGIN) throw new Error(`navigation left site origin -> ${page.url().split(/[?#]/)[0]}`);
     const headerMime = response.headers()['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
     const documentMime = headerMime || await page.evaluate(() => document.contentType).catch(() => '');
     if (documentMime !== 'text/html' && documentMime !== 'application/xhtml+xml') {
@@ -198,7 +201,7 @@ async function visit({ url, depth }) {
     linkObservedPages++;
     if (observation.timedOut) linkObservationTimedOutPages++;
     const landed = canonUrl(page.url());
-    if (!landed || new URL(landed).origin !== ORIGIN) throw new Error('navigation left site origin');
+    if (!landed || new URL(landed).origin !== ORIGIN) throw new Error(`navigation left site origin -> ${page.url().split(/[?#]/)[0]}`);
     const clientRouteUnverified = landed !== documentUrl && !directEntryVerified.has(landed);
     if (landed !== url) redirects.set(url, landed);
     bfsSeen.add(landed);
@@ -220,6 +223,9 @@ async function visit({ url, depth }) {
       const added = addNode(landed, depth, title, seoLite, features, clientRouteUnverified);
       node = added ?? nodes.get(landed);
       if (added) {
+        // 浏览器实际停留的地址与身份不同（只差结尾斜杠）时记下来，克隆与审计照它访问
+        const address = page.url().split('#')[0];
+        if (address !== landed && !clientRouteUnverified) added.href = address;
         if (!headerMime) documentMimeInferredPages++;
         emit({ kind: 'page', ...node });
         // 缩略图（供星图 hover）
@@ -229,14 +235,16 @@ async function visit({ url, depth }) {
     if (!clientRouteUnverified) delete node.directNavigation;
 
     if (nodes.size >= MAX_PAGES) return;
-    const canon = [...new Set(observation.links.map(canonUrl).filter(Boolean))];
+    const spelled = new Map();
+    for (const link of observation.links) { const key = canonUrl(link); if (key && !spelled.has(key)) spelled.set(key, link); }
+    const canon = [...spelled.keys()];
     if (depth >= MAX_DEPTH) {
       for (const to of canon) if (!bfsSeen.has(to)) depthSkipped.add(to);
       return;
     }
     for (const to of canon) {
       edges.push({ from: landed, to });
-      if (!bfsSeen.has(to)) { bfsSeen.add(to); bfsQueue.push({ url: to, depth: depth + 1 }); }
+      if (!bfsSeen.has(to)) { bfsSeen.add(to); bfsQueue.push({ url: to, depth: depth + 1, href: spelled.get(to) }); }
     }
     emit({ kind: 'edges', from: landed, tos: canon.slice(0, 40) });
   } catch (e) {

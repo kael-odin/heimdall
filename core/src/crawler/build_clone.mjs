@@ -162,7 +162,14 @@ function candidateChain(ref, refMap, origin) {
   return out;
 }
 
-/** 解析单个引用 → 本地相对路径（失败返回 null） */
+/**
+ * 原站对一个引用的每个候选地址都明确回 404/410：这个资源在原站就不存在。
+ * 镜像里同样取不到才是还原，所以改写成 CSS 规定的“必然失败”地址 —— 离线不发请求，也不算克隆缺口。
+ * 超时、403、5xx 不在此列：那可能是瞬时或访问控制，仍按缺口处理。
+ */
+const SOURCE_MISSING = 'about:invalid';
+
+/** 解析单个引用 → 本地相对路径（原站已失效返回 SOURCE_MISSING，其它失败返回 null） */
 async function resolveRef(ref, idx, refMap, origin, gaps, cssFileName, priorMap) {
   const cands = candidateChain(ref, refMap, origin);
   if (!cands.length) { gaps.push({ ref, candidates: [], file: cssFileName, reason: 'unresolvable' }); return null; }
@@ -195,15 +202,16 @@ async function resolveRef(ref, idx, refMap, origin, gaps, cssFileName, priorMap)
     if (got) break;
   }
   // 联网补抓（fetchBin 内部对网络抖动已重试）
-  let lastErr = null;
+  let lastErr = null, gone = !got;
   if (!got) {
     for (const c of cands) {
-      try { const r = await fetchBin(c); got = r.buf; gotExt = extFrom(c, r.ct, r.buf); break; } catch (e) { lastErr = e; }
+      try { const r = await fetchBin(c); got = r.buf; gotExt = extFrom(c, r.ct, r.buf); break; }
+      catch (e) { lastErr = e; gone &&= /^(?:404|410)$/.test(String(e?.message ?? e)); }
     }
   }
   if (!got || !got.length) {
-    gaps.push({ ref, candidates: cands, file: cssFileName, reason: 'unreachable', error: lastErr ? String(lastErr.message ?? lastErr).slice(0, 80) : null });
-    return null;
+    gaps.push({ ref, candidates: cands, file: cssFileName, reason: gone ? 'source-missing' : 'unreachable', error: lastErr ? String(lastErr.message ?? lastErr).slice(0, 80) : null });
+    return gone ? SOURCE_MISSING : null;
   }
   const ext = gotExt || 'bin';
   const sub = FONT_EXT.has(ext) ? 'styles' : 'assets';
@@ -261,7 +269,8 @@ async function localizeCss(cssTextIn, cssFileName, origin, refMap = {}, gaps = [
     const cands = candidateChain(ref, refMap, origin);
     const i = idx++;
     const rel = await resolveRef(ref, i, refMap, origin, gaps, cssFileName, priorMap);
-    if (rel) { resolved.set(ref, rel); nextIndex[ref] = { rel, candidates: cands }; fetched++; } else failed++;
+    if (rel === SOURCE_MISSING) resolved.set(ref, rel);   // 不进复用索引：下次构建重新向原站确认
+    else if (rel) { resolved.set(ref, rel); nextIndex[ref] = { rel, candidates: cands }; fetched++; } else failed++;
   }
   const css = rewriteCssRefs(cssTextIn, resolved);
   writeFileAtomic(join(CLONE, 'styles', cssFileName), css);
@@ -399,7 +408,8 @@ writeFileSync(REF_INDEX, JSON.stringify(refIndex, null, 2));
 const gapReport = {
   page: relative(WORKSPACE, PAGE).split('\\').join('/'),
   generatedAt: new Date().toISOString(),
-  cssRefsFailed: cssGaps.length,
+  cssRefsFailed: cssGaps.filter(gap => gap.reason !== 'source-missing').length,
+  cssRefsSourceMissing: cssGaps.filter(gap => gap.reason === 'source-missing').length,
   leftoverSameOriginRefs: leftover,
   // 画布：脚本被剥离后画布上什么都不剩，所以捕获阶段会把它光栅化成静态图。
   // 这里如实记录抓到几个 —— 没抓到的（从未绘制 / 跨域污染）保持原样，
@@ -415,9 +425,10 @@ const gapReport = {
   gaps: cssGaps,
 };
 writeFileSync(join(PAGE, 'clone-gaps.json'), JSON.stringify(gapReport, null, 2));
-if (cssGaps.length) {
-  console.log('\n  ⚠ CSS 引用缺口 ' + cssGaps.length + ' 处（详见 clone-gaps.json，多为原站已失效的引用）');
-  for (const g of cssGaps.slice(0, 3)) console.log('     · ' + g.ref.slice(0, 80));
+if (gapReport.cssRefsSourceMissing) console.log('\n  · 原站已失效的 CSS 引用 ' + gapReport.cssRefsSourceMissing + ' 处（原站回 404/410，镜像同样留空，不算缺口）');
+if (gapReport.cssRefsFailed) {
+  console.log('\n  ⚠ CSS 引用缺口 ' + gapReport.cssRefsFailed + ' 处（详见 clone-gaps.json）');
+  for (const g of cssGaps.filter(gap => gap.reason !== 'source-missing').slice(0, 3)) console.log('     · ' + g.ref.slice(0, 80));
 }
 
 // 重建会重写整页 HTML：此前 AI 修复往页头注入的 styles/fixes.css 会一起丢失，

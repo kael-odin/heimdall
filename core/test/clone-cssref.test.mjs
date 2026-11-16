@@ -44,6 +44,7 @@ body { font-family: 'TestFace', sans-serif; }
 .hero { width: 40px; height: 40px; background-image: url(/img/photo?id=9&w=100); }
 .icon { width: 16px; height: 16px; background-image: ${DATA_URI_SVG}; }
 .gone { width: 8px; height: 8px; background-image: url(/missing-sprite.png); }
+@font-face { font-family: 'Icons'; src: url(../fonts/undeployed.woff2) format('woff2'); }
 `;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>CSS ref fixture</title>
@@ -121,6 +122,12 @@ test('clone: CSS url() 按样式表基准解析 + 按真实类型落盘', { time
     const gaps = JSON.parse(readFileSync(join(pageDir, 'clone-gaps.json'), 'utf8'));
     assert.ok(gaps.cssRefsFailed >= 1, '软 404 应计入 cssRefsFailed');
     assert.ok(gaps.gaps.some(g => g.ref === '/missing-sprite.png'), '软 404 的引用应出现在缺口清单里');
+
+    // ⑤ 原站自己就回 404 的引用：镜像里同样留空才是还原，改成必然失败的地址，不算克隆缺口
+    assert.equal(gaps.cssRefsFailed, 1, '原站 404 的引用不计入克隆缺口');
+    assert.equal(gaps.cssRefsSourceMissing, 1);
+    assert.equal(gaps.gaps.find(g => g.ref === '../fonts/undeployed.woff2')?.reason, 'source-missing');
+    assert.ok(css.includes('font-family: Icons; src: url("about:invalid")'), '原站 404 的引用改写成 about:invalid，离线不再发请求');
   } finally {
     server.close();
     rmSync(dataDir, { recursive: true, force: true });

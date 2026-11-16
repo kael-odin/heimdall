@@ -154,11 +154,13 @@ test('recon omits HTTP errors and uses the final same-origin redirect URL in nod
   const site = await serverFor((req, res) => {
     if (req.url === '/') {
       res.setHeader('content-type', 'text/html');
-      return res.end('<!doctype html><title>Home</title><body><a href="/missing">Missing</a><a href="/old">Old</a><a href="/foreign">Foreign</a></body>');
+      return res.end('<!doctype html><title>Home</title><body><a href="/missing">Missing</a><a href="/old">Old</a><a href="/foreign">Foreign</a><a href="/docs/">Docs</a></body>');
     }
     if (req.url === '/old') { res.writeHead(302, { location: '/new' }); return res.end(); }
     if (req.url === '/foreign') { res.writeHead(302, { location: foreign.origin + '/outside' }); return res.end(); }
-    if (req.url === '/new') {
+    // A proxied server that adds the trailing slash with the wrong origin: only the spelling the site links to works.
+    if (req.url === '/docs') { res.writeHead(308, { location: foreign.origin + '/docs/' }); return res.end(); }
+    if (req.url === '/new' || req.url === '/docs/') {
       res.setHeader('content-type', 'text/html');
       return res.end('<!doctype html><title>New</title><body>New</body>');
     }
@@ -166,10 +168,13 @@ test('recon omits HTTP errors and uses the final same-origin redirect URL in nod
   });
   try {
     const atlas = await runRecon(site.origin, 4, 1);
-    assert.deepEqual(atlas.nodes.map(node => node.url), [site.origin + '/', site.origin + '/new']);
-    assert.deepEqual(atlas.edges, [{ from: atlas.nodes[0].id, to: atlas.nodes[1].id }]);
+    assert.deepEqual(atlas.nodes.map(node => [node.url, node.href]), [[site.origin + '/', undefined], [site.origin + '/docs', site.origin + '/docs/'], [site.origin + '/new', undefined]],
+      'a page is visited as the site spells it; the identity stays normalised and the working address is recorded');
+    assert.deepEqual(atlas.edges.map(edge => edge.from), [atlas.nodes[0].id, atlas.nodes[0].id]);
+    assert.deepEqual(new Set(atlas.edges.map(edge => edge.to)), new Set([atlas.nodes[1].id, atlas.nodes[2].id]));
     assert.ok(atlas.failures.some(row => row.url === site.origin + '/missing' && row.reason.includes('HTTP 404')));
-    assert.ok(atlas.failures.some(row => row.url === site.origin + '/foreign'));
+    assert.ok(atlas.failures.some(row => row.url === site.origin + '/foreign' && row.reason.endsWith('-> ' + foreign.origin + '/outside')));
+    assert.equal(atlas.failures.length, 2);
   } finally {
     await Promise.all([site.close(), foreign.close()]);
   }

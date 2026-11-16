@@ -461,16 +461,20 @@ function onTablistKey(e) {
             <span class="q-k">残留同源引用</span>
             <span class="q-v" :class="(detailQuality.cloneGaps.leftoverSameOriginRefs ?? 0) ? 'bad' : 'ok'">{{ detailQuality.cloneGaps.leftoverSameOriginRefs ?? 0 }}</span>
           </div>
+          <div class="q-row" v-if="detailQuality.cloneGaps.cssRefsSourceMissing">
+            <span class="q-k">原站已失效引用</span>
+            <span class="q-v ok">{{ detailQuality.cloneGaps.cssRefsSourceMissing }}</span>
+          </div>
           <div class="q-row" v-for="(g, i) in (detailQuality.cloneGaps.gaps || []).slice(0, 8)" :key="i">
-            <span class="q-k">{{ g.reason === 'unreachable' ? '抓取失败' : '无法解析' }}<i class="q-file"> · {{ g.file }}</i></span>
+            <span class="q-k">{{ g.reason === 'source-missing' ? '原站 404' : g.reason === 'unreachable' ? '抓取失败' : '无法解析' }}<i class="q-file"> · {{ g.file }}</i></span>
             <span class="q-v" :title="g.ref">{{ String(g.ref).slice(0, 56) }}</span>
           </div>
           <div class="q-row" v-if="(detailQuality.cloneGaps.gaps || []).length > 8">
             <span class="q-k">…</span><span class="q-v">另有 {{ detailQuality.cloneGaps.gaps.length - 8 }} 处，见 clone-gaps.json</span>
           </div>
-          <div class="q-row" v-if="detailQuality.cloneGaps.cssRefsFailed">
+          <div class="q-row" v-if="detailQuality.cloneGaps.cssRefsFailed || detailQuality.cloneGaps.cssRefsSourceMissing">
             <span class="q-k">说明</span>
-            <span class="q-v">多为<b>原站自身</b>已失效的引用（原站上也是 404）。判定是否影响还原度请看上方「视觉保真」——像素比对才是结论。</span>
+            <span class="q-v">原站明确回 404/410 的引用在镜像里同样留空，不算缺口；抓取失败（超时、403、5xx）才需要处理。是否影响还原度请看上方「视觉保真」——像素比对才是结论。</span>
           </div>
         </div>
         <div v-else class="seo-note">本页无缺口报告（该页克隆于缺口落盘功能之前，重新克隆即可生成）</div>
