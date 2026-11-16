@@ -120,10 +120,11 @@ function contracts(sample, includeReadOnlyData) {
     let target;
     try { target = new URL(JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')).target); } catch { continue; }
     const key = `${siteId} ${target.origin}`;
-    const group = groups.get(key) ?? { siteId, origin: target.origin, pages: 0, entries: [],
+    const group = groups.get(key) ?? { siteId, origin: target.origin, pages: 0, entries: [], withheldApi: 0,
       readOnly: readOnlyOptions(siteId, target.origin, includeReadOnlyData) };
     const sanitized = sanitizeHar(raw, { includeApiBodies: true, contractOnly: true, ...group.readOnly });
     group.pages++;
+    group.withheldApi += sanitized.privacy.withheldApi[target.origin] ?? 0;
     group.entries.push(...sanitized.entries);
     groups.set(key, group);
     void page;
@@ -234,9 +235,10 @@ export async function run(argv) {
       const rows = contracts(sample, !!flags['include-readonly-data']);
       const endpoints = rows.reduce((sum, row) => sum + row.summary.endpoints, 0);
       const b1 = rows.filter(row => row.tier === 'B1').length;
+      const withheld = rows.reduce((sum, row) => sum + (row.unknowns.find(item => item.kind === 'api-capture-not-approved')?.count ?? 0), 0);
       const saved = persistContracts(rows);
       env = ok({ rows, persisted: saved.persisted, ambiguous: saved.ambiguous }, {
-        summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口；输出只含接口形状和未知项，不含请求值与响应示例。${saved.persisted.length ? ` 已写入 ${saved.persisted.length} 个工作区契约。` : ''}`,
+        summary: `${summarise('契约', rows)} ${b1} 个站点达到 B1，观察到 ${endpoints} 个接口${withheld ? `，另有 ${withheld} 次 GET 接口请求未获批准、未采集（read-data-plan.json 放行后加 --include-readonly-data 重跑）` : ''}；输出只含接口形状和未知项，不含请求值与响应示例。${saved.persisted.length ? ` 已写入 ${saved.persisted.length} 个工作区契约。` : ''}`,
         ...(saved.ambiguous.length ? { warnings: [{ code: 'contract_origin_ambiguous', message: `以下站点有多个来源，未自动覆盖根契约：${saved.ambiguous.join('、')}` }] } : {}),
         evidence: saved.persisted.map(path => ({ kind: 'file', path })),
       });

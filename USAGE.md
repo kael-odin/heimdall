@@ -281,7 +281,7 @@ node core/src/cli.mjs probe adapter --site example.org --include-api-bodies --ou
 
 这条命令会把样本按端点拆成训练集和留出集，只用训练集写入 `adapter-draft\manifest.json`、`adapter-draft\index.mjs`；验证报告写在 `adapter-report.json`。报告里的 `passed` 只表示脱敏观察样本的有限泛化，`not-validated` 表示样本不够，不能当作“后端已经复刻”。路径变化、新查询参数、状态码/MIME/JSON 形状或稳定字段不一致都会列为失败。若报告和输出目录已存在，需显式加 `--force` 才覆盖。
 
-分页或字段选择查询需要逐条批准：复用下文的 `read-data-plan.json`，再为契约或适配器探针显式加 `--include-readonly-data`。这只读取已有 HAR，不会重新访问源站。站点来源须唯一且与记录一致；缺失或无效的计划会拒绝执行，批准的公开 GET 仍不能含认证信息或私密正文。二进制下载只由严格离线导出支持，不能借普通数据许可隐式放行。
+分页或字段选择查询需要逐条批准：复用下文的 `read-data-plan.json`，再为契约或适配器探针显式加 `--include-readonly-data`。没有批准时，`probe contract` 会在摘要和 `api-contract.json` 的 `api-capture-not-approved` 未知项里给出被拦下的 GET 接口请求数（只有数量，不含路径、查询和正文），所以 B0 不等于“站点没有接口”。这只读取已有 HAR，不会重新访问源站。站点来源须唯一且与记录一致；缺失或无效的计划会拒绝执行，批准的公开 GET 仍不能含认证信息或私密正文。二进制下载只由严格离线导出支持，不能借普通数据许可隐式放行。
 
 ```powershell
 node core/src/cli.mjs probe contract --site example.org --include-readonly-data

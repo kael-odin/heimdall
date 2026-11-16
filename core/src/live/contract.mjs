@@ -296,10 +296,13 @@ function buildOperation(group) {
   };
 }
 
-function buildUnknowns(groups) {
+function buildUnknowns(groups, withheldApi = 0) {
   const unknowns = [];
-  if (!groups.length) return [{ kind: 'no-observed-api', detail: '清洗 HAR 中没有可判定的同源接口条目。' }];
-  const authSchemes = [...new Set(groups.flatMap(group => [...group.authSchemes.keys()]))].sort();
+  // 带查询串的 GET 接口默认不采集（查询值可能带私人数据）。站点唯一的后端常常就是这种接口，所以要写明数量和放行办法。
+  const withheld = withheldApi > 0 ? [{ kind: 'api-capture-not-approved', count: withheldApi,
+    detail: `观察到 ${withheldApi} 次同源 GET 接口请求未获批准，形状未采集。确认是公开数据后，在站点工作区的 read-data-plan.json 列出这些路径与查询，再加 --include-readonly-data 重跑。` }] : [];
+  if (!groups.length) return [{ kind: 'no-observed-api', detail: '清洗 HAR 中没有可判定的同源接口条目。' }, ...withheld];
+  unknowns.push(...withheld);  const authSchemes = [...new Set(groups.flatMap(group => [...group.authSchemes.keys()]))].sort();
   unknowns.push({ kind: 'auth-unknown', ...(authSchemes.length ? { observedSchemes: authSchemes } : {}),
     detail: authSchemes.length
       ? '观察到请求带鉴权形态，但没有验证哪些接口强制鉴权、凭据如何刷新或权限如何变化。'
@@ -334,7 +337,7 @@ export function summarizeObservedApiContract(contract) {
   };
 }
 
-export function buildObservedApiContract(entries, { siteId = '', origin = '', pages = 0, generatedAt = new Date().toISOString() } = {}) {
+export function buildObservedApiContract(entries, { siteId = '', origin = '', pages = 0, withheldApi = 0, generatedAt = new Date().toISOString() } = {}) {
   const { groups, apiEntries, excluded } = collectEntries(entries, origin);
   const sortedGroups = [...groups.values()].sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
   const paths = {};
@@ -365,7 +368,7 @@ export function buildObservedApiContract(entries, { siteId = '', origin = '', pa
       provenance: 'observed',
     });
   }
-  const unknowns = buildUnknowns(sortedGroups);
+  const unknowns = buildUnknowns(sortedGroups, withheldApi);
   const tier = sortedGroups.length ? 'B1' : 'B0';
   const openapi = {
     openapi: '3.1.0',

@@ -129,30 +129,36 @@ test('live/har: contract-only sanitization keeps query names and drops query val
   assert.doesNotMatch(result.entries[0].url, /2|all/);
 });
 
-test('live/har: unapproved GET APIs still contribute their shape to a contract, never their bodies', () => {
-  // A site whose whole backend is a paginated JSON GET used to read as "0 endpoints": the entry fell through
-  // to the replay-URL whitelist, which only knows asset keys (v, w, q…) and rejects ?page=.
-  const entry = (path, text, headers = []) => ({
-    request: { method: 'GET', url: 'https://x.test' + path, headers },
-    response: { status: 200, content: { mimeType: 'application/json', text } },
+test('live/har: an unapproved GET API stays out of the contract, and the contract says it was withheld', () => {
+  // Real case (quotes.toscrape.com): the only backend is GET /api/quotes?page=N. Query strings need an approval,
+  // so the contract was B0 — but it read as "this site has no API", which sent the rebuild in the wrong direction.
+  const entry = (url, headers = []) => ({
+    request: { method: 'GET', url, headers },
+    response: { status: 200, content: { mimeType: 'application/json', text: '{"quotes":[{"author":"Ada"}]}' } },
   });
-  const entries = [
-    entry('/api/quotes?page=1', '{"quotes":[{"author":"Ada","email":"ada@example.com"}]}'),
-    entry('/api/quotes?page=2', '{"quotes":[]}'),
-    entry('/api/items/users/7?limit=5', '{"id":7}'),
-    entry('/api/search?token=abc', '{"q":1}'),
-    entry('/api/me', '{"name":"x"}', [{ name: ':authority', value: 'x.test' }, { name: 'priority', value: 'u=0' }]),
-  ];
-  const result = sanitizeHar({ log: { entries } }, { includeApiBodies: true, contractOnly: true });
-  const byUrl = new Map(result.entries.map(item => [item.url, item]));
-  assert.deepEqual([...byUrl.keys()], ['https://x.test/api/quotes?page=', 'https://x.test/api/search', 'https://x.test/api/me'],
-    'values are dropped, a private path segment (users) stays out, a private query name (token) is dropped with its endpoint kept');
-  for (const kept of byUrl.values()) { assert.equal(kept.body ?? null, null, 'no response body without an approval'); assert.equal(kept.kind, undefined); }
-  const contract = buildObservedApiContract(result.entries, { origin: 'https://x.test' });
-  assert.equal(contract.openapi.paths['/api/quotes'].get.parameters[0].name, 'page');
-  assert.equal(contract.summary.endpoints, 3);
-  assert.deepEqual(contract.summary.authSchemes, [], 'an HTTP/2 :authority pseudo-header is not an auth scheme');
-  assert.doesNotMatch(JSON.stringify(contract), /ada@example\.com|"Ada"/);
+  const har = { log: { entries: [
+    entry('https://x.test/api/quotes?page=1'), entry('https://x.test/api/quotes?page=2'),
+    entry('https://cdn.test/feed?page=1'),
+    entry('https://x.test/api/me', [{ name: ':authority', value: 'x.test' }, { name: 'priority', value: 'u=0' }]),
+  ] } };
+  const closed = sanitizeHar(har, { includeApiBodies: true, contractOnly: true });
+  assert.deepEqual(closed.entries.map(item => item.url), ['https://x.test/api/me'], 'query strings are not captured without an approval');
+  assert.deepEqual(closed.privacy.withheldApi, { 'https://x.test': 2, 'https://cdn.test': 1 });
+  assert.deepEqual(closed.entries[0].requestAuth ?? [], [], 'an HTTP/2 :authority pseudo-header is not an auth scheme');
+
+  const none = buildObservedApiContract([], { origin: 'https://x.test', withheldApi: 2 });
+  assert.equal(none.tier, 'B0');
+  assert.deepEqual(none.unknowns.map(item => [item.kind, item.count]), [['no-observed-api', undefined], ['api-capture-not-approved', 2]]);
+  assert.match(none.unknowns[1].detail, /read-data-plan\.json.*--include-readonly-data/);
+  assert.doesNotMatch(JSON.stringify(none), /quotes|page=|Ada/, 'only a count is reported, never the withheld path, query or body');
+  const some = buildObservedApiContract(closed.entries, { origin: 'https://x.test', withheldApi: 2 });
+  assert.equal(some.tier, 'B1');
+  assert.equal(some.unknowns[0].kind, 'api-capture-not-approved');
+
+  const approved = sanitizeHar(har, { includeApiBodies: true, contractOnly: true, readOnlyOrigin: 'https://x.test',
+    readOnlyGetUrls: ['https://x.test/api/quotes?page=1', 'https://x.test/api/quotes?page=2'] });
+  assert.deepEqual(approved.privacy.withheldApi, { 'https://cdn.test': 1 });
+  assert.equal(buildObservedApiContract(approved.entries, { origin: 'https://x.test' }).openapi.paths['/api/quotes'].get.parameters[0].name, 'page');
 });
 
 test('live/har: approved binary downloads require base64, stay bounded, and need manual review', () => {
