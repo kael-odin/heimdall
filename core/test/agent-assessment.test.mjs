@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { GEO_METHOD_VERSION, SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../src/seo/method.mjs';
+import { summarizeGeoReport } from '../src/agent/geo-summary.mjs';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const BIN = join(ROOT, 'bin', 'heimdall.mjs');
@@ -15,6 +16,19 @@ function put(file, value) {
   mkdirSync(join(file, '..'), { recursive: true });
   writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value, null, 2));
 }
+
+test('geo summary keeps action totals consistent with returned evidence', () => {
+  const action = { id: 'geo-one', title: '补充摘要', action: '补充可核实摘要' };
+  const contradictory = summarizeGeoReport({ methodVersion: GEO_METHOD_VERSION, status: 'complete', actionPlan: [action, action], actionPlanMeta: { total: 0, returned: 0, truncated: false } });
+  assert.equal(contradictory.actionPlanMeta.total, 2);
+  assert.equal(contradictory.actionPlanMeta.returned, 2);
+  assert.equal(contradictory.actionPlanMeta.truncated, false);
+
+  const overLimit = summarizeGeoReport({ methodVersion: GEO_METHOD_VERSION, status: 'complete', actionPlan: Array.from({ length: 10 }, (_, index) => ({ ...action, id: `geo-${index}` })), actionPlanMeta: { total: 3, returned: 3, truncated: false } });
+  assert.equal(overLimit.actionPlanMeta.total, 10);
+  assert.equal(overLimit.actionPlanMeta.returned, 8);
+  assert.equal(overLimit.actionPlanMeta.truncated, true);
+});
 
 test('site-assessment: zero fileable findings do not hide incomplete QA evidence', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-'));

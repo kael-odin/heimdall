@@ -74,8 +74,8 @@ export function summarizeGeoReport(geo) {
     actionItems: actionPlan.length,
     actionPlan: safeActionPlan,
     actionPlanMeta: {
-      total: Number.isInteger(source?.actionPlanMeta?.total) && source.actionPlanMeta.total >= 0
-        ? source.actionPlanMeta.total : actionPlan.length,
+      total: Math.max(actionPlan.length, Number.isInteger(source?.actionPlanMeta?.total) && source.actionPlanMeta.total >= 0
+        ? source.actionPlanMeta.total : 0),
       returned: safeActionPlan.length,
       truncated: source?.actionPlanMeta?.truncated === true || safeActionPlan.length < actionPlan.length,
     },
