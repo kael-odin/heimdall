@@ -637,7 +637,21 @@ function adapterSummary(root, siteId) {
   };
 }
 
-function journeyEvidenceSummary(siteId, expectedOrigin) {
+function journeyVerification(journey, scaffold) {
+  const ruleIds = Array.isArray(journey?.ruleIds) ? journey.ruleIds : [];
+  if (!ruleIds.length) return { status: 'unknown', reason: 'no_rule_reference' };
+  const rules = Array.isArray(scaffold?.check?.businessRules?.rules) ? scaffold.check.businessRules.rules : [];
+  const matched = ruleIds.map(id => rules.find(rule => rule.id === `business-rule:${id}`));
+  if (matched.some(rule => !rule)) return { status: 'unknown', reason: 'rule_check_missing' };
+  if (matched.some(rule => rule.status === 'failed' || rule.stateConsistency === 'failed')) return { status: 'failed' };
+  if (matched.some(rule => ['incomplete', 'skipped'].includes(rule.status) || rule.stateConsistency === 'incomplete')) {
+    return { status: 'incomplete' };
+  }
+  return matched.every(rule => rule.status === 'passed' && ['passed', undefined].includes(rule.stateConsistency))
+    ? { status: 'passed', basis: 'verified' } : { status: 'unknown', reason: 'rule_check_unresolved' };
+}
+
+function journeyEvidenceSummary(siteId, expectedOrigin, scaffold) {
   let records;
   try { records = listJourneys(siteId, 100); } catch { return { status: 'invalid', reason: 'read_failed', origin: null, journeys: [] }; }
   const origins = [...new Set(records.map(item => originOf(item.origin)).filter(Boolean))];
@@ -647,7 +661,9 @@ function journeyEvidenceSummary(siteId, expectedOrigin) {
   const journeys = boundOrigin ? records.filter(item => originOf(item.origin) === boundOrigin) : [];
   const projected = journeys.slice(0, 20).map(item => ({
     id: item.id, ...(item.name ? { name: item.name } : {}), startedAt: item.startedAt, finishedAt: item.finishedAt,
-    steps: item.steps, contract: item.contract,
+    steps: item.steps, status: item.status ?? 'recorded', ...(item.actor ? { actor: item.actor } : {}),
+    ruleIds: item.ruleIds ?? [], checkpointIds: item.checkpointIds ?? [], contract: item.contract,
+    verification: journeyVerification(item, scaffold),
     path: reportPath(siteId, `agent/journeys/${item.id}/journey.json`),
   }));
   return {
@@ -697,6 +713,11 @@ function backendScaffoldSummary(root, siteId) {
     return { actor, total: rows.length, passed, failed, incomplete,
       status: failed ? 'failed' : incomplete ? 'incomplete' : 'passed' };
   });
+  const businessRuleRows = businessRuleResults.filter(item => String(item?.id ?? '').startsWith('business-rule:')).slice(0, 32).map(item => ({
+    id: String(item.id ?? 'unknown').slice(0, 128), status: ['passed', 'failed', 'incomplete', 'skipped'].includes(item.status) ? item.status : 'unknown',
+    ...(actorLabel(item.actor) ? { actor: actorLabel(item.actor) } : {}),
+    ...(['passed', 'failed', 'incomplete'].includes(item.stateConsistency) ? { stateConsistency: item.stateConsistency } : {}),
+  }));
   const businessRules = {
     mode: checkMode,
     status: !businessRuleResults.length ? 'not-tested'
@@ -706,7 +727,9 @@ function backendScaffoldSummary(root, siteId) {
     passed: businessRuleResults.filter(item => item?.status === 'passed').length,
     failed: businessRuleResults.filter(item => item?.status === 'failed').length,
     incomplete: businessRuleResults.filter(item => ['incomplete', 'skipped'].includes(item?.status)).length,
-    actors,
+    actors, rules: businessRuleRows,
+    rulesMeta: { total: businessRuleResults.filter(item => String(item?.id ?? '').startsWith('business-rule:')).length, returned: businessRuleRows.length,
+      truncated: businessRuleResults.filter(item => String(item?.id ?? '').startsWith('business-rule:')).length > 32 },
   };
   const stateConsistencyResults = checkResults.filter(item => ['passed', 'failed', 'incomplete'].includes(item?.stateConsistency));
   const stateConsistency = {
@@ -840,8 +863,8 @@ function backendScaffoldSummary(root, siteId) {
 function apiSummary(root, siteId, expectedOrigin) {
   const contract = publicContract(root, siteId, expectedOrigin);
   const adapter = adapterSummary(root, siteId);
-  const journeyEvidence = journeyEvidenceSummary(siteId, expectedOrigin);
   const scaffold = backendScaffoldSummary(root, siteId);
+  const journeyEvidence = journeyEvidenceSummary(siteId, expectedOrigin, scaffold);
   const unknowns = [];
   if (contract.status === 'missing') unknowns.push('api-contract-missing');
   if (contract.status === 'invalid') unknowns.push('api-contract-invalid');
@@ -1399,6 +1422,9 @@ function qaBackendScope(origin, api, backendCompletion) {
       humanJourneys: humanJourneys.slice(0, 8).map(journey => ({
         id: typeof journey?.id === 'string' ? journey.id : 'unknown',
         status: typeof journey?.status === 'string' ? journey.status : 'unknown',
+        ...(typeof journey?.actor === 'string' ? { actor: journey.actor } : {}),
+        ...(Array.isArray(journey?.ruleIds) ? { ruleIds: journey.ruleIds.slice(0, 16) } : {}),
+        ...(Array.isArray(journey?.checkpointIds) ? { checkpointIds: journey.checkpointIds.slice(0, 16) } : {}),
       })),
       unknowns: unknowns.slice(0, 12).map(item => ({
         id: typeof item?.id === 'string' ? item.id : 'unknown',
@@ -1836,7 +1862,14 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       command: `heimdall backend scaffold ${siteId}${scaffold.status === 'incomplete' ? ' --force' : ''}`,
     }, '把观察型契约落成可启动的 B3 后端起点', { requiresHumanApproval: true })
     : null;
-  const humanJourneys = observed ? [
+  const observedHumanJourneys = observed && api.journeyEvidence?.status === 'observed'
+    ? api.journeyEvidence.journeys.slice(0, 20).map(journey => ({
+      id: journey.id, basis: 'observed', status: journey.verification?.status ?? 'unknown',
+      requiresHumanApproval: journey.verification?.status !== 'passed', recordingStatus: journey.status,
+      ...(journey.actor ? { actor: journey.actor } : {}), ruleIds: journey.ruleIds, checkpointIds: journey.checkpointIds,
+      steps: journey.steps, verification: journey.verification,
+    })) : [];
+  const humanJourneys = [...observedHumanJourneys, ...(observed ? [
     {
       id: 'anonymous-read', basis: 'inferred', status: 'required', requiresHumanApproval: true,
       goal: '用匿名或明确的只读身份走通一个真实读取流程，并记录页面结果与 API 结果如何对应。',
@@ -1852,7 +1885,7 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
       goal: '确认一次业务操作前后状态如何变化，以及是否产生可观察副作用。',
       checkpoints: ['操作前状态', '提交后的响应', '再次读取或刷新后的状态', '失败时是否回滚'],
     },
-  ] : [];
+  ] : [])];
   if (hasWrite) humanJourneys.push({
     id: 'write-and-cleanup', basis: 'inferred', status: 'required', requiresHumanApproval: true,
     goal: '在明确许可的测试数据范围内验证写入、重复提交、异常输入和清理路径。',

@@ -10,6 +10,8 @@
 
 2026-11-16 [旅程来源进入站点评估]：`site-assessment.api.journeyEvidence` 现在按页面来源绑定脱敏旅程摘要，并把旅程证据路径投影到 `backendCompletion.provenance.observed`；来源冲突或无法绑定时保持 invalid。录制过旅程只证明有观察来源，认证、权限、状态机、写入、持久化和副作用仍保持未知。
 
+2026-11-16 [旅程身份与规则闭环]：旅程可带受限的 `anonymous`、`owner`、`non_owner`、`invalid_credentials` 身份标签，以及最多 16 个规则或检查点 ID；这些字段只进入脱敏 `journey.json`、`journeyEvidence` 和 `backendCompletion.humanJourneys`。只有 `backend-check.json` 中对应规则通过、且写入后读回的状态一致性通过，旅程验证状态才升级为 `passed`；单纯录制仍保持 `unknown`，不会关闭认证、权限或业务副作用未知项。
+
 2026-11-16 [B0 契约动作路由]：已有观察型契约但没有业务 API 证据时，`site-assessment` 不再重复建议 `probe contract`；下一步明确为人在可见浏览器中录制获授权旅程，再重新生成契约。`missing` 或 `invalid` 契约仍先走观察型探针。
 
 2026-11-16 [获授权旅程录制入口]：`heimdall journey start <url|siteId>` 打开可见 Chromium，记录不含输入值的步骤，原始 `network.journey.har` 只留在秘密路径，结束后用统一 HAR 清洗器生成带旅程来源的 B0/B1 契约。没有业务接口时只保留 B0，不覆盖已有有效契约；真实生产认证、权限、写入和状态旅程仍待授权验收。

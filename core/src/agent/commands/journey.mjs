@@ -13,6 +13,7 @@ import { sanitizeHar } from '../../live/har.mjs';
 import { buildObservedApiContract } from '../../live/contract.mjs';
 import { assertSiteOrigin, readSiteOrigin, siteIdForOrigin } from '../../site-origin.mjs';
 import { parseArgs } from '../parse-args.mjs';
+import { normalizeJourneyMetadata } from '../journey-metadata.mjs';
 
 const MAX_STEPS = 500;
 const SAFE_STEP_TEXT = /^[^\u0000-\u001f\u007f]{0,160}$/;
@@ -47,15 +48,17 @@ export function normalizeJourneyEvent(event, origin) {
   };
 }
 
-export function buildJourneyArtifacts({ har, siteId, origin, journeyId, name, startedAt, finishedAt, steps = [] }) {
+export function buildJourneyArtifacts({ har, siteId, origin, journeyId, name, startedAt, finishedAt, steps = [], actor, ruleIds, checkpointIds }) {
   const sanitized = sanitizeHar(har, { includeApiBodies: true, contractOnly: true });
   const contract = buildObservedApiContract(sanitized.entries, {
     siteId, origin, journeys: [journeyId], pages: 0, generatedAt: finishedAt,
   });
   const safeSteps = steps.map(step => normalizeJourneyEvent(step, origin)).filter(Boolean).slice(0, MAX_STEPS);
+  const metadata = normalizeJourneyMetadata({ actor, ruleIds, checkpointIds });
   const journey = {
     schema: 'heimdall.journey/1', id: journeyId, siteId, origin,
     ...(name ? { name: cleanText(name, 120) } : {}), startedAt, finishedAt,
+    status: 'recorded', ...metadata,
     steps: safeSteps.length, network: {
       sanitizedEntries: sanitized.entries.length,
       apiEntries: contract.sources.apiEntries,
@@ -129,6 +132,7 @@ export async function start(value, flags = {}, io = {}) {
   const rawHar = join(journeyDir, 'network.journey.har');
   const maxSteps = Math.min(MAX_STEPS, Math.max(1, Number(flags['max-steps'] ?? MAX_STEPS)));
   if (!Number.isInteger(maxSteps)) throw new Error('--max-steps 必须是整数');
+  const metadata = normalizeJourneyMetadata({ actor: flags.actor, ruleIds: flags['rule-id'], checkpointIds: flags['checkpoint-id'] }, { strict: true });
   if (existsSync(journeyDir)) throw new Error('旅程目录已存在，请重新启动以避免覆盖');
   mkdirSync(stepsDir, { recursive: true });
   const stdout = io.stdout ?? process.stdout;
@@ -165,7 +169,7 @@ export async function start(value, flags = {}, io = {}) {
   catch { throw new Error('旅程结束但无法读取原始 HAR；未生成契约'); }
   const finishedAt = new Date().toISOString();
   const artifacts = buildJourneyArtifacts({ har, siteId: target.siteId, origin: target.url.origin, journeyId,
-    name: flags.name, startedAt, finishedAt, steps: events });
+    name: flags.name, startedAt, finishedAt, steps: events, ...metadata });
   writeAtomicFileSync(join(journeyDir, 'journey.json'), JSON.stringify(artifacts.journey, null, 2) + '\n');
   artifacts.steps.forEach((step, index) => writeAtomicFileSync(join(stepsDir, `${String(index + 1).padStart(4, '0')}.json`), JSON.stringify(step, null, 2) + '\n'));
   let contractPath = null;
@@ -188,7 +192,7 @@ export async function run(argv) {
   const [sub, ...rest] = argv;
   const { flags, positional } = parseArgs(rest);
   if (sub !== 'start') {
-    process.stdout.write('用法：heimdall journey start <url|siteId> [--site S] [--name NAME] [--allow-insecure-http]\n');
+    process.stdout.write('用法：heimdall journey start <url|siteId> [--site S] [--name NAME] [--actor anonymous|owner|non_owner|invalid_credentials] [--rule-id ID[,ID]] [--checkpoint-id ID[,ID]] [--allow-insecure-http]\n');
     return sub ? 2 : 0;
   }
   try { return (await start(positional[0] ?? flags.url ?? flags.site, flags)).exitCode ?? 0; }

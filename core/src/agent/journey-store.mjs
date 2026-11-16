@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { WORKSPACE } from '../paths.mjs';
 import { CapabilityError } from './envelope.mjs';
 import { assertSiteId } from './workspace.mjs';
+import { normalizeJourneyMetadata } from './journey-metadata.mjs';
 
 export const JOURNEY_ID = /^journey-[0-9]{10,}-[a-f0-9]{8}$/i;
 const MAX_JOURNEY_BYTES = 256 * 1024;
@@ -42,6 +43,7 @@ function projectJourney(value, siteId, journeyId) {
     origin: safeString(value.origin, 2048),
     startedAt: safeString(value.startedAt, 64),
     finishedAt: safeString(value.finishedAt, 64),
+    ...(typeof value.status === 'string' && ['recorded'].includes(value.status) ? { status: value.status } : {}),
     steps: Number.isSafeInteger(value.steps) && value.steps >= 0 ? value.steps : 0,
     network: value.network && typeof value.network === 'object' ? {
       sanitizedEntries: Number.isSafeInteger(value.network.sanitizedEntries) && value.network.sanitizedEntries >= 0 ? value.network.sanitizedEntries : 0,
@@ -55,6 +57,7 @@ function projectJourney(value, siteId, journeyId) {
       ...(value.contract.path === 'api-contract.json' ? { path: value.contract.path } : {}),
     } : { status: 'unknown', tier: null, endpoints: 0 },
   };
+  Object.assign(result, normalizeJourneyMetadata({ actor: value.actor, ruleIds: value.ruleIds, checkpointIds: value.checkpointIds }));
   const name = safeString(value.name, 120);
   if (name) result.name = name;
   return result;

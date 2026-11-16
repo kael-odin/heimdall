@@ -15,20 +15,28 @@ test('journey capability lists and reads sanitized metadata without exposing raw
     mkdirSync(join(dir, 'steps'), { recursive: true });
     writeFileSync(join(dir, 'journey.json'), JSON.stringify({ schema: 'heimdall.journey/1', id: journeyId,
       siteId: 'example.test', origin: 'https://example.test', startedAt: '2026-11-16T00:00:00.000Z', finishedAt: '2026-11-16T00:01:00.000Z',
-      steps: 1, network: { sanitizedEntries: 1, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1, path: 'api-contract.json' } }));
+      status: 'recorded', actor: 'non_owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'], steps: 1,
+      network: { sanitizedEntries: 1, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1, path: 'api-contract.json' } }));
     writeFileSync(join(dir, 'steps', '0001.json'), JSON.stringify({ type: 'input', path: '/', valuePresent: true }));
     writeFileSync(join(dir, 'network.journey.har'), 'Bearer secret@example.com');
     const listed = await invoke('journey', { action: 'list', siteId: 'example.test' }, { client: 'mcp' });
     assert.equal(listed.ok, true);
     assert.equal(listed.result.journeys[0].id, journeyId);
+    assert.equal(listed.result.journeys[0].actor, 'non_owner');
+    assert.deepEqual(listed.result.journeys[0].ruleIds, ['read-items']);
     const read = await invoke('journey', { action: 'read', siteId: 'example.test', journeyId }, { client: 'mcp' });
     assert.equal(read.ok, true);
     assert.equal(read.result.steps[0].valuePresent, true);
     assert.doesNotMatch(JSON.stringify(read), /Bearer secret|example\.com/);
-    const waiting = await invoke('journey', { action: 'start', siteId: 'example.test' }, { client: 'mcp' });
+    const waiting = await invoke('journey', {
+      action: 'start', siteId: 'example.test', actor: 'owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'],
+    }, { client: 'mcp' });
     assert.equal(waiting.ok, true);
     assert.equal(waiting.result.status, 'waiting_input');
     assert.equal(waiting.result.requiresHumanApproval, true);
+    assert.match(waiting.result.command, /--actor owner/);
+    assert.match(waiting.result.command, /--rule-id read-items/);
+    assert.match(waiting.result.command, /--checkpoint-id items-ready/);
   } finally {
     if (previous === undefined) delete process.env.HEIMDALL_DATA_DIR; else process.env.HEIMDALL_DATA_DIR = previous;
     rmSync(root, { recursive: true, force: true });

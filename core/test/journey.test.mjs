@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildJourneyArtifacts, normalizeJourneyEvent } from '../src/agent/commands/journey.mjs';
+import { normalizeJourneyMetadata } from '../src/agent/journey-metadata.mjs';
 
 const body = value => ({ body: Buffer.from(JSON.stringify(value), 'utf8').toString('base64'), bodyEncoding: 'base64' });
 
@@ -16,12 +17,25 @@ test('journey artifacts write only sanitized contract facts', () => {
   const result = buildJourneyArtifacts({
     siteId: 'x.test', origin: 'https://x.test', journeyId: 'journey-1', name: 'Search',
     startedAt: '2026-11-16T00:00:00.000Z', finishedAt: '2026-11-16T00:01:00.000Z',
+    actor: 'owner', ruleIds: ['search-items'], checkpointIds: ['results-visible'],
     steps: [{ type: 'navigate', url: 'https://x.test/' }, { type: 'input', url: 'https://x.test/', target: { name: 'Email' }, value: 'alice@example.com' }],
     har: { log: { entries: [{ request: { method: 'POST', url: 'https://x.test/api/search', headers: [{ name: 'Authorization', value: 'Bearer secret' }], postData: { mimeType: 'application/json', text: JSON.stringify({ query: 'private', token: 'secret' }) } }, response: { status: 200, content: { mimeType: 'application/json', text: JSON.stringify({ ok: true, email: 'alice@example.com' }) } } }] } },
   });
   assert.equal(result.contract.tier, 'B1');
+  assert.deepEqual(result.journey.actor, 'owner');
+  assert.deepEqual(result.journey.ruleIds, ['search-items']);
+  assert.deepEqual(result.journey.checkpointIds, ['results-visible']);
+  assert.equal(result.journey.status, 'recorded');
   assert.deepEqual(result.contract.sources.journeys, ['journey-1']);
   assert.equal(result.journey.contract.status, 'observed');
   assert.equal(result.steps[1].valuePresent, true);
   assert.doesNotMatch(JSON.stringify({ journey: result.journey, contract: result.contract, steps: result.steps }), /alice@example\.com|private|Bearer secret/);
+});
+
+test('journey metadata stays within the small actor and reference vocabulary', () => {
+  assert.deepEqual(normalizeJourneyMetadata({ actor: 'OWNER', ruleIds: 'read-items,read-items', checkpointIds: ['items-ready'] }, { strict: true }), {
+    actor: 'owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'],
+  });
+  assert.throws(() => normalizeJourneyMetadata({ actor: 'admin' }, { strict: true }), /--actor/);
+  assert.throws(() => normalizeJourneyMetadata({ ruleIds: 'read-items,bad/value' }, { strict: true }), /--rule-id/);
 });

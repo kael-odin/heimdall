@@ -2,6 +2,7 @@
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { listJourneys, readJourney } from '../../journey-store.mjs';
 import { start as startJourney } from '../../commands/journey.mjs';
+import { JOURNEY_ACTORS } from '../../journey-metadata.mjs';
 
 function safeUrl(value) {
   try {
@@ -15,6 +16,14 @@ function cliTarget(args) {
   if (args.siteId) return `--site ${args.siteId}`;
   const url = safeUrl(args.url);
   return url ? url : '<url|siteId>';
+}
+
+function cliMetadata(args) {
+  return [
+    args.actor ? ` --actor ${String(args.actor)}` : '',
+    Array.isArray(args.ruleIds) && args.ruleIds.length ? ` --rule-id ${args.ruleIds.join(',')}` : '',
+    Array.isArray(args.checkpointIds) && args.checkpointIds.length ? ` --checkpoint-id ${args.checkpointIds.join(',')}` : '',
+  ].join('');
 }
 
 export default {
@@ -32,6 +41,9 @@ export default {
       journeyId: { type: 'string', pattern: '^journey-[0-9]{10,}-[a-f0-9]{8}$' },
       url: { type: 'string', pattern: '^https?://', maxLength: 2000 },
       name: { type: 'string', maxLength: 120 },
+      actor: { type: 'string', enum: JOURNEY_ACTORS },
+      ruleIds: { type: 'array', maxItems: 16, items: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' } },
+      checkpointIds: { type: 'array', maxItems: 16, items: { type: 'string', pattern: '^[a-z0-9][a-z0-9._-]{0,63}$' } },
       includeSteps: { type: 'boolean', default: true },
       limit: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
       maxSteps: { type: 'integer', minimum: 1, maximum: 500, default: 500 },
@@ -53,7 +65,7 @@ export default {
     }
     if (!args.url && !args.siteId) throw new CapabilityError('invalid_args', 'start 需要 url 或 siteId');
     if (!ctx.interactive) {
-      const command = `heimdall journey start ${cliTarget(args)}${args.allowInsecureHttp ? ' --allow-insecure-http' : ''}`;
+      const command = `heimdall journey start ${cliTarget(args)}${cliMetadata(args)}${args.allowInsecureHttp ? ' --allow-insecure-http' : ''}`;
       return ok({ status: 'waiting_input', siteId: args.siteId ?? null, target: safeUrl(args.url) ?? null,
         requiresHumanApproval: true, command }, {
         summary: '旅程需要人在可见浏览器中操作；当前入口没有人工输入通道。',
@@ -61,7 +73,8 @@ export default {
       });
     }
     const result = await startJourney(args.url ?? args.siteId, {
-      site: args.siteId, name: args.name, 'allow-insecure-http': args.allowInsecureHttp, 'max-steps': args.maxSteps,
+      site: args.siteId, name: args.name, actor: args.actor, 'rule-id': args.ruleIds, 'checkpoint-id': args.checkpointIds,
+      'allow-insecure-http': args.allowInsecureHttp, 'max-steps': args.maxSteps,
     }, ctx.journeyIO);
     return ok(result, { summary: `旅程 ${result.status === 'succeeded' ? '已保存' : '已取消'}。` });
   },

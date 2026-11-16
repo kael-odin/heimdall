@@ -789,6 +789,7 @@ test('site-assessment carries origin-bound sanitized journey provenance into bac
     });
     put(join(site, 'agent', 'journeys', journeyId, 'journey.json'), {
       schema: 'heimdall.journey/1', id: journeyId, siteId: 'example.test', origin: 'https://example.test',
+      status: 'recorded', actor: 'owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'],
       startedAt: '2026-11-16T00:00:00.000Z', finishedAt: '2026-11-16T00:01:00.000Z', steps: 3,
       network: { sanitizedEntries: 3, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1 },
     });
@@ -799,6 +800,12 @@ test('site-assessment carries origin-bound sanitized journey provenance into bac
     const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
     assert.equal(result.api.journeyEvidence.status, 'observed');
     assert.equal(result.api.journeyEvidence.count, 1);
+    assert.equal(result.api.journeyEvidence.journeys[0].actor, 'owner');
+    assert.deepEqual(result.api.journeyEvidence.journeys[0].ruleIds, ['read-items']);
+    assert.deepEqual(result.api.journeyEvidence.journeys[0].checkpointIds, ['items-ready']);
+    assert.equal(result.api.journeyEvidence.journeys[0].verification.status, 'unknown');
+    assert.equal(result.deliveryPlan.backendCompletion.humanJourneys.find(item => item.id === journeyId).actor, 'owner');
+    assert.equal(result.deliveryPlan.backendCompletion.humanJourneys.find(item => item.id === journeyId).status, 'unknown');
     assert.equal(result.deliveryPlan.backendCompletion.journeyEvidence.journeys[0].id, journeyId);
     assert.ok(result.deliveryPlan.backendCompletion.provenance.observed.some(path => path.endsWith(`/agent/journeys/${journeyId}/journey.json`)));
     assert.ok(result.unknowns.some(item => item.id === 'auth-permissions-state-unknown'));
@@ -810,6 +817,7 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-scaffold-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
   const scaffold = join(root, 'workspace', 'example.test', 'backend-scaffold');
+  const journeyId = 'journey-1794787993231-f8a2e67d';
   try {
     put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
@@ -823,13 +831,19 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
         },
       } } } },
     });
+    put(join(root, 'workspace', 'example.test', 'agent', 'journeys', journeyId, 'journey.json'), {
+      schema: 'heimdall.journey/1', id: journeyId, siteId: 'example.test', origin: 'https://example.test', status: 'recorded',
+      actor: 'owner', ruleIds: ['read-items'], checkpointIds: ['items-ready'], steps: 2,
+      network: { sanitizedEntries: 2, apiEntries: 1, excluded: 0 }, contract: { status: 'observed', tier: 'B1', endpoints: 1 },
+    });
     for (const name of ['package.json', 'server.mjs', 'checks.mjs', 'api-contract.json', 'state-rules.json', 'backend-task.json']) put(join(scaffold, name), {
       schema: name === 'backend-task.json' ? 'heimdall.backend-ai-task/1' : undefined,
       status: name === 'backend-task.json' ? 'ready_for_ai_draft' : undefined,
     });
     put(join(scaffold, 'backend-check.json'), {
       schema: 'heimdall.backend-check/1', generatedAt: '2026-11-12T00:00:00.000Z', overall: 'passed',
-      results: [{ id: 'health', status: 'passed' }, { id: 'adapter-coverage', status: 'passed' }],
+       results: [{ id: 'health', status: 'passed' }, { id: 'adapter-coverage', status: 'passed' },
+         { id: 'business-rule:read-items', actor: 'owner', status: 'passed' }],
     });
     put(join(scaffold, 'backend-compare.json'), {
       schema: 'heimdall.backend-comparison/1', mode: 'business-rules-only', overall: 'passed',
@@ -847,6 +861,10 @@ test('site-assessment: recognizes a complete default B3 scaffold', () => {
     assert.equal(env.result.api.scaffold.status, 'present');
     assert.equal(env.result.api.scaffold.aiTask.status, 'present');
     assert.equal(env.result.api.scaffold.check.status, 'passed');
+    assert.equal(env.result.api.journeyEvidence.journeys[0].verification.status, 'passed');
+    const recordedJourney = env.result.deliveryPlan.backendCompletion.humanJourneys.find(item => item.id === journeyId);
+    assert.equal(recordedJourney.status, 'passed');
+    assert.deepEqual(recordedJourney.ruleIds, ['read-items']);
     assert.equal(env.result.deliveryPlan.backendCompletion.scaffold.check.overall, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'backend-scaffold-check').status, 'passed');
     assert.equal(env.result.deliveryPlan.backendCompletion.businessRuleComparison.overall, 'passed');
