@@ -36,9 +36,17 @@ const WOFF2 = Buffer.concat([Buffer.from('wOF2', 'latin1'), Buffer.alloc(28, 7)]
 /** 内联 SVG 的 data URI：内部 `mask='url(%23f)'` 曾被旧实现误当成外部引用并改写 */
 const DATA_URI_SVG = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cmask id='f'%3E%3C/g%3E%3C/defs%3E%3Cg mask='url(%23f)'/%3E%3C/svg%3E")`;
 
-function startFixture() {
+async function startFixture() {
   const png = makePng();
-  const css = `
+  // Another origin (different port) with no CORS headers: its cssRules cannot be read from the page, like Google Fonts.
+  const remote = createServer((req, res) => {
+    if (req.url === '/remote/fonts.css') { res.writeHead(200, { 'Content-Type': 'text/css' }); return res.end("@font-face { font-family: 'Remote'; src: url(files/Remote.woff2) format('woff2'); }"); }
+    if (req.url === '/remote/files/Remote.woff2') { res.writeHead(200, { 'Content-Type': 'font/woff2' }); return res.end(WOFF2); }
+    res.writeHead(404); res.end('nf');
+  });
+  await new Promise(resolve => remote.listen(0, '127.0.0.1', resolve));
+  const css = `@import url("theme/theme.css");
+@import url("http://127.0.0.1:${remote.address().port}/remote/fonts.css") screen;
 @font-face { font-family: 'TestFace'; src: url(../fonts/Test.woff2) format('woff2'); }
 body { font-family: 'TestFace', sans-serif; }
 .hero { width: 40px; height: 40px; background-image: url(/img/photo?id=9&w=100); }
@@ -46,6 +54,9 @@ body { font-family: 'TestFace', sans-serif; }
 .gone { width: 8px; height: 8px; background-image: url(/missing-sprite.png); }
 @font-face { font-family: 'Icons'; src: url(../fonts/undeployed.woff2) format('woff2'); }
 `;
+  // Its own url() must resolve against /assets/css/theme/, not against main.css or the page.
+  const theme = `@font-face { font-family: 'Themed'; src: url(../../fonts/Imported.woff2) format('woff2'); }
+.themed { color: rgb(1, 2, 3); }`;
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>CSS ref fixture</title>
 <link rel="stylesheet" href="/assets/css/main.css">
@@ -58,13 +69,14 @@ body { font-family: 'TestFace', sans-serif; }
       const send = (ct, body) => { res.writeHead(200, { 'Content-Type': ct }); res.end(body); };
       if (url.pathname === '/') return send('text/html; charset=utf-8', html);
       if (url.pathname === '/assets/css/main.css') return send('text/css; charset=utf-8', css);
-      if (url.pathname === '/assets/fonts/Test.woff2') return send('font/woff2', WOFF2);
+      if (url.pathname === '/assets/css/theme/theme.css') return send('text/css; charset=utf-8', theme);
+      if (['/assets/fonts/Test.woff2', '/assets/fonts/Imported.woff2'].includes(url.pathname)) return send('font/woff2', WOFF2);
       if (url.pathname === '/img/photo') return send('image/png', png);
       // SPA 式软 404：路径不存在却回 200 + HTML（真实站点极常见）
       if (url.pathname === '/missing-sprite.png') return send('text/html; charset=utf-8', '<!doctype html><html><body>not found</body></html>');
       res.writeHead(404); res.end('nf');
     });
-    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port, png }));
+    server.listen(0, '127.0.0.1', () => resolve({ server: { close: () => { server.close(); remote.close(); } }, port: server.address().port, png }));
   });
 }
 
@@ -128,6 +140,16 @@ test('clone: CSS url() 按样式表基准解析 + 按真实类型落盘', { time
     assert.equal(gaps.cssRefsSourceMissing, 1);
     assert.equal(gaps.gaps.find(g => g.ref === '../fonts/undeployed.woff2')?.reason, 'source-missing');
     assert.ok(css.includes('font-family: Icons; src: url("about:invalid")'), '原站 404 的引用改写成 about:invalid，离线不再发请求');
+
+    // ⑥ @import 就地展开：克隆里不留 @import，被导入表自己的 url() 按它自己的地址解析并本地化；
+    //    读不到 cssRules 的跨域表按 URL 取原文，媒体条件包进 @media；导入的规则排在导入它的表前面
+    assert.doesNotMatch(css, /@import/, '克隆里不能留下指向原站的 @import');
+    assert.doesNotMatch(css, /url\(\s*["']?https?:/, '样式里不能再有任何联网引用');
+    assert.ok(css.indexOf('.themed') >= 0 && css.indexOf('.themed') < css.indexOf('body {'), '被导入的规则排在导入它的表前面');
+    assert.match(css, /@media screen \{\s*@font-face \{[^}]*Remote[^}]*url\("?ref\d+\.woff2"?\)/, '跨域导入表取到原文并保留媒体条件');
+    assert.match(css, /font-family: Themed; src: url\("ref\d+\.woff2"\)/);
+    assert.equal(stylesDir.filter(n => n.endsWith('.woff2')).length, 3, '三份字体都落到本地: ' + stylesDir.join(','));
+    assert.deepEqual(meta.refMap['../../fonts/Imported.woff2'], [`${origin}/assets/fonts/Imported.woff2`], '被导入表的引用按它自己的 URL 解析');
   } finally {
     server.close();
     rmSync(dataDir, { recursive: true, force: true });

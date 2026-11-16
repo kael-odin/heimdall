@@ -36,6 +36,9 @@ export function createMeasurementReader(baseDir) {
     catch { return { status: 'missing' }; }
     if (result?.scoreVersion !== 2) return { status: 'legacy' };
     if (result.measured !== true) return { status: 'incomplete' };
+    // 量出了分数，但验证器没有签发证明：测量时克隆页向外部发了请求（外链字体、统计脚本），或测量期间克隆内容变了。
+    // 证据并没有“过期”，所以单独给出原因；状态仍是 stale，不改变任何门禁。
+    if (!result.measurementProof) return { status: 'stale', reason: 'unproven' };
     try {
       const stamp = Date.parse(result.generatedAt ?? '');
       const proof = result.measurementProof;
@@ -79,8 +82,8 @@ function scanMeasurements(baseDir, pages) {
     coverageRatio: v.coverageRatio ?? null, sourceSize: v.sourceSize ?? null, cloneSize: v.cloneSize ?? null,
     heightDelta: v.heightDelta ?? null, missingPixels: v.missingPixels ?? null });
   return pages.map(page => {
-    const { status, result } = reader.read(page);
-    return { page, status, ...(result?.measurementProof?.inputs ? { inputSha256: result.measurementProof.inputs } : {}), ...(result ? { result: { measured: true, generatedAt: result.generatedAt, overall: result.overall,
+    const { status, reason, result } = reader.read(page);
+    return { page, status, ...(reason ? { reason } : {}), ...(result?.measurementProof?.inputs ? { inputSha256: result.measurementProof.inputs } : {}), ...(result ? { result: { measured: true, generatedAt: result.generatedAt, overall: result.overall,
       scoreVersion: result.scoreVersion, grade: result.grade ?? null, minViewport: viewport(result.minViewport),
       viewports: result.viewports.map(viewport), functional: result.functional, confidence: result.confidence,
       interactions: Array.isArray(result.interactions) ? result.interactions.slice(0, 3).map(ix => ({

@@ -30,7 +30,11 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
       lines.push('> **视觉测量已生成，但当前证据完整性核对未通过。** 下列数字只描述本次运行生成的测量，不能作为交付门禁通过。');
       if (summaryEvidence.invalidPages?.length) {
         lines.push('>', '> 证据未确认的页面：');
-        for (const item of summaryEvidence.invalidPages.slice(0, 8)) lines.push(`> - ${item.page}：${item.status}`);
+        for (const item of summaryEvidence.invalidPages.slice(0, 8)) lines.push(`> - ${item.page}：${item.reason === 'unproven' ? '有分数，未签发证明' : item.status}`);
+        if (summaryEvidence.invalidPages.some(item => item.reason === 'unproven')) {
+          lines.push('>', '> 「有分数，未签发证明」不是证据过期：测量时克隆页仍向外部发请求（常见是外链字体、统计脚本），或测量期间克隆内容变了，',
+            '> 所以这个分数来自联网状态，不能证明离线镜像。先处理下面「资产缺口」里的外链资产，再重跑验证。');
+        }
       }
       lines.push('');
     } else if (verifyFailed) lines.push('> **本次验证未通过或执行失败。** 下列数字只描述已完成的测量。', '');

@@ -65,6 +65,67 @@ export function collectCssRefs(sheets, fallbackBase) {
 }
 
 /**
+ * 在页面里收集 CSSOM 最终状态（传给 page.evaluate；capture 与 multi-snapshot 共用）。
+ *
+ * @import 的目标表不在 document.styleSheets 里。照抄规则文本会在克隆里留下一条 @import：
+ * 目标被原样存成资产，它自己的 url() 没人改写 —— 字体仍从 fonts.gstatic.com 取，离线就掉回默认字体
+ * （实测 quotes.toscrape.com：bootstrap 主题 @import 了 Google Fonts，克隆页每次都联网）。
+ * 所以就地展开：被导入的表排在导入它的表前面，层叠顺序不变；带媒体条件的导入包进 @media。
+ * 读不到 cssRules 的跨域表记下 href 与 error，由 recoverDeniedSheets 按 URL 取原文。
+ * shortcut: 带 layer() / supports() 的导入保持原样，遇到这类站点再做层与条件的包裹。
+ */
+export function collectCssomInPage() {
+  const sheets = [];
+  const collect = (list, medias = []) => {
+    for (const sheet of list) {
+      let css = '';
+      try {
+        for (const rule of sheet.cssRules) {
+          if (rule instanceof CSSImportRule && rule.styleSheet && rule.layerName == null && !rule.supportsText) {
+            collect([rule.styleSheet], rule.media?.mediaText ? [...medias, rule.media.mediaText] : medias);
+          } else css += rule.cssText + '\n';
+        }
+      } catch { sheets.push({ href: sheet.href, error: 'cross-origin cssRules denied', ...(medias.length ? { medias } : {}) }); continue; }
+      sheets.push({ href: sheet.href ?? null, css: medias.reduceRight((body, media) => `@media ${media} {\n${body}}\n`, css) });
+    }
+  };
+  collect(document.styleSheets);
+  if (document.adoptedStyleSheets) collect(document.adoptedStyleSheets);
+  return { sheets, base: document.baseURI };
+}
+
+/**
+ * 跨域样式表补取 —— 一次差点让整站复刻静默失败的坑。
+ *
+ * 同源策略下 `sheet.cssRules` 对跨域样式表**直接抛异常**，于是这些表被跳过。
+ * 而现代站点很爱把 CSS 放独立域名（`static.linear.app` 之类），放进去的恰恰是
+ * reset / 设计变量 / 布局这些"地基"。实测 linear.app：**58 份样式表被丢掉**，
+ * 克隆页渲染成一堆默认样式的竖排链接，而 DOM 分依然是 100%（DOM 确实没错）。
+ * 只有像素分掉到 59% 才露馅 —— 而它当时被读成"这个站动画多"。
+ *
+ * 按 URL 取原文补回来（fetchText 由调用方给，通常是不受 CORS 限制、带同一份 cookie 的 Playwright request）。
+ * 注意口径：这些表是**原文**而非 CSSOM 序列化（`fetchedRaw: true` 标出来），
+ * 但对跨域表我们本来就拿不到序列化结果，原文正是想要的那份。
+ * 相对 `url()` 仍按该表自身的 URL 解析 —— collectCssRefs 用 `sheet.href` 做基准，这点天然成立。
+ * 取不到就保留错误标记，下游的缺口统计会把它算进去。
+ * @returns {Promise<{denied:number, recovered:number}>}
+ */
+export async function recoverDeniedSheets(sheets, fetchText) {
+  const denied = sheets.filter(sheet => sheet.error && sheet.href);
+  let recovered = 0;
+  for (const sheet of denied) {
+    let text = null;
+    try { text = await fetchText(sheet.href); } catch { /* 网络层失败 */ }
+    if (!text) continue;
+    delete sheet.error;
+    sheet.css = (sheet.medias ?? []).reduceRight((body, media) => `@media ${media} {\n${body}}\n`, text);
+    sheet.fetchedRaw = true;
+    recovered++;
+  }
+  return { denied: denied.length, recovered };
+}
+
+/**
  * 单遍重建：用 resolved 映射替换 CSS 里的引用文本（只换 URL 片段，保留原引号与其余文本）。
  * @param {string} css
  * @param {Map<string,string|null>} resolved raw → 新的相对路径；null/undefined 表示保持原样

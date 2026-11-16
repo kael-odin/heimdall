@@ -10,7 +10,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { collectCssRefs } from '../css-refs.mjs';
+import { collectCssRefs, collectCssomInPage, recoverDeniedSheets } from '../css-refs.mjs';
 import { WORKSPACE } from '../paths.mjs';
 import { emit } from '../emit.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
@@ -62,19 +62,14 @@ export async function snapPage(browser, host, page, widths = WIDTHS, pageDir = n
     await p.waitForLoadState('load', { timeout: 25000 }).catch(() => {});
     await p.evaluate(() => document.fonts?.ready).catch(() => {});
     await p.waitForTimeout(1500);
-    const snap = await p.evaluate(() => {
-      const sheets = [];
-      const collect = (list) => {
-        for (const sheet of list) {
-          let css = '';
-          try { for (const rule of sheet.cssRules) css += rule.cssText + '\n'; } catch {}
-          if (css) sheets.push({ href: sheet.href ?? null, css });
-        }
-      };
-      collect(document.styleSheets);
-      if (document.adoptedStyleSheets) collect(document.adoptedStyleSheets);
-      return { html: '<!doctype html>\n' + document.documentElement.outerHTML, sheets, base: document.baseURI };
+    // 与 capture.mjs 同一份收集与跨域补取：@import 就地展开，读不到 cssRules 的跨域表按 URL 取原文
+    const snap = await p.evaluate(collectCssomInPage);
+    snap.html = '<!doctype html>\n' + await p.evaluate(() => document.documentElement.outerHTML);
+    await recoverDeniedSheets(snap.sheets, async (url) => {
+      const res = await ctx.request.get(url, { timeout: 30_000 });
+      return res.ok() ? res.text() : null;
     });
+    snap.sheets = snap.sheets.filter(sheet => sheet.css);
     // 引用扫描在 Node 侧（css-refs）——与 capture.mjs 同一实现，且正确跳过 data URI 内嵌的 url()
     const { refs, refMap } = collectCssRefs(snap.sheets, snap.base);
     writeFileSync(join(dir, 'dom-' + width + '.html'), snap.html);

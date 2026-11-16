@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertSiteOrigin, findSiteIdentity, readSiteIdentity, siteIdForOrigin } from '../src/site-origin.mjs';
+import { assertSiteOrigin, findSiteIdentity, readSiteIdentity, sameHostHttpsRetry, siteIdForOrigin } from '../src/site-origin.mjs';
 import { planFullshots } from '../src/crawler/fullshot.mjs';
 import { planCssRefRepair } from '../src/crawler/repair-css-refs.mjs';
 
@@ -33,6 +33,15 @@ async function freePort() {
   await new Promise(resolve => server.close(resolve));
   return port;
 }
+
+test('a scheme downgrade on the same host is retried on the site origin; nothing else is', () => {
+  const retry = landed => sameHostHttpsRetry(landed, 'https://quotes.test');
+  assert.equal(retry('http://quotes.test/author/a-b/?x=1#top'), 'https://quotes.test/author/a-b/?x=1');
+  for (const landed of ['https://quotes.test/a/', 'http://www.quotes.test/a/', 'http://quotes.test.evil/a/', 'http://quotes.test:8080/a/',
+    'http://user:pw@quotes.test/a/', 'ftp://quotes.test/a', 'not a url']) assert.equal(retry(landed), null, landed);
+  assert.equal(sameHostHttpsRetry('http://plain.test/a/', 'http://plain.test'), null, 'an http site has nothing to upgrade to');
+  assert.equal(sameHostHttpsRetry('http://quotes.test/a/', 'https://quotes.test:8443'), null, 'another port is another service');
+});
 
 test('legacy atlas and manifests retain their origin and reject a different port', () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'hd-site-origin-'));

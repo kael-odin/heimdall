@@ -489,7 +489,7 @@ function cloneSummary(siteId, pages, scan) {
   const coverage = measurementCoverage(scan, pages.length);
   const measurements = new Map(scan.pages.map(row => [row.page, row]));
   const verificationGapItems = scan.status === 'ok'
-    ? scan.pages.filter(row => row.status !== 'verified').map(row => ({ page: row.page, status: row.status }))
+    ? scan.pages.filter(row => row.status !== 'verified').map(row => ({ page: row.page, status: row.status, ...(row.reason ? { reason: row.reason } : {}) }))
     : [];
   const scoreStates = mirrors.map(page => readCurrentScore(pageDir(siteId, page), measurements.get(page)?.inputSha256));
   const scores = scoreStates.map(state => state.score)
@@ -1849,10 +1849,13 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
   if (clone.pages && (clone.unmeasured > 0 || clone.verificationStatus !== 'checked')) {
     const gapExamples = Array.isArray(clone.verificationGaps?.items)
       ? clone.verificationGaps.items.slice(0, 4).map(item => `${item.page}:${item.status}`).join('、') : '';
+    // 有分数但没有证明的页，直接重跑验证只会得到同样的结果：先说清原因，别让代理空转
+    const unproven = clone.verificationGaps?.items?.filter(item => item.reason === 'unproven').length ?? 0;
     add({
       id: 'clone-visual-verification', kind: 'visual_verification_gap', basis: 'unknown', status: 'open',
       title: '多视口验证不完整', detail: clone.unmeasured > 0
         ? `${clone.unmeasured} 页没有当前有效的多视口验证${gapExamples ? `（${gapExamples}）` : ''}。`
+          + (unproven ? `其中 ${unproven} 页已量出分数但没有签发证明：测量时克隆页仍向外部发请求，或克隆内容变了；先处理外链资产（audit/asset-gaps.json）再重跑验证。` : '')
         : `验证扫描状态为 ${clone.verificationStatus}。`,
       evidence: [`clone.verification:${clone.verificationStatus}`, `clone.unmeasured:${clone.unmeasured}`, ...(gapExamples ? [`clone.verificationGaps:${gapExamples}`] : [])],
       action: plannedAction('heimdall_clone', { siteId, scope: 'site', level: 'verified' }, '补齐页面的当前多视口验证'),

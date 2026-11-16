@@ -139,6 +139,11 @@ test('handoff: 视觉结果存在但证据不完整时，保留测量并列出�
   assert.match(md, /证据未确认的页面/);
   assert.match(md, /docs：stale/);
   assert.match(md, /blog：missing/);
+  assert.doesNotMatch(md, /未签发证明/, 'a mismatching proof is stale, not unproven');
+  const unproven = renderHandoff({ ...base, summary: { targetTotal: 1, measured: 1, bounded: 0, untested: 0, average: 1, blockers: {} },
+    summaryEvidence: { status: 'incomplete', invalidPages: [{ page: 'home', status: 'stale', reason: 'unproven' }] }, verifyFailed: true });
+  assert.match(unproven, /home：有分数，未签发证明/);
+  assert.match(unproven, /克隆页仍向外部发请求.*不能证明离线镜像/s, 'a score measured with the network is explained, not called outdated');
   assert.doesNotMatch(md, /没有验证结果/);
   assert.doesNotMatch(md, /覆盖完整，可以直接进人工检查/);
 });

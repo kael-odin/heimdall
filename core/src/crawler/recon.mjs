@@ -15,7 +15,7 @@ import { loadProfile } from '../site-profile.mjs';
 import { classifyPath, compileExtraRules } from './classify.mjs';
 import { discoverSitemapUrls } from './sitemap-discovery.mjs';
 import { WORKSPACE } from '../paths.mjs';
-import { assertSiteOrigin, siteIdForOrigin } from '../site-origin.mjs';
+import { assertSiteOrigin, sameHostHttpsRetry, siteIdForOrigin } from '../site-origin.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { canonUrl, stableNodeId, asUrl } from '../url-canon.mjs';
 import { emit } from '../emit.mjs';
@@ -177,7 +177,9 @@ async function visit({ url, depth, href = url }) {
   if (nodes.has(url) && nodes.get(url).directNavigation !== 'unverified-client-route') return;
   const page = await ctx.newPage();
   try {
-    const response = await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 20_000 });
+    let response = await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 20_000 });
+    const upgraded = sameHostHttpsRetry(page.url(), ORIGIN);
+    if (upgraded) response = await page.goto(upgraded, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     if (!response || response.status() < 200 || response.status() >= 300
       || response.status() === 204 || response.status() === 205) {
       throw new Error(`HTTP ${response?.status() ?? 'no-response'}`);

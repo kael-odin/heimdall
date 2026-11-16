@@ -261,7 +261,7 @@ if (summary) {
     for (const page of summary.pages) if (page.measured === true) {
       const measurement = reader.read(page.page);
       if (measurement.status !== 'verified' || !summaryMatchesMeasurement(page, measurement.result)) {
-        invalidPages.push({ page: page.page, status: measurement.status });
+        invalidPages.push({ page: page.page, status: measurement.status, ...(measurement.reason ? { reason: measurement.reason } : {}) });
       }
     }
   }

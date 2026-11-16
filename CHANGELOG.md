@@ -36,6 +36,11 @@ All notable changes to Heimdall are recorded here.
 - QA files a visible image the server answers with 404/410 and an uncaught exception from the
   site's own script; links answering 401/403/429 are no longer broken links.
 - CSS assets the source itself answers 404/410 for are no longer counted as clone gaps.
+- Stylesheet `@import` rules are expanded at capture time. Imported sheets were stored verbatim with
+  their own `url()` untouched, so cloned pages kept fetching fonts from the network.
+- A page that was scored while its clone still made external requests is reported as
+  "scored, no proof issued" with the reason, instead of as stale evidence.
+- Recon retries a same-host https to http downgrade on the site origin instead of dropping the page.
 - Source and offline read-only data comparison now reads the observed CDP
   response directly instead of allowing Playwright to refetch an empty body.
   Missing provenance and mismatched browser/protocol observations block strict

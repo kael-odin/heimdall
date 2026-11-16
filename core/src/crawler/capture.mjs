@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { pickAdapter } from '../adapters/index.mjs';
 import { loadProfile, sanitizeHost } from '../site-profile.mjs';
 import { extFrom, isSoftHtml } from '../asset-ext.mjs';
-import { collectCssRefs } from '../css-refs.mjs';
+import { collectCssRefs, collectCssomInPage, recoverDeniedSheets } from '../css-refs.mjs';
 import { MOTION_PROBE, MOTION_INIT, classifyMotion } from './motion.mjs';
 import { restoreSessionStorage, sessionContext } from '../session/store.mjs';
 import { requireArg } from '../args.mjs';
@@ -430,51 +430,14 @@ console.log(`    css=${manifest.css.length} imgs=${manifest.imgs.length} icons=$
 // CSSOM 最终状态：styled-components/构造样式表/内联 style 全部逃不出 document.styleSheets
 console.log('[6/7] capture CSSOM final state');
 // 引用扫描放在 Node 侧：唯一实现、且能正确跳过 data URI 内嵌的 url(...)
-const cssom = await page.evaluate(() => {
-  const sheets = [];
-  const collect = (list) => {
-    for (const sheet of list) {
-      let css = '';
-      try { for (const rule of sheet.cssRules) css += rule.cssText + '\n'; }
-      catch { sheets.push({ href: sheet.href, error: 'cross-origin cssRules denied' }); continue; }
-      sheets.push({ href: sheet.href ?? null, css });
-    }
-  };
-  collect(document.styleSheets);
-  if (document.adoptedStyleSheets) collect(document.adoptedStyleSheets);
-  return { sheets, base: document.baseURI };
+const cssom = await page.evaluate(collectCssomInPage);
+// 跨域表读不到 cssRules：用 Playwright 的 request 上下文按 URL 取原文（不受 CORS 限制，且带同一份 cookie）
+const sheetRecovery = await recoverDeniedSheets(cssom.sheets, async (url) => {
+  const res = await context.request.get(url, { timeout: 30_000 });
+  return res.ok() ? res.text() : null;
 });
-
-/**
- * 跨域样式表补取 —— 一次差点让整站复刻静默失败的坑。
- *
- * 同源策略下 `sheet.cssRules` 对跨域样式表**直接抛异常**，于是这些表被跳过。
- * 而现代站点很爱把 CSS 放独立域名（`static.linear.app` 之类），放进去的恰恰是
- * reset / 设计变量 / 布局这些"地基"。实测 linear.app：**58 份样式表被丢掉**，
- * 克隆页渲染成一堆默认样式的竖排链接，而 DOM 分依然是 100%（DOM 确实没错）。
- * 只有像素分掉到 59% 才露馅 —— 而它当时被读成"这个站动画多"。
- *
- * 用 Playwright 的 request 上下文按 URL 取原文补回来：它不受 CORS 限制，且带同一份 cookie。
- * 注意口径：这些表是**原文**而非 CSSOM 序列化（`fetchedRaw: true` 标出来），
- * 但对跨域表我们本来就拿不到序列化结果，原文正是想要的那份。
- * 相对 `url()` 仍按该表自身的 URL 解析 —— collectCssRefs 用 `sheet.href` 做基准，这点天然成立。
- */
-let recoveredSheets = 0;
-const denied = cssom.sheets.filter(s => s.error && s.href);
-for (const sheet of denied) {
-  try {
-    const res = await context.request.get(sheet.href, { timeout: 30_000 });
-    if (!res.ok()) continue;
-    const text = await res.text();
-    if (!text) continue;
-    delete sheet.error;
-    sheet.css = text;
-    sheet.fetchedRaw = true;
-    recoveredSheets++;
-  } catch { /* 网络层失败就保留错误标记，下游的缺口统计会把它算进去 */ }
-}
-if (denied.length) {
-  console.log(`    跨域样式表补取 ${recoveredSheets}/${denied.length}（cors 下 cssRules 不可读，改按 URL 取原文）`);
+if (sheetRecovery.denied) {
+  console.log(`    跨域样式表补取 ${sheetRecovery.recovered}/${sheetRecovery.denied}（cors 下 cssRules 不可读，改按 URL 取原文）`);
 }
 
 const cssomCss = cssom.sheets.filter(s => s.css).map(s => s.css).join('\n');

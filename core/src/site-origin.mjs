@@ -163,3 +163,18 @@ export function assertSiteOrigin(siteDir, targetUrl, { claim = false, pageName =
   }
   return requested;
 }
+
+/**
+ * 反代后的站点补结尾斜杠时常跳到 http://（协议降级），而同一地址在本站协议下同样可达
+ * （实测 quotes.toscrape.com：/author/x → 308 http://…/author/x/，8 个作者页因此进不了星图）。
+ * 落点与站点同主机、只是从 https 掉到 http 时，返回改回本站来源后的地址供重试一次；
+ * 其它情况返回 null —— 换主机、换端口、带凭据的跳转仍然算离开源站，来源边界不放宽。
+ */
+export function sameHostHttpsRetry(landedUrl, origin) {
+  try {
+    const landed = new URL(landedUrl), site = new URL(origin);
+    if (site.protocol !== 'https:' || landed.protocol !== 'http:' || landed.hostname !== site.hostname
+      || landed.port || site.port || landed.username || landed.password) return null;
+    return site.origin + landed.pathname + landed.search;
+  } catch { return null; }
+}
