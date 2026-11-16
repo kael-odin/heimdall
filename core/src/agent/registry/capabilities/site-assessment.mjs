@@ -837,7 +837,7 @@ function backendScaffoldSummary(root, siteId) {
   };
 }
 
-function apiSummary(root, siteId, expectedOrigin = null) {
+function apiSummary(root, siteId, expectedOrigin) {
   const contract = publicContract(root, siteId, expectedOrigin);
   const adapter = adapterSummary(root, siteId);
   const journeyEvidence = journeyEvidenceSummary(siteId, expectedOrigin);

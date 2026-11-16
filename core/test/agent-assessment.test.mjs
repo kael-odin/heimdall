@@ -782,8 +782,6 @@ test('site-assessment carries origin-bound sanitized journey provenance into bac
   const site = join(root, 'workspace', 'example.test');
   const journeyId = 'journey-1794787993231-f8a2e67d';
   try {
-    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
-    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
     put(join(site, 'api-contract.json'), {
       schema: 'heimdall.contract/1', siteId: 'example.test', tier: 'B1', origin: 'https://example.test',
       openapi: { openapi: '3.1.0', servers: [{ url: 'https://example.test' }], paths: { '/api/items': { get: {} } } },
