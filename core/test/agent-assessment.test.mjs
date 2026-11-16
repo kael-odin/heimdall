@@ -296,6 +296,32 @@ test('site-assessment: preserves bounded sitemap reasons for SEO follow-up', () 
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('site-assessment: unknown sitemap coverage cannot look complete', () => {
+  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-sitemap-unknown-'));
+  const site = join(root, 'workspace', 'example.test');
+  try {
+    put(join(site, 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
+    put(join(site, 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
+    for (const sitemapCoverage of [undefined, 'corrupt']) {
+      put(join(site, 'seo', 'seo.json'), {
+        origin: 'https://example.test', score: 100,
+        scoreMethodVersion: SEO_SCORE_METHOD_VERSION, measurementVersion: SEO_MEASUREMENT_VERSION,
+        summary: { pages: 1, issues: 0, bySeverity: {}, ...(sitemapCoverage === undefined ? {} : { sitemapCoverage }), failedPages: 0, initialHtmlUnchecked: 0 },
+        geo: { methodVersion: GEO_METHOD_VERSION, status: 'complete', score: 100, actionPlan: [] },
+      });
+      const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
+        cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
+      });
+      assert.equal(run.status, 0, run.stderr + run.stdout);
+      const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
+      assert.equal(result.seo.completeness.sitemapCoverage, null);
+      assert.equal(result.deliveryPlan.seoGeoTask.closure.requiredObligations.find(item => item.id === 'sitemap-scope').state, 'unknown');
+      assert.equal(result.readiness.seo.status, 'needs_follow_up');
+      assert.ok(result.unknowns.some(item => item.id === 'seo-sitemap-scope-limited'));
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');

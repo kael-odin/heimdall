@@ -32,6 +32,8 @@ const BROWSER_FAILURE_KINDS = new Set(['http', 'pageError', 'navigation', 'reque
 const BROWSER_RESOURCE_TYPES = new Set(['document', 'stylesheet', 'image', 'media', 'font', 'script', 'texttrack', 'xhr', 'fetch', 'eventsource', 'websocket', 'manifest', 'other']);
 const BINARY_DOWNLOAD_PATH = /\.(?:db|sqlite3?|zip|tar|tgz|gz|bz2|xz|7z|rar|pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)(?:$|[?#])/i;
 const SITEMAP_REASONS = new Set(['budget-exhausted', 'time-limit', 'total-byte-limit', 'cross-origin-sitemap', 'robots-unavailable', 'sitemap-request-failed', 'unknown-sitemap-format', 'depth-limit', 'file-limit', 'url-limit', 'document-byte-limit']);
+const SITEMAP_COVERAGES = new Set(['complete', 'not_found', 'partial', 'unavailable']);
+const COMPLETE_SITEMAP_COVERAGES = new Set(['complete', 'not_found']);
 const CLONE_TASK_ITEM_IDS = new Set(['clone-capture', 'clone-mirror-coverage', 'clone-visual-verification', 'clone-offline-delivery', 'clone-scope-limited', 'clone-page-complexity', 'clone-external-runtime', 'clone-browser-failures', 'clone-runtime-data-gaps', 'clone-binary-downloads', 'independent-deployment']);
 const DEPLOYMENT_ATTEMPT_SCHEMA = 'heimdall.deployment-verification-attempt/1';
 
@@ -204,7 +206,7 @@ function sitemapSummary(report) {
     ? [...new Set(value.filter(item => typeof item === 'string' && SITEMAP_REASONS.has(item)))].slice(0, 10)
     : [];
   return {
-    coverage: ['complete', 'not_found', 'partial', 'unavailable'].includes(source.coverage) ? source.coverage : null,
+    coverage: SITEMAP_COVERAGES.has(source.coverage) ? source.coverage : null,
     reasons: safeReasons(source.reasons),
     truncated: safeReasons(stats.truncated),
     stats: {
@@ -545,6 +547,7 @@ function seoSummary(siteId, root, expectedOrigin) {
   const repairCandidates = seoRepairCandidates(report);
   const advisoryCandidates = seoRepairCandidates(report, ['medium']);
   const summary = report.summary && typeof report.summary === 'object' ? report.summary : {};
+  const sitemapCoverage = SITEMAP_COVERAGES.has(summary.sitemapCoverage) ? summary.sitemapCoverage : null;
   const bySeverity = Object.fromEntries(SEO_SEVERITIES.map(key => [key, Number(summary.bySeverity?.[key] ?? 0)]));
   const categories = Object.fromEntries(Object.entries(report.categories ?? {}).slice(0, 20).map(([key, value]) => [key, {
     score: typeof value?.score === 'number' ? value.score : null,
@@ -574,7 +577,7 @@ function seoSummary(siteId, root, expectedOrigin) {
     advisoryCandidates: advisoryCandidates.items,
     advisoryCandidatesMeta: { total: advisoryCandidates.total, returned: advisoryCandidates.items.length, truncated: advisoryCandidates.truncated },
     completeness: {
-      sitemapCoverage: summary.sitemapCoverage ?? null,
+      sitemapCoverage,
       failedPages: Number(summary.failedPages ?? 0),
       initialHtmlUnchecked: Number(summary.initialHtmlUnchecked ?? 0),
       baselineEligible: summary.baselineEligible === true,
@@ -1285,7 +1288,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     actionsTruncated: observedActionsMeta.truncated || observedAdvisoriesMeta.truncated,
   };
   const complete = observed && methodsCurrent
-    && !['partial', 'unavailable'].includes(coverage.sitemapCoverage)
+    && COMPLETE_SITEMAP_COVERAGES.has(coverage.sitemapCoverage)
     && coverage.failedPages === 0 && coverage.initialHtmlUnchecked === 0
     && coverage.geoStatus === 'complete' && !observedActionsMeta.truncated && actions.length === 0;
   const status = !observed ? 'blocked_on_observation'
@@ -1297,7 +1300,7 @@ function buildSeoGeoTask(siteId, origin, seo) {
     { id: 'page-collection', state: seoGeoClosureState(!observed ? 'unknown'
       : Number.isInteger(coverage.pages) && coverage.pages > 0 && coverage.failedPages === 0 && coverage.initialHtmlUnchecked === 0 ? 'verified' : 'open'), basis: observed ? 'observed' : 'unknown' },
     { id: 'sitemap-scope', state: seoGeoClosureState(!observed ? 'unknown'
-      : !coverage.sitemapCoverage ? 'unknown' : ['partial', 'unavailable'].includes(coverage.sitemapCoverage) ? 'open' : 'verified'), basis: observed ? 'observed' : 'unknown' },
+      : !coverage.sitemapCoverage ? 'unknown' : COMPLETE_SITEMAP_COVERAGES.has(coverage.sitemapCoverage) ? 'verified' : 'open'), basis: observed ? 'observed' : 'unknown' },
     { id: 'geo-coverage', state: seoGeoClosureState(!observed ? 'unknown' : geo.status === 'complete' ? 'verified' : geo.status === 'unknown' ? 'unknown' : 'open'), basis: observed ? 'observed' : 'unknown' },
     { id: 'optimization-actions', state: seoGeoClosureState(!observed ? 'unknown'
       : observedActionsMeta.truncated || observedAdvisoriesMeta.truncated || actions.length > 0 || advisoryActions.length > 0 ? 'open' : 'verified'), basis: observed ? 'observed' : 'unknown' },
@@ -2208,7 +2211,7 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
 
-  const sitemapIncomplete = ['partial', 'unavailable'].includes(seo.completeness?.sitemapCoverage);
+  const sitemapIncomplete = !COMPLETE_SITEMAP_COVERAGES.has(seo.completeness?.sitemapCoverage);
   const seoMethodIncomplete = seo.status === 'observed'
     && (seo.scoreMethodStatus !== 'current' || seo.measurementStatus !== 'current');
   const seoIncomplete = seo.status === 'observed'
@@ -2448,7 +2451,7 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     ], item('clone-scope-limited'));
   const seoComplete = seo.status === 'observed'
     && seo.scoreMethodStatus === 'current' && seo.measurementStatus === 'current'
-    && !['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)
+    && COMPLETE_SITEMAP_COVERAGES.has(seo.completeness.sitemapCoverage)
     && seo.completeness.failedPages === 0 && seo.completeness.initialHtmlUnchecked === 0
     && seo.bySeverity.critical === 0 && seo.bySeverity.high === 0 && seo.geo.status === 'complete' && seo.geo.actionItems === 0;
   const seoStatus = seo.status !== 'observed' ? 'needs_report' : seoComplete ? 'ready' : 'needs_follow_up';
@@ -2545,9 +2548,9 @@ export default {
     if (seo.status === 'observed' && (seo.completeness.failedPages > 0 || seo.completeness.initialHtmlUnchecked > 0)) {
       unknowns.push({ id: 'seo-collection-incomplete', detail: 'SEO 报告包含未成功采集或未核对页面。' });
     }
-    if (seo.status === 'observed' && ['partial', 'unavailable'].includes(seo.completeness.sitemapCoverage)) {
+    if (seo.status === 'observed' && !COMPLETE_SITEMAP_COVERAGES.has(seo.completeness.sitemapCoverage)) {
       const reasons = seo.sitemap?.reasons?.length ? ` 原因：${seo.sitemap.reasons.join('、')}。` : '';
-      unknowns.push({ id: 'seo-sitemap-scope-limited', detail: `站点地图覆盖为 ${seo.completeness.sitemapCoverage}，站点范围仍需补采。${reasons}` });
+      unknowns.push({ id: 'seo-sitemap-scope-limited', detail: `站点地图覆盖为 ${seo.completeness.sitemapCoverage ?? 'unknown'}，站点范围仍需补采或确认。${reasons}` });
     }
     if (seo.status === 'observed') {
       if (seo.outcomeEvidence?.search?.status !== 'observed') {

@@ -16,6 +16,8 @@
 
 2026-11-16 [源站与候选后端身份对比]：`heimdall backend compare` 现在把 source/candidate actor 缺失或不一致视为 `incomplete`，并生成需要人工确认同一测试身份的 `business-rule-context` 任务；权限上下文不一致不会再被算作业务规则等价。
 
+2026-11-16 [SEO sitemap 状态保守收敛]：`site-assessment` 现在只把 `complete` 和 `not_found` 视为 sitemap 范围已确认；缺失或非法状态统一保留为 `unknown`，并同步阻断 SEO/GEO readiness、closure 和站点级完成结论，避免损坏摘要被误判为完整覆盖。
+
 2026-11-16 [B0 契约动作路由]：已有观察型契约但没有业务 API 证据时，`site-assessment` 不再重复建议 `probe contract`；下一步明确为人在可见浏览器中录制获授权旅程，再重新生成契约。`missing` 或 `invalid` 契约仍先走观察型探针。
 
 2026-11-16 [获授权旅程录制入口]：`heimdall journey start <url|siteId>` 打开可见 Chromium，记录不含输入值的步骤，原始 `network.journey.har` 只留在秘密路径，结束后用统一 HAR 清洗器生成带旅程来源的 B0/B1 契约。没有业务接口时只保留 B0，不覆盖已有有效契约；真实生产认证、权限、写入和状态旅程仍待授权验收。
