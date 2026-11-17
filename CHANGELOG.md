@@ -43,6 +43,10 @@ All notable changes to Heimdall are recorded here.
 - A page that was scored while its clone still made external requests is reported as
   "scored, no proof issued" with the reason, instead of as stale evidence.
 - Recon retries a same-host https to http downgrade on the site origin instead of dropping the page.
+- The offline health scan ignores markup inside HTML comments (IE conditional comments were
+  counted as external scripts), and the handoff note names `--external-static-approvals`.
+- The interactive mirror no longer re-enables a script the https source itself blocks as mixed
+  content; the decision uses the page's own captured HAR, scripts without that evidence stay.
 - Source and offline read-only data comparison now reads the observed CDP
   response directly instead of allowing Playwright to refetch an empty body.
   Missing provenance and mismatched browser/protocol observations block strict

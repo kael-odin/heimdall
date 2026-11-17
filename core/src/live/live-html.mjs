@@ -37,6 +37,32 @@ export function prefixRootRelative(html, lmPrefix, rootDirs = []) {
   return out;
 }
 
+/**
+ * 源站自己就没加载成的脚本：https 页面上写死 `http://` 的脚本会被浏览器按混合内容拦下，
+ * 采集的 HAR 里这条请求的 `_failureText` 是 `mixed-content`。镜像与离线包走 http，浏览器反而会真的去加载它 ——
+ * 页面行为就和源站不一样了（实测 books.toscrape.com：源站用的是回退到本地的 jQuery，镜像却先去连 googleapis），
+ * 严格离线门禁也因此每页多一次外联。按采集证据把这些标签换成注释；没有 HAR 证据的脚本一律不动。
+ *
+ * shortcut: 只处理 <script src>；被拦的 http iframe 与样式表（样式表本来就由 cssom.css 顶替）没有实测案例，遇到再补。
+ */
+export function dropSourceBlockedScripts(html, har) {
+  const blocked = new Set();
+  for (const entry of har?.log?.entries ?? []) {
+    if (entry?.response?._failureText !== 'mixed-content') continue;
+    try { blocked.add(new URL(entry.request.url).href); } catch {}
+  }
+  let dropped = 0;
+  if (!blocked.size) return { html, dropped };
+  const out = html.replace(/<script\b[^>]*\bsrc\s*=\s*(["'])(http:\/\/.*?)\1[^>]*>\s*<\/script\s*>/gi, (tag, _quote, src) => {
+    let href;
+    try { href = new URL(src.replace(/&amp;/gi, '&')).href; } catch { return tag; }
+    if (!blocked.has(href)) return tag;
+    dropped += 1;
+    return '<!-- heimdall: script the source page itself blocks as mixed content -->';
+  });
+  return { html: out, dropped };
+}
+
 /** 未镜像提示条上的标记属性（幂等：已有就不再插） */
 export const UNMIRRORED_MARK = 'data-heimdall-unmirrored';
 

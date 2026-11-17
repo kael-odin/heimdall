@@ -21,7 +21,7 @@ import { requireArg } from '../args.mjs';
 import { loadProfile } from '../site-profile.mjs';
 import { WORKSPACE, isInside } from '../paths.mjs';
 import { rewriteMappedHtmlRefs, relTokens } from '../dom-refs.mjs';
-import { prefixRootRelative } from '../live/live-html.mjs';
+import { prefixRootRelative, dropSourceBlockedScripts } from '../live/live-html.mjs';
 import { liveSnapshotPath } from '../live/live-path.mjs';
 import { stripFreeze } from '../freeze.mjs';
 import { isSafePageName } from '../page-name.mjs';
@@ -90,6 +90,16 @@ for (const name of pages) {
   const baseHref = `${lmPrefix}${new URL('.', target).pathname}`;
 
   let html = readFileSync(domPath, 'utf8');
+
+  // 0) 源站自己按混合内容拦下的脚本不带进镜像（依据是这一页采集的 HAR，见 live-html.mjs）。
+  //    必须在来源归一之前做：同主机的 http:// 地址也会被归一成代理路径，之后就认不出来了。
+  if (target.protocol === 'https:' && /<script\b[^>]*\bsrc\s*=\s*["']http:\/\//i.test(html) && existsSync(join(dir, 'network.har'))) {
+    try {
+      const result = dropSourceBlockedScripts(html, JSON.parse(readFileSync(join(dir, 'network.har'), 'utf8')));
+      html = result.html;
+      if (result.dropped) console.log(`  scripts blocked by the source as mixed content, not mirrored: ${result.dropped}`);
+    } catch (e) { console.warn('  mixed-content check skipped:', String(e).slice(0, 80)); }
+  }
 
   // Captured resources have stable names in the static clone. Use those exact
   // files in the live page too, including relative refs on deep routes.

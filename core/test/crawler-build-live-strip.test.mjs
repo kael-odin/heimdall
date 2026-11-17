@@ -78,3 +78,39 @@ test('live build: rel="preload stylesheet" 也算样式表，必须被本地 css
     rmSync(data, { recursive: true, force: true });
   }
 });
+
+test('live build: a script the https source blocks as mixed content is not re-enabled by the mirror', () => {
+  // books.toscrape.com: <script src="http://ajax.googleapis.com/…jquery.min.js"> never loads on the https source
+  // (the page falls back to its local copy); the http mirror would load it and add an external request per page.
+  const data = mkdtempSync(join(tmpdir(), 'heimdall-live-mixed-'));
+  const siteId = 'fixture.test';
+  const site = join(data, 'workspace', siteId);
+  const entry = (url, failure) => ({ request: { url }, response: failure ? { status: -1, _failureText: failure } : { status: 200 } });
+  try {
+    const page = join(site, 'pages', 'home');
+    put(page, 'manifest.json', JSON.stringify({ target: 'https://fixture.test/' }));
+    put(page, 'network.har', JSON.stringify({ log: { entries: [
+      entry('http://cdn.test/lib.js?a=1&b=2', 'mixed-content'), entry('http://fixture.test/legacy.js', 'mixed-content'),
+      entry('http://cdn.test/refused.js', 'net::ERR_CONNECTION_REFUSED'), entry('https://fixture.test/static/lib.js'),
+    ] } }));
+    put(page, 'dom.html', '<!doctype html><html><head></head><body>'
+      + '<script src="http://cdn.test/lib.js?a=1&amp;b=2"></script>'
+      + '<script>window.lib || document.write(\'<script src="static/lib.js"><\\/script>\')</script>'
+      + '<script src="http://fixture.test/legacy.js" defer></script>'
+      + '<script src="http://cdn.test/refused.js"></script>'
+      + '<script src="http://cdn.test/unseen.js"></script>'
+      + '</body></html>');
+
+    const result = build(data, siteId, 'home');
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stdout, /blocked by the source as mixed content, not mirrored: 2/);
+    const html = readFileSync(join(site, 'live', 'index.html'), 'utf8');
+    assert.equal(html.match(/<!-- heimdall: script the source page itself blocks as mixed content -->/g).length, 2);
+    assert.doesNotMatch(html, /cdn\.test\/lib\.js|legacy\.js/, 'both blocked scripts are gone, including the same-host one');
+    assert.match(html, /window\.lib \|\| document\.write/, 'the page keeps its own fallback');
+    assert.match(html, /<script src="http:\/\/cdn\.test\/refused\.js"><\/script>/, 'a request that failed for another reason is not evidence');
+    assert.match(html, /<script src="http:\/\/cdn\.test\/unseen\.js"><\/script>/, 'no HAR evidence, no change');
+  } finally {
+    rmSync(data, { recursive: true, force: true });
+  }
+});

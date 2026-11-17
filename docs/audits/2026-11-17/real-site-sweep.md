@@ -142,7 +142,11 @@ strict 仍阻断，剩下的都是范围问题：116 个指向未克隆页的链
 - 没有解决的：这个 jQuery 用的是 `http://` 地址，批准清单不接受。在浏览器里打开原站实测：控制台报
   `Mixed Content … requested an insecure script … This request has been blocked`，页面上的 jQuery 1.9.1 来自紧随其后的
   `window.jQuery || document.write(本地副本)`（`static/oscar/js/jquery/jquery-1.9.1.min.js`，200）。离线包走 HTTP，会先尝试外联再落到同一个本地副本。
-  功能上等价，但严格门禁按“有外联尝试”阻断。把源站自己就加载不了的混合内容脚本在镜像里一并停用，是一个待定的口径决定，本轮没有做。
+  功能上等价，但严格门禁按“有外联尝试”阻断。
+- 随后的处理：这一页采集的 HAR 里，这条请求的 `_failureText` 就是 `mixed-content`。生成交互镜像时按这份证据把源站自己拦下的脚本换成注释，
+  没有 HAR 证据的脚本、因别的原因失败的脚本都不动。重跑 `live --offline --strict --rebuild`：外链资源 5 → 0、第三方运行时 1 → 0、
+  离线浏览器 5 页失败 → 0 页；strict 只剩 281 个指向未克隆页的链接，那是 5 页预算造成的范围问题，不是缺陷。
+  只处理了 `<script src>`；被拦的 `http://` iframe 没有实测案例，没有做。
 
 ## 仍未知
 
