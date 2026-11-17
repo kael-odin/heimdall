@@ -1901,7 +1901,8 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     if (externalFailures.length) add({
       id: 'clone-external-runtime', kind: 'external_runtime_gap', basis: 'observed', status: 'blocked',
       title: '离线页面仍依赖未审核的外部运行时',
-      detail: `${externalFailures.length} 条 externalRequest：${failureExamples(externalFailures)}。逐个选择安全缓存、显式替换或继续阻断；不要把外链运行时当成源站后端缺口。`,
+      detail: `${externalFailures.length} 条 externalRequest：${failureExamples(externalFailures)}。逐个选择安全缓存、显式替换或继续阻断；不要把外链运行时当成源站后端缺口。`
+        + '外部的静态资源（CDN 上的脚本、样式、字体）确认可再分发后，可逐条写进批准清单，用 live --external-static-approvals 补抓进包（docs/guide/05-external-static-assets.md；只接受 HTTPS 地址）。',
       evidence: [clone.delivery.healthReport].filter(Boolean),
       verify: { method: 'human_authorized_external_runtime_review', condition: '每个 externalRequest 都有批准的缓存、替换或阻断策略，并重新严格导出复测' },
     });

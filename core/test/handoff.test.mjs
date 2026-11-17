@@ -207,6 +207,11 @@ test('handoff: --strict 把离线交付结果写入交接说明', () => {
   assert.match(md, /正式包没有被覆盖/);
   assert.match(md, /health\.json/);
   assert.match(md, /handoff <url> --strict/);
+  assert.doesNotMatch(md, /external-static-approvals/, 'the approval route is only named when external static assets block the export');
+  const cdn = renderHandoff({ ...base, strictRequested: true,
+    live: { status: 'blocked', published: false, blockingCount: 11, blockers: { externalAssets: 10, unsupportedRuntimeServices: 1 } } });
+  assert.match(cdn, /--external-static-approvals <文件>.*05-external-static-assets\.md/);
+  assert.match(cdn, /`http:\/\/` 地址不接受批准/);
 });
 
 test('handoff: strict 通过但范围受限时不能宣称整站覆盖', () => {

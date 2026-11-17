@@ -132,6 +132,10 @@ export function extractRefs(text, kind) {
     for (const m of text.matchAll(/@import\s+(?:url\(\s*)?["']([^"']+)["']/gi)) out.push({ url: m[1], kind: 'asset', required: true });
     return out;
   }
+  // 注释里的标签浏览器不会加载。IE 条件注释最常见：`<!--[if lt IE 9]><script src="//html5shim…"></script><![endif]-->`
+  // 实测 books.toscrape.com 每页因此多报 1 个外链脚本，5 页就是 5 个不存在的严格阻断。
+  // `<!--[if !IE]><!-->…<!--<![endif]-->` 这种写法里，真正的内容夹在两条完整的注释之间，按最短匹配剥掉注释后仍然保留。
+  text = text.replace(/<!--[\s\S]*?-->/g, '');
   for (const m of text.matchAll(/<(a|link|script|img|source|video|audio|iframe|embed|track|input)\b[^>]*>/gi)) {
     const tag = m[0];
     const name = m[1].toLowerCase();

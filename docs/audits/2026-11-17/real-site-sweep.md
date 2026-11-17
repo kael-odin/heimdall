@@ -128,6 +128,22 @@ strict 仍阻断，剩下的都是范围问题：116 个指向未克隆页的链
 这一项取自 craft-anything 的 text likeness（缺失的标题与文字只作指引、不进分数），口径换成 Heimdall 的元素证据。
 没有验证的部分：没有用真实模型跑完整的多轮重建，只验证了缺口清单本身的正确性；像素分仍只有 31%–46%（样式没写）。
 
+### 追加：换一个站点复验（books.toscrape.com，5 页预算）
+
+`handoff https://books.toscrape.com/ --max-pages 5 --strict`，用来确认上面的修复不是只对一个站点有效：
+
+- 侦察 5 页、0 失败；克隆 5/5；5/5 页拿到带证明的三视口验证，平均 98.7%，最低是首页 375 宽的 96.0%。
+- 资产本地化 122/137（89.0%），视觉缺口 0，离线包未解析资源 0。
+- strict 仍阻断：首轮报 10 个外链资源、1 个第三方运行时、5 页离线浏览器失败；另有 281 个指向未克隆页的链接（只给了 5 页预算）。
+  10 个外链资源里有 5 个是误报：html5shim 写在 IE 条件注释 `<!--[if lt IE 9]>…<![endif]-->` 里，浏览器不会加载，
+  健康扫描却按原始文本把注释里的标签也算上了。剥掉注释后重跑为 5 个，只剩每页一个 `http://ajax.googleapis.com` 上的 jQuery。
+- 暴露的指引缺口：补抓外部静态资源的 `--external-static-approvals` 早就有，但交接说明和站点评估都没有点名它，
+  站点评估的 `clone-external-runtime` 任务连下一步都没有。现在两处都写明这条路径，并注明只接受 HTTPS 地址。
+- 没有解决的：这个 jQuery 用的是 `http://` 地址，批准清单不接受。在浏览器里打开原站实测：控制台报
+  `Mixed Content … requested an insecure script … This request has been blocked`，页面上的 jQuery 1.9.1 来自紧随其后的
+  `window.jQuery || document.write(本地副本)`（`static/oscar/js/jquery/jquery-1.9.1.min.js`，200）。离线包走 HTTP，会先尝试外联再落到同一个本地副本。
+  功能上等价，但严格门禁按“有外联尝试”阻断。把源站自己就加载不了的混合内容脚本在镜像里一并停用，是一个待定的口径决定，本轮没有做。
+
 ## 仍未知
 
 - QA：认证/权限/状态机/业务规则仍需授权旅程；本轮的判定修正只覆盖页面级与网络级证据。

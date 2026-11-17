@@ -128,6 +128,12 @@ export function renderHandoff({ siteId, origin, target, summary, summaryEvidence
   let next = 2;
   if (strictRequested && live?.status !== 'passed') {
     lines.push(String(next++) + '. 修复严格离线门禁中的阻断项后，重跑 `node core/src/cli.mjs handoff <url> --strict`。');
+    // 外链的 CDN 脚本、样式、字体是最常见的一类阻断，补抓它们已有现成入口，但不点名就没人知道
+    if ((live?.blockers?.externalAssets ?? 0) > 0 || (live?.blockers?.unsupportedRuntimeServices ?? 0) > 0) {
+      lines.push(String(next++) + '. 页面还引用着外部的静态资源或脚本（常见是 CDN 上的库）。确认可以再分发后，把仍被引用的完整 HTTPS 地址写进批准清单，'
+        + '用 `live <host> --offline --strict --external-static-approvals <文件>` 补抓进包（格式见 `docs/guide/05-external-static-assets.md`）；'
+        + '`http://` 地址不接受批准，不需要的脚本直接从候选里移除或替换。');
+    }
   }
   lines.push(`${next++}. 视觉缺口里的外链资产，按 \`edit-manifest.md\` 逐项替换。`);
   lines.push(`${next}. 分数不能替代断网浏览：导出离线包后拔网线走一遍关键路径。`);

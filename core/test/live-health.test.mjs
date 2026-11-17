@@ -100,6 +100,16 @@ test('live/health: inline style blocks and style attributes are strict resources
     .some(r => r.url === '/not-a-resource.webp'));
 });
 
+test('live/health: markup inside HTML comments is not a reference', () => {
+  const urls = extractRefs([
+    '<!-- old: <img src="/retired.png"> -->',
+    '<!--[if lt IE 9]><script src="//html5shim.example/html5.js"></script><![endif]-->',
+    '<!--[if !IE]><!--><script src="/modern.js"></script><!--<![endif]-->',
+    '<script src="/app.js"></script>',
+  ].join('\n'), 'html').map(r => r.url);
+  assert.deepEqual(urls, ['/modern.js', '/app.js'], 'no browser loads a commented-out tag; downlevel-revealed content stays');
+});
+
 test('live/health: missing inline CSS assets enter the strict unresolved count', () => {
   const dir = mkdtempSync(join(tmpdir(), 'heimdall-health-inline-'));
   try {
