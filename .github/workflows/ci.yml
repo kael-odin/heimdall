@@ -346,5 +346,11 @@ jobs:
           # Audit reads lockfiles without creating a pnpm store to cache.
           package-manager-cache: false
       - run: pnpm -C core audit --prod --audit-level=moderate --registry=https://registry.npmjs.org
-      - run: pnpm -C console audit --audit-level=moderate --registry=https://registry.npmjs.org
+      # The shipped image copies console/dist only (Dockerfile stage 2), so console build-time
+      # packages do not ship. Gate what ships; keep dev advisories visible without failing on
+      # ones that have no patched release (picomatch <=4.0.7, GHSA-fc5q-39xc-vjpf).
+      - run: pnpm -C console audit --prod --audit-level=moderate --registry=https://registry.npmjs.org
+      - name: Console dev dependencies (informational)
+        continue-on-error: true
+        run: pnpm -C console audit --dev --audit-level=moderate --registry=https://registry.npmjs.org
       - run: pnpm -C packages/mcp audit --audit-level=moderate --registry=https://registry.npmjs.org

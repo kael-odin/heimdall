@@ -55,7 +55,7 @@
     "mcp:build": "pnpm -C packages/mcp build:plugin",
     "skills:sync": "node scripts/sync-skills.mjs",
     "skills:check": "node scripts/sync-skills.mjs --check",
-    "audit": "pnpm -C core audit --prod --audit-level=moderate --registry=https://registry.npmjs.org && pnpm -C console audit --audit-level=moderate --registry=https://registry.npmjs.org && pnpm -C packages/mcp audit --audit-level=moderate --registry=https://registry.npmjs.org"
+    "audit": "pnpm -C core audit --prod --audit-level=moderate --registry=https://registry.npmjs.org && pnpm -C console audit --prod --audit-level=moderate --registry=https://registry.npmjs.org && pnpm -C packages/mcp audit --audit-level=moderate --registry=https://registry.npmjs.org"
   },
   "bin": {
     "heimdall": "bin/heimdall.mjs"

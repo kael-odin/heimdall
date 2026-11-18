@@ -99,6 +99,9 @@ All notable changes to Heimdall are recorded here.
 
 ### Security
 
+- The blocking console dependency audit now covers production dependencies only. The
+  shipped image copies `console/dist` only; `picomatch` <=4.0.7 (GHSA-fc5q-39xc-vjpf,
+  build-time only, no patched release) is still listed by a non-blocking CI step.
 - Updated Vite to the patched 8.3 line.
 - Pinned `source-map-js` to 1.2.2.
 - Overrode ExcelJS transitive `uuid` and `minimatch` versions to patched
