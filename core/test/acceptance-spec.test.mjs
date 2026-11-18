@@ -99,19 +99,6 @@ test('Spec identities exclude display titles, target entries and contract orderi
   } finally { await fixture.close(); await otherFixture.close(); }
 }));
 
-test('Spec candidate and unsupported operations stay blocked and never request the target', async () => temporary(async outputDir => {
-  const fixture = await startAcceptanceApiFixture();
-  try {
-    const candidate = summarizeAcceptanceReport(await runAcceptance(plan(fixture.targetUrl, [contract()], { approved: false }), { outputDir }));
-    assert.equal(candidate.gate, 'blocked');
-    assert.equal(candidate.summary.coverage.measured, 0);
-    const omitted = summarizeAcceptanceReport(await runAcceptance(plan(fixture.targetUrl, [], { omissions: [{ id: 'delete', path: '/users', method: 'DELETE', reason: 'Not read-only' }] }), { outputDir }));
-    assert.equal(omitted.gate, 'blocked');
-    assert.equal(omitted.summary.coverage.total, 1);
-    assert.equal(fixture.requests.length, 0);
-  } finally { await fixture.close(); }
-}));
-
 test('Spec HTTP 200 business errors are defects, while timeout and size limits remain unmeasured', async () => temporary(async outputDir => {
   const fixture = await startAcceptanceApiFixture();
   try {

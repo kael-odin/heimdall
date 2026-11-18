@@ -2,10 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
-import { tmpdir, hostname } from 'node:os';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
-import { acquireAcceptanceOwner, ACCEPTANCE_OWNER_FILE, ACCEPTANCE_RECOVERY_FILE } from '../src/acceptance/owner.mjs';
+import { acquireAcceptanceOwner, ACCEPTANCE_OWNER_FILE } from '../src/acceptance/owner.mjs';
 
 const OWNER_URL = new URL('../src/acceptance/owner.mjs', import.meta.url).href;
 const unavailable = { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 };
@@ -38,33 +37,6 @@ function replaceRoot(item, { moveLock = true } = {}) {
   return { moved, bytes };
 }
 
-test('owner acquisition identity survives ordinary directory and content updates', t => {
-  const item = fixture(t), owner = acquireAcceptanceOwner({ root: item.root });
-  t.after(() => owner.release());
-  const lock = fs.readFileSync(join(item.root, ACCEPTANCE_OWNER_FILE));
-  fs.mkdirSync(join(item.root, 'new-run'));
-  fs.writeFileSync(join(item.root, 'new-run', 'report.json'), '{"status":"running"}\n');
-  fs.writeFileSync(join(item.root, 'new-run', 'report.json'), '{"status":"completed"}\n');
-  fs.writeFileSync(join(item.root, 'ordinary.json'), '{}\n');
-  assert.equal(owner.assertOwned(), true);
-  assert.deepEqual(fs.readFileSync(join(item.root, ACCEPTANCE_OWNER_FILE)), lock);
-  assert.equal(owner.release(), true);
-  assert.equal(fs.existsSync(join(item.root, ACCEPTANCE_OWNER_FILE)), false);
-  assert.equal(fs.readFileSync(join(item.root, 'ordinary.json'), 'utf8'), '{}\n');
-});
-
-test('first owner assertion rejects a replaced root even when the acquired lock inode is moved back', t => {
-  const item = fixture(t), owner = acquireAcceptanceOwner({ root: item.root });
-  const lockBefore = fs.lstatSync(join(item.root, ACCEPTANCE_OWNER_FILE), { bigint: true });
-  const scene = replaceRoot(item);
-  assert.equal(fs.lstatSync(join(item.root, ACCEPTANCE_OWNER_FILE), { bigint: true }).ino, lockBefore.ino);
-  assert.throws(() => owner.assertOwned(), lost);
-  assert.equal(owner.release(), false);
-  assert.deepEqual(fs.readFileSync(join(item.root, ACCEPTANCE_OWNER_FILE)), scene.bytes);
-  assert.equal(fs.readFileSync(join(item.root, 'scene.txt'), 'utf8'), 'replacement root must remain untouched');
-  assert.equal(fs.existsSync(scene.moved), true);
-});
-
 test('release without a preceding assertion preserves a replacement root and the moved acquired lock', t => {
   const item = fixture(t), owner = acquireAcceptanceOwner({ root: item.root });
   const scene = replaceRoot(item);
@@ -73,15 +45,6 @@ test('release without a preceding assertion preserves a replacement root and the
   assert.deepEqual(fs.readFileSync(join(item.root, ACCEPTANCE_OWNER_FILE)), scene.bytes);
   assert.equal(fs.readFileSync(join(item.root, 'scene.txt'), 'utf8'), 'replacement root must remain untouched');
   assert.throws(() => owner.assertOwned(), lost);
-});
-
-test('release preserves both a foreign replacement lock and the original lock in the moved root', t => {
-  const item = fixture(t), owner = acquireAcceptanceOwner({ root: item.root });
-  const scene = replaceRoot(item, { moveLock: false });
-  assert.throws(() => owner.assertOwned(), lost);
-  assert.equal(owner.release(), false);
-  assert.equal(fs.readFileSync(join(item.root, ACCEPTANCE_OWNER_FILE), 'utf8'), 'replacement-root-private-lock');
-  assert.deepEqual(fs.readFileSync(join(scene.moved, ACCEPTANCE_OWNER_FILE)), scene.bytes);
 });
 
 test('same-canonical root alias recreation retains acquired ownership', t => {
@@ -111,22 +74,6 @@ test('retargeted alias loses assertion authority while release only removes its 
   assert.equal(fs.existsSync(join(item.root, ACCEPTANCE_OWNER_FILE)), false);
   assert.deepEqual(fs.readFileSync(join(other, ACCEPTANCE_OWNER_FILE)), otherLock);
   assert.equal(otherOwner.assertOwned(), true);
-});
-
-test('a root swap during stale-owner probing fails acquisition without deleting either scene', t => {
-  const item = fixture(t);
-  const record = { schemaVersion: 1, pid: 2147483646, hostname: hostname(),
-    nonce: randomBytes(32).toString('hex'), createdAt: new Date(0).toISOString() };
-  fs.writeFileSync(join(item.root, ACCEPTANCE_OWNER_FILE), JSON.stringify(record) + '\n');
-  let scene, probes = 0;
-  assert.throws(() => acquireAcceptanceOwner({ root: item.root, processProbe() {
-    probes++; scene = replaceRoot(item);
-    throw Object.assign(new Error('fixture proves process is gone'), { code: 'ESRCH' });
-  } }), unavailable);
-  assert.equal(probes, 1);
-  assert.deepEqual(fs.readFileSync(join(item.root, ACCEPTANCE_OWNER_FILE)), scene.bytes);
-  assert.equal(fs.existsSync(join(item.root, ACCEPTANCE_RECOVERY_FILE)), false);
-  assert.equal(fs.readFileSync(join(item.root, 'scene.txt'), 'utf8'), 'replacement root must remain untouched');
 });
 
 test('root replacement inside lock creation or immediately before acquisition return never grants a capability', async t => {

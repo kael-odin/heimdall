@@ -206,15 +206,6 @@ test('non-executable OpenAPI dialect, writeOnly response semantics and malformed
   }
 });
 
-test('fingerprints are deterministic across JSON key order and change with document contents', () => {
-  const original = documentOf({ '/ok': { get: get(true) } });
-  const reordered = { paths: original.paths, info: { version: '1.2.0', title: 'Fixture API' }, openapi: '3.1.1' };
-  assert.equal(preview(original).plan.spec.source.sha256, preview(reordered).plan.spec.source.sha256);
-  reordered.info.version = '1.2.1';
-  assert.notEqual(preview(original).plan.spec.source.sha256, preview(reordered).plan.spec.source.sha256);
-  assert.equal(openApiDocumentFingerprint(original), preview(original).plan.spec.source.sha256);
-});
-
 test('document fingerprints preserve full JSON data and enforce exact UTF-8, nesting and node budgets', () => {
   const maxBytes = 4 * 1024 * 1024;
   const bytesOfEmpty = Buffer.byteLength(JSON.stringify({ note: '' }), 'utf8');

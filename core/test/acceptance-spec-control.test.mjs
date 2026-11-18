@@ -99,13 +99,6 @@ test('pre-aborted control performs no directory, event, guard or target side eff
   assert.equal(isSpecAcceptanceControlError({ code: 'SPEC_ACCEPTANCE_ABORTED' }), false);
 });
 
-test('a synchronous initial guard failure is a control error before any output', async t => {
-  const { outputDir } = await workspace(t), api = await fixture(t), cause = new Error('owner lost');
-  await assert.rejects(runSpecAcceptance(plan(api.targetUrl), { outputDir, assertActive() { throw cause; } }),
-    controlError('SPEC_ACCEPTANCE_GUARD_FAILED', cause));
-  assert.equal(existsSync(outputDir), false); assert.deepEqual(api.requests, []);
-});
-
 test('accidental native async guards reject before effects and consume rejected promises', async t => {
   const { outputDir } = await workspace(t), api = await fixture(t), unhandled = [];
   const rejection = new Error('accidental async owner check');
@@ -174,20 +167,6 @@ test('external abort interrupts a real streamed body while its next read is pend
   assert.equal((await readdir(outputDir)).some(file => file.endsWith('-response.json')), false);
 });
 
-test('post-fetch guard failure stays sticky and cannot become a transport verdict', { timeout: 5000 }, async t => {
-  const { outputDir } = await workspace(t), api = await fixture(t), realFetch = globalThis.fetch;
-  const cause = new Error('owner changed after await'); let failNext = false, failed = false;
-  t.mock.method(globalThis, 'fetch', async (...args) => { const response = await realFetch(...args); failNext = true; return response; });
-  const events = [];
-  await assert.rejects(runSpecAcceptance(plan(api.targetUrl), { outputDir, assertActive() {
-    if (failNext) { failNext = false; failed = true; throw cause; }
-  }, onEvent: event => events.push(event.kind) }), controlError('SPEC_ACCEPTANCE_GUARD_FAILED', cause));
-  assert.equal(failed, true); assert.equal(failNext, false);
-  assert.deepEqual(api.requests, [{ path: '/healthy', method: 'GET' }]);
-  assert.deepEqual(events, ['acceptance-started']);
-  assert.equal((await readdir(outputDir)).some(file => file.endsWith('-response.json')), false);
-});
-
 test('an already-started evidence write remains but its failed fence permits no next side effect', async t => {
   const { outputDir } = await workspace(t), api = await fixture(t), cause = new Error('fence lost after write');
   const events = [];
@@ -196,16 +175,6 @@ test('an already-started evidence write remains but its failed fence permits no 
   }, onEvent: event => events.push(event.kind) }), controlError('SPEC_ACCEPTANCE_GUARD_FAILED', cause));
   assert.deepEqual(await readdir(outputDir), ['spec-1-first-contract.json']);
   assert.deepEqual(events, ['acceptance-started']); assert.deepEqual(api.requests, []);
-});
-
-test('onEvent backpressure rechecks the guard before creating any contract or request', async t => {
-  const { outputDir } = await workspace(t), api = await fixture(t), entered = deferred(), release = deferred();
-  const cause = new Error('owner lost while event was pending'); let active = true;
-  const run = runSpecAcceptance(plan(api.targetUrl), { outputDir, assertActive() { if (!active) throw cause; },
-    onEvent(event) { assert.equal(event.kind, 'acceptance-started'); entered.resolve(); return release.promise; } });
-  const rejected = assert.rejects(run, controlError('SPEC_ACCEPTANCE_GUARD_FAILED', cause));
-  await entered.promise; active = false; release.resolve(); await rejected;
-  assert.deepEqual(await readdir(outputDir), []); assert.deepEqual(api.requests, []);
 });
 
 for (const kind of ['acceptance-started', 'acceptance-completed']) {
@@ -257,16 +226,6 @@ test('guard failure after a check event prevents the next request, omission and 
   controlError('SPEC_ACCEPTANCE_GUARD_FAILED'));
   assert.deepEqual(events, ['acceptance-started', 'acceptance-check']); assert.equal(api.requests.length, 1);
   assert.equal((await readdir(outputDir)).some(file => file.includes('second') || file.includes('omission')), false);
-});
-
-test('internal timeout stays an ordinary blocked check and continues while external control is active', { timeout: 5000 }, async t => {
-  const { outputDir } = await workspace(t), api = await fixture(t), controller = new AbortController();
-  const report = await runSpecAcceptance(plan(api.targetUrl, [contract('first', '/pending-headers'), contract('second')], { timeoutMs: 1000 }),
-    { outputDir, signal: controller.signal, assertActive() {} });
-  assert.equal(report.status, 'completed'); assert.equal(report.checks[0].status, 'blocked');
-  assert.equal(report.checks[0].actual.errorCode, 'REQUEST_TIMEOUT'); assert.equal(report.checks[1].status, 'passed');
-  assert.equal(summarizeAcceptanceReport(report).gate, 'blocked'); assert.equal(controller.signal.aborted, false);
-  assert.deepEqual(api.requests.map(item => item.path), ['/pending-headers', '/healthy']);
 });
 
 test('omitting controls and supplying active controls have the same output and evidence contract', async t => {

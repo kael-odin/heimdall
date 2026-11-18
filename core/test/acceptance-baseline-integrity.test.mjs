@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync, renameSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, basename } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -14,7 +14,6 @@ import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs'
 import { projectSpecBaselineCandidate } from '../src/acceptance/candidate-projection.mjs';
 import { writeAtomicFileSync } from '../src/acceptance/atomic-file.mjs';
 import { summarizeAcceptanceReport } from '../src/acceptance/report.mjs';
-import { startAcceptanceApiFixture } from './fixtures/acceptance-api.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 const jsonBytes = value => Buffer.from(JSON.stringify(value, null, 2) + '\n');
@@ -65,19 +64,6 @@ async function unchanged(f, action, code) {
   assert.deepEqual(heads(f), before);
   validateAcceptanceCatalog(f.store.read());
 }
-function resealReport(source, mutate) {
-  const report = parse(join(source.dir, 'report.json')), manifest = parse(join(source.dir, 'manifest.json'));
-  mutate(report, manifest);
-  const references = new Set(report.checks.flatMap(check => Object.values(check.evidence)));
-  for (const entry of report.evidenceManifest) if (references.has(entry.file)) {
-    const bytes = readFileSync(join(source.dir, entry.file)); entry.bytes = bytes.length; entry.sha256 = hash(bytes);
-  }
-  const summarized = summarizeAcceptanceReport(report);
-  report.summary = summarized.summary; report.gate = summarized.gate;
-  manifest.summary = report.summary; manifest.gate = report.gate; manifest.endedAt = report.endedAt;
-  const bytes = jsonBytes(report); writeFileSync(join(source.dir, 'report.json'), bytes);
-  manifest.reportSha256 = hash(bytes); writeFileSync(join(source.dir, 'manifest.json'), jsonBytes(manifest));
-}
 /** Regenerate a supported draft using the actual runner, then recompute every
  * legacy completion hash. This deliberately models coherent local rewriting,
  * not a fake verifier or a changed rule implementation. */
@@ -117,27 +103,6 @@ test('coherent source rewrite with all legacy hashes rebuilt cannot authorize th
   assert.equal(f.store.readBaselineCandidate(f.project.id, next.id).preview.checks[0].expect.status, 201);
   assert.equal(Object.keys(f.store.read().approvals).length, 1);
   assert.deepEqual(f.store.read().candidates[old.id], old);
-});
-
-test('a coherently rehashed observed response changes provenance while preserving the requirements oracle', async t => {
-  const api = await startAcceptanceApiFixture(); t.after(() => api.close());
-  const f = await fixture(t, api.targetUrl), s = await source(f, { approved: true, path: '/wrong-code' });
-  const old = await candidate(f, s), before = currentProjection(f, s), requests = api.requests.length;
-  writeFileSync(join(s.dir, s.report.checks[0].evidence.response), jsonBytes({ requested: true, body: { code: 999 } }));
-  resealReport(s, () => {});
-  assert.equal(readAcceptanceSnapshot(s.runId, { root: f.root }).integrity.valid, true);
-  const after = currentProjection(f, s);
-  assert.equal(after.oracleManifestKey, before.oracleManifestKey);
-  assert.notEqual(after.evidenceManifestDigest, before.evidenceManifestDigest);
-  await unchanged(f, f.store.approveBaseline(f.project.id, approveInput(f, old)), 'BASELINE_CHANGED');
-  assert.equal(api.requests.length, requests);
-});
-
-test('sharing one valid contract file between two slots cannot hide the missing required role', async t => {
-  const f = await fixture(t), s = await source(f, { checks: 2 });
-  resealReport(s, report => { report.checks[1].evidence.contract = report.checks[0].evidence.contract; });
-  assert.equal(readAcceptanceSnapshot(s.runId, { root: f.root }).integrity.valid, true);
-  await unchanged(f, f.store.createBaselineCandidate(f.project.id, createInput(f, s)), 'SOURCE_NOT_ELIGIBLE');
 });
 
 test('late source corruption after rolling backup and before head publication rejects candidate/approval/selection', async t => {
@@ -187,33 +152,6 @@ test('owner loss after rolling backup rejects each baseline write without publis
     assert.deepEqual(heads(f), before); assert.deepEqual(runFiles(s), sourceBefore);
     validateAcceptanceCatalog(f.store.read());
   });
-});
-
-test('cancel keeps approved history available even when source is already absent at the final fence', async t => {
-  const f = await fixture(t), s = await source(f), old = await candidate(f, s), approved = await approval(f, old);
-  const first = (await f.store.selectBaseline(f.project.id, selectInput(f, approved))).selection;
-  renameSync(s.dir, s.dir + '-retained');
-  const cancel = (await f.store.selectBaseline(f.project.id, selectInput(f, null))).selection;
-  assert.equal(cancel.previousSelectionId, first.id); assert.equal(cancel.approvalId, null);
-  assert.equal(f.store.read().approvals[approved.id].candidateId, old.id);
-  assert.deepEqual(currentSelectionsOf(f.store.read(), f.project.id).spec, cancel);
-});
-
-test('B2 JSON accessors and extra fields reject before evaluating hooks or writing history', async t => {
-  const f = await fixture(t), s = await source(f), old = await candidate(f, s), approved = await approval(f, old);
-  let getterReads = 0;
-  const entries = [
-    ['sourceRunId', createInput(f, s), input => f.store.createBaselineCandidate(f.project.id, input)],
-    ['reason', approveInput(f, old), input => f.store.approveBaseline(f.project.id, input)],
-    ['contentDigest', selectInput(f, approved), input => f.store.selectBaseline(f.project.id, input)],
-  ];
-  for (const [key, input, action] of entries) {
-    Object.defineProperty(input, key, { get() { getterReads++; throw new Error('untrusted getter'); }, enumerable: true });
-    await unchanged(f, action(input), 'INVALID_INPUT');
-  }
-  assert.equal(getterReads, 0);
-  await unchanged(f, f.store.approveBaseline(f.project.id, { ...approveInput(f, old), current: true }), 'INVALID_INPUT');
-  await unchanged(f, f.store.selectBaseline(f.project.id, { ...selectInput(f, approved), previousSelectionId: null }), 'INVALID_INPUT');
 });
 
 test('explicitly migrated B1 bindings retain Spec history and ordered selections across schema4 restart', async t => {

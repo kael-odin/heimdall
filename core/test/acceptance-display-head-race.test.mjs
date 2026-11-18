@@ -104,12 +104,6 @@ test('replacement after open but before its first fstat preserves only stable di
   }
 });
 
-test('a publication before open and another before first fstat retain the opened display version', t => {
-  const f = fixture(t);
-  assert.deepEqual(releasedDescriptor(f, 'unlink', () => readAcceptanceDisplayRun(f.runId, { root: f.root }), 1, true), f.manifest);
-  assert.throws(() => releasedDescriptor(f, 'unlink', () => readAcceptanceRun(f.runId, { root: f.root }), 1, true), integrity);
-});
-
 test('an actual Linux rename after open and before its first fstat retains the opened version', { skip: process.platform === 'win32' }, t => {
   const f = fixture(t), open = nativeFs.openSync; let publications = 0;
   nativeFs.openSync = (path, ...args) => {
@@ -164,22 +158,6 @@ test('an actual Linux rename while a descriptor is open returns only that descri
   finally { nativeFs.openSync = open; nativeFs.closeSync = close; nativeFs.readSync = read; syncBuiltinESMExports(); }
   assert.equal(publications, 1);
   assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }).progress, { kind: 'new-linux-inode' });
-});
-
-test('replacement before the first open captures the new stable descriptor bytes', t => {
-  const f = fixture(t), open = nativeFs.openSync; let publications = 0;
-  nativeFs.openSync = (path, ...args) => {
-    if (String(path) === f.path && !publications) {
-      publications++;
-      writeAtomicFileSync(f.path, encode({ ...f.manifest, progress: { kind: 'before-first-open' } }));
-    }
-    return open(path, ...args);
-  };
-  syncBuiltinESMExports();
-  try {
-    const value = readAcceptanceDisplayRun(f.runId, { root: f.root });
-    assert.equal(publications, 1); assert.deepEqual(value.progress, { kind: 'before-first-open' });
-  } finally { nativeFs.openSync = open; syncBuiltinESMExports(); }
 });
 
 test('a detached pathname lookup opens the replacement only for display heads', t => {
@@ -267,21 +245,6 @@ for (const list of [false, true]) test(`${list ? 'list' : 'detail'} display reta
   assert.deepEqual(fs.readdirSync(join(f.root, f.runId)), ['manifest.json']);
 });
 
-test('completion publishes without replacing the request-local captured running manifest', t => {
-  const f = fixture(t);
-  const { value, publications } = duringClose(f.path, count => {
-    if (count) return false;
-    finishAcceptanceRun(f.runId, { mode: 'mirror', name: f.manifest.name, checks: [],
-      endedAt: new Date().toISOString() }, { root: f.root });
-    return true;
-  }, () => readAcceptanceDisplayRun(f.runId, { root: f.root }));
-  assert.equal(publications, 1); assert.equal(value.status, 'running');
-  const saved = JSON.parse(fs.readFileSync(f.path));
-  assert.deepEqual(value, f.manifest); assert.equal(saved.status, 'completed');
-  assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }), saved);
-  assert.match(saved.reportSha256, /^[a-f0-9]{64}$/);
-});
-
 test('a first report publication retains the captured absence in the same display batch', t => {
   const f = fixture(t), reportPath = join(f.root, f.runId, 'report.json'); let closes = 0;
   const { value, publications } = duringClose(f.path, () => {
@@ -291,61 +254,6 @@ test('a first report publication retains the captured absence in the same displa
   assert.equal(publications, 1); assert.equal(value.status, 'running');
   assert.deepEqual(value, f.manifest);
   assert.deepEqual(JSON.parse(fs.readFileSync(reportPath)), { runId: f.runId, status: 'completed', checks: [] });
-});
-
-test('publication during the final scope fence retains the earlier captured display head', t => {
-  const f = fixture(t); let closes = 0;
-  const { value, publications } = duringClose(f.path, () => {
-    if (++closes !== 3) return false;
-    updateAcceptanceRun(f.runId, { progress: { kind: 'final-fence-publication' } }, { root: f.root }); return true;
-  }, () => readAcceptanceDisplayRun(f.runId, { root: f.root }));
-  assert.equal(publications, 1); assert.equal(value.progress, null);
-  assert.deepEqual(readAcceptanceDisplayRun(f.runId, { root: f.root }).progress, { kind: 'final-fence-publication' });
-});
-
-test('display never reopens an atomically replaced captured head or waits for a continuously changing writer', t => {
-  const f = fixture(t); let publications = 0;
-  const result = duringClose(f.path, () => {
-    publications++;
-    writeAtomicFileSync(f.path, encode({ ...f.manifest, progress: { publication: publications } }));
-    return true;
-  }, () => readAcceptanceDisplayRun(f.runId, { root: f.root }));
-  assert.equal(publications, 1); assert.deepEqual(result.value, f.manifest);
-  assert.deepEqual(JSON.parse(fs.readFileSync(f.path)).progress, { publication: 1 });
-});
-
-test('display uses one complete list batch and never adopts later facts by retrying its inventory', t => {
-  const f = fixture(t), opendir = nativeFs.opendirSync; let attempts = 0, publishedAttempt = 0;
-  nativeFs.opendirSync = (path, ...args) => {
-    if (String(path) === f.root) attempts++;
-    return opendir(path, ...args);
-  };
-  syncBuiltinESMExports();
-  try {
-    const result = duringClose(f.path, () => {
-      if (publishedAttempt === attempts) return false;
-      publishedAttempt = attempts;
-      writeAtomicFileSync(f.path, encode({ ...f.manifest, progress: { publication: attempts } })); return true;
-    }, () => listAcceptanceRuns({ root: f.root }));
-    assert.equal(result.value.find(row => row.runId === f.runId).progress, null);
-  } finally { nativeFs.opendirSync = opendir; syncBuiltinESMExports(); }
-  assert.equal(attempts, 1); assert.equal(publishedAttempt, 1);
-  assert.deepEqual(JSON.parse(fs.readFileSync(f.path)).progress, { publication: 1 });
-});
-
-test('new malformed heads or managed markers are never adopted by a captured display version and the next request rejects them', t => {
-  for (const malformed of [true, false]) {
-    const f = fixture(t); let bytes;
-    const result = duringClose(f.path, count => {
-      if (count) return false;
-      bytes = malformed ? '{malformed' : encode({ ...f.manifest, managed: {} });
-      writeAtomicFileSync(f.path, bytes); return true;
-    }, () => readAcceptanceDisplayRun(f.runId, { root: f.root }));
-    assert.deepEqual(result.value, f.manifest);
-    assert.throws(() => readAcceptanceDisplayRun(f.runId, { root: f.root }), integrity);
-    assert.throws(() => readAcceptanceRun(f.runId, { root: f.root }), integrity);
-    assert.equal(fs.readFileSync(f.path, 'utf8'), bytes);
-  }
 });
 
 test('a displayed completed version never authorizes artifacts or triage after a new managed marker appears', t => {
@@ -371,22 +279,6 @@ test('in-place mutations do not qualify as an atomic publication retry', t => {
     publications++; fs.writeFileSync(f.path, encode({ ...f.manifest, progress: { changed: true } })); return true;
   }, () => readAcceptanceDisplayRun(f.runId, { root: f.root })), integrity);
   assert.equal(publications, 1);
-});
-
-test('in-place permission changes and new hardlinks do not qualify as head publication retries', t => {
-  for (const hardlink of [false, true]) {
-    const f = fixture(t); let publications = 0;
-    try {
-      assert.throws(() => duringClose(f.path, () => {
-        publications++;
-        if (hardlink) fs.linkSync(f.path, join(f.root, f.runId, 'linked-head.json'));
-        else fs.chmodSync(f.path, 0o400);
-        return true;
-      }, () => readAcceptanceDisplayRun(f.runId, { root: f.root })), integrity);
-      assert.equal(publications, 1);
-      assert.deepEqual(JSON.parse(fs.readFileSync(f.path)), f.manifest);
-    } finally { fs.chmodSync(f.path, 0o600); }
-  }
 });
 
 for (const replacement of ['run', 'root', 'dispatch']) test(`${replacement} namespace replacement is never adopted as a head publication`, t => {

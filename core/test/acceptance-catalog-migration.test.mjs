@@ -137,15 +137,6 @@ test('deterministic metadata previews and explicit legacy chains preserve exact 
   });
 });
 
-test('genuine owner brand rejects method-shaped owners and proxies before reflection', async t => {
-  const f = fixture(t); seed(f, native(3)); const preview = await f.store.previewMigration({ targetSchemaVersion: 4 }); let traps = 0;
-  for (const owner of [null, undefined, { root: f.root, assertOwned() { traps++; } }, { ...f.owner }, new Proxy(f.owner, { get() { traps++; throw Error('trap'); } })]) {
-    const store = createAcceptanceCatalogStore({ root: f.root, owner });
-    await assert.rejects(store.previewMigration({ targetSchemaVersion: 4 }), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 }); await assert.rejects(store.applyMigration(confirm(preview)), { code: 'ACCEPTANCE_OWNER_UNAVAILABLE', status: 503 });
-  }
-  assert.equal(traps, 0); f.owner.release(); await assert.rejects(f.store.previewMigration({ targetSchemaVersion: 4 }), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 });
-});
-
 test('maintenance fields, versions, digests and descriptors are strict without preparation', async t => {
   const f = fixture(t); seed(f, native(3)); const preview = await f.store.previewMigration({ targetSchemaVersion: 4 }), input = confirm(preview), before = facts(f);
   for (const value of [{}, { targetSchemaVersion: 3 }, { targetSchemaVersion: '4' }, { targetSchemaVersion: 4, extra: true }, new Proxy({}, {})]) await assert.rejects(f.store.previewMigration(value), { code: 'INVALID_INPUT', status: 400 });

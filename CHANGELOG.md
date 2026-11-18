@@ -108,6 +108,13 @@ All notable changes to Heimdall are recorded here.
 - Added independent core, console and MCP dependency-audit jobs to CI; all
   three pass against the official npm registry with no known vulnerabilities.
 
+### Changed
+
+- Acceptance tests were slimmed by 107 top-level tests (37 files, one file deleted, 1,443 lines) after a
+  per-test coverage pass, 20,407 seeded single-operator defects and two independent held-out defect sets.
+  Every source character is still executed by a remaining test and no held-out defect stopped being detected.
+  The 14 fingerprint-frozen verifier sources are untouched. Method: `docs/audits/2026-11-18/acceptance-test-slimming.md`.
+
 ### Documentation
 
 - Added a 2026-11-03 repository audit and refreshed status/demo guidance.

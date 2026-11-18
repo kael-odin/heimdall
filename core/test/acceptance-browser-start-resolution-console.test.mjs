@@ -63,22 +63,6 @@ test('all fixed revision vectors verify domain fingerprints and canonical reject
   }
 });
 
-test('recorded and rejected proofs bind every original field and project without trusting the old four-field view', async () => {
-  const vector = vectors[1];
-  const changes = { operationId: 'bo-' + randomUUID(), expectedGenerationId: 'ag-' + randomUUID(), expectedRevision: 13,
-    candidateId: 'bc-' + randomUUID(), contentDigest: 'b'.repeat(64), targetReleaseId: 'ar-' + randomUUID() };
-  for (const make of [recorded, rejected]) {
-    for (const [key, value] of Object.entries(changes)) {
-      await assert.rejects(browserStartResolution(make(vector), { projectId: vector.projectId,
-        request: { ...vector.request, [key]: value }, crypto: webcrypto }), invalid, key);
-      const forged = make(vector), nested = forged.outcome === 'recorded' ? forged.request : forged.rejection.request;
-      nested[key] = value;
-      await assert.rejects(browserStartResolution(forged, { projectId: vector.projectId, request: vector.request, crypto: webcrypto }), invalid, key);
-    }
-    await assert.rejects(browserStartResolution(make(vector), { projectId: 'ap-' + randomUUID(), request: vector.request, crypto: webcrypto }), invalid);
-  }
-});
-
 test('strict resolution unions reject extras, crossed variants, invalid timestamps and forged immutable facts', async () => {
   const vector = vectors[0], options = { projectId: vector.projectId, request: vector.request, crypto: webcrypto };
   const changes = [value => { value.schemaVersion = 2; }, value => { value.kind = 'other'; },
@@ -114,18 +98,6 @@ test('unresolved is a strict observation and never grants a decision proof', asy
   }
 });
 
-test('asynchronous digest verification retains an inert original request and proof snapshot', async () => {
-  const vector = vectors[0], raw = rejected(vector), original = clone(vector.request), entered = deferred(), release = deferred();
-  let calls = 0;
-  const crypto = { subtle: { digest: async (algorithm, bytes) => {
-    if (++calls === 1) { entered.resolve(); await release.promise; }
-    return webcrypto.subtle.digest(algorithm, bytes);
-  } } };
-  const pending = browserStartResolution(raw, { projectId: vector.projectId, request: original, crypto });
-  await entered.promise; raw.rejection.request.expectedRevision = 123; original.expectedRevision = 456; release.resolve();
-  const proof = await pending; assert.deepEqual(proof.rejection.request, vector.request); assert.notEqual(proof, raw);
-});
-
 test('no Web Locks means read-only diagnostics with no write fallback or bare-ID resolution', async () => {
   const vector = vectors[0], storage = memoryStorage(), key = `heimdall:browser-operations:v1:${origin}:${vector.projectId}`;
   storage.values.set(key, JSON.stringify([vector.request]));
@@ -134,30 +106,6 @@ test('no Web Locks means read-only diagnostics with no write fallback or bare-ID
   await assert.rejects(client.claimForStart(vector.request), invalid);
   await assert.rejects(client.save(vector.request), invalid); await assert.rejects(client.resolveExact(vector.request), invalid);
   assert.equal(storage.writes, 0); assert.deepEqual(client.read(), [vector.request]);
-});
-
-test('two clients queue saves behind the same origin/project lock and preserve both original confirmations', async () => {
-  const vector = vectors[0], storage = memoryStorage(), locks = serialLocks(), key = `heimdall:browser-operations:v1:${origin}:${vector.projectId}`;
-  const a = createBrowserExecutionReceipts({ projectId: vector.projectId, origin, storage, locks });
-  const b = createBrowserExecutionReceipts({ projectId: vector.projectId, origin, storage, locks });
-  const first = clone(vector.request), second = { ...first, operationId: 'bo-' + randomUUID() }, block = await hold(locks, key);
-  const pa = a.save(first), pb = b.save(second); assert.equal(storage.writes, 0); assert.deepEqual(a.read(), []);
-  block.release(); await Promise.all([block.finished, pa, pb]);
-  assert.equal(a.canWrite, true); assert.deepEqual(a.read(), [first, second]); assert.deepEqual(b.read(), [first, second]);
-  assert.equal(locks.log.filter(value => value.event === 'entered').length, 3);
-  assert.ok(locks.log.every(value => value.name === key));
-});
-
-test('two start claims queue behind one lock and only the first saves a confirmation', async () => {
-  const vector = vectors[0], storage = memoryStorage(), locks = serialLocks(), key = `heimdall:browser-operations:v1:${origin}:${vector.projectId}`;
-  const a = createBrowserExecutionReceipts({ projectId: vector.projectId, origin, storage, locks });
-  const b = createBrowserExecutionReceipts({ projectId: vector.projectId, origin, storage, locks });
-  const first = clone(vector.request), second = { ...first, operationId: 'bo-' + randomUUID() }, block = await hold(locks, key);
-  const pa = a.claimForStart(first), pb = b.claimForStart(second);
-  assert.equal(storage.writes, 0); assert.deepEqual(a.read(), []);
-  block.release(); const results = await Promise.all([pa, pb]); await block.finished;
-  assert.deepEqual(results, [true, false]); assert.equal(storage.writes, 1);
-  assert.deepEqual(a.read(), [first]); assert.deepEqual(b.read(), [first]);
 });
 
 test('a receipt saved while a start claim waits rejects the claim without another write', async () => {

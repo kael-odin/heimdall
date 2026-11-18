@@ -184,24 +184,6 @@ test('limits only tighten and complexity is bounded before recursion or serializ
   }
 });
 
-test('lazy store publishes exactly once with private bytes, no catalog/head/run changes, stable list/read', async t => {
-  const f = await fixture(t);
-  assert.equal(fs.existsSync(f.directory), false);
-  const beforeRuns = fs.readdirSync(f.root).filter(name => name.startsWith('ac-'));
-  let guards = 0;
-  const record = f.store.publish(f.envelope, { beforePublish() { guards++; } });
-  assert.equal(guards, 1); assert.equal(record.sha256, sha(record.bytes));
-  assert.deepEqual(record.envelope, f.envelope);
-  assert.deepEqual(f.store.read(f.envelope.operationId), record);
-  assert.deepEqual(f.store.list(), [record]);
-  assert.deepEqual(fs.readdirSync(f.directory), [f.envelope.operationId + '.json']);
-  assert.deepEqual(fs.readdirSync(f.root).filter(name => name.startsWith('ac-')), beforeRuns);
-  assert.deepEqual(f.store.publish(copy(f.envelope)), record);
-  assert.equal(guards, 1);
-  f.envelope.project.name = 'caller mutation'; record.bytes.fill(0); record.envelope.project.name = 'result mutation';
-  assert.equal(f.store.read(f.envelope.operationId).envelope.project.name, '托管验收');
-});
-
 test('same operation never overwrites an existing envelope', async t => {
   const f = await fixture(t); const record = f.store.publish(f.envelope);
   const changed = copy(f.envelope); changed.dispatchId = uuid('ad');
@@ -392,13 +374,6 @@ test('temporary inode pin acquisition failure closes the writer and never publis
   assert.equal(f.store.read(f.envelope.operationId), null); assert.deepEqual(fs.readdirSync(f.directory), []);
 });
 
-test('owner loss after temporary write preserves temporary and prevents any publish/cleanup mutation', async t => {
-  let temporaryPath, f;
-  f = await fixture(t, { hooks: { afterTemporaryWrite(context) { temporaryPath = context.temporaryPath; f.owner.release(); } } });
-  assert.throws(() => f.store.publish(f.envelope), error => error.code === 'ACCEPTANCE_OWNER_LOST' && !error.writeMayHaveCommitted);
-  assert.equal(fs.existsSync(f.file), false); assert.equal(fs.existsSync(temporaryPath), true);
-});
-
 test('directory replacement is detected across calls and cleanup leaves replacement intact', async t => {
   const f = await fixture(t); f.store.initialize();
   fs.renameSync(f.directory, f.directory + '-old'); fs.mkdirSync(f.directory);
@@ -505,19 +480,6 @@ test('guard cannot add files beyond the reserved directory budget; orphans still
   assert.deepEqual(fs.readdirSync(f.directory), [orphan.split(/[\\/]/).at(-1)]);
   assert.throws(() => f.store.publish(f.envelope), error => error.code === 'DISPATCH_CAPACITY_EXCEEDED');
   assert.equal(fs.readFileSync(orphan, 'utf8'), '{}');
-});
-
-test('unlink cleanup failure keeps accepted bytes queryable and never replays an orphan as accepted', async t => {
-  const f = await fixture(t, { io: { unlinkSync() { throw Error('cleanup unavailable'); } } });
-  const record = f.store.publish(f.envelope);
-  assert.equal(fs.readdirSync(f.directory).length, 2);
-  assert.deepEqual(f.store.read(f.envelope.operationId), record);
-  assert.deepEqual(f.store.list(), [record]);
-  const rejecting = await fixture(t, { io: { unlinkSync() { throw Error('cleanup unavailable'); } } });
-  assert.throws(() => rejecting.store.publish(rejecting.envelope, { beforePublish() { throw Error('guard failed'); } }), unavailable);
-  assert.equal(rejecting.store.read(rejecting.envelope.operationId), null);
-  assert.deepEqual(rejecting.store.list(), []);
-  assert.equal(fs.readdirSync(rejecting.directory).length, 1);
 });
 
 test('linked directory and linked envelope are rejected', async t => {

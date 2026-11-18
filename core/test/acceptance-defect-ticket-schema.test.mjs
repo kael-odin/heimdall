@@ -71,21 +71,6 @@ test('identifiers, severities, explicit confirmation and human text are bounded'
     assert.throws(() => validateDefectTicketCloseRequest({ ...valid, ...patch }), { code: 'INVALID_INPUT' });
 });
 
-test('JSON guards never invoke accessors, toJSON, proxy or inherited hooks', () => {
-  let hooks = 0;
-  const getter = {}; Object.defineProperty(getter, 'title', { enumerable: true, get() { hooks++; return 'bad'; } });
-  const toJson = { toJSON() { hooks++; return {}; } };
-  const inherited = Object.create({ toJSON() { hooks++; return {}; } });
-  const proxy = new Proxy({}, { get() { hooks++; }, getPrototypeOf() { hooks++; }, ownKeys() { hooks++; return []; } });
-  const arrayProxy = new Proxy([], { get() { hooks++; }, getPrototypeOf() { hooks++; }, ownKeys() { hooks++; return []; } });
-  for (const malicious of [getter, toJson, inherited, proxy, arrayProxy, { nested: getter }]) {
-    assert.throws(() => defectTicketJson(malicious));
-    assert.throws(() => validateDefectTicketCreateRequest(malicious), { code: 'INVALID_INPUT' });
-    assert.throws(() => defectTicketRequestFingerprint(malicious));
-  }
-  assert.equal(hooks, 0);
-});
-
 test('non JSON graphs, sparse/named arrays and structural budgets fail before encoding', () => {
   const cyclic = {}; cyclic.self = cyclic;
   const symbol = { [Symbol('secret')]: 1 };

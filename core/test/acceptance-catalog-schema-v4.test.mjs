@@ -140,41 +140,6 @@ test('events retain exact record identity, ordering and one event per entity', (
   const duplicateEvent = metadataFixture(); duplicateEvent.catalog.events.push(copy(duplicateEvent.catalog.events.at(-1))); duplicateEvent.catalog.revision++; reject(duplicateEvent.catalog);
 });
 
-test('V3 to V4 construction preserves complete Spec and independent Browser history exactly', () => {
-  const f = metadataFixture({ version: 3, candidate: false }); specHistory(f.catalog, f.project, f.release);
-  schema.validateAcceptanceCatalogV3(f.catalog); const before = copy(f.catalog), currentSelection = schema.currentSelectionsOf(before, f.project.id);
-  const migrated = upgrade(f.catalog); valid(migrated); assert.deepEqual(f.catalog, before);
-  assert.equal(migrated.schemaVersion, 4); assert.equal(migrated.revision, before.revision + 1);
-  assert.notEqual(migrated.generationId, before.generationId); assert.deepEqual(migrated.browserCandidates, {});
-  for (const map of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections', 'browserSourceBindings']) {
-    assert.deepEqual(migrated[map], before[map]); assert.notEqual(migrated[map], f.catalog[map]);
-    assert.equal(independentHash(migrated[map]), independentHash(before[map]));
-  }
-  assert.deepEqual(migrated.events.slice(0, before.revision), before.events);
-  assert.deepEqual(schema.currentSelectionsOf(migrated, f.project.id), currentSelection);
-  const event = migrated.events.at(-1), migration = migrated.migrations[event.entityId];
-  assert.equal(migration.fromSchemaVersion, 3); assert.equal(migration.toSchemaVersion, 4);
-  assert.equal(migration.fromGenerationId, before.generationId); assert.equal(migration.fromRevision, before.revision);
-  assert.equal(migration.sourceHeadSha256, headSha256); assert.equal(migration.sourcePreviousSha256, previousSha256);
-  assert.equal(event.entityDigest, independentHash(migration)); assert.equal(Object.hasOwn(event, 'projectId'), false);
-});
-
-test('full V1 to V4 chain preserves every earlier step and generation identity', () => {
-  const first = empty(1), f = metadataFixture({ version: 3, candidate: false });
-  append(first, 'projects', copy(f.project), 'project-created', f.project.id);
-  append(first, 'releases', copy(f.release), 'release-created', f.project.id);
-  const second = schema.buildCatalogMigration(first, { headSha256, previousSha256: null, at: AT });
-  specHistory(second, f.project, f.release);
-  const third = schema.buildCatalogMigrationV3(second, { headSha256: 'c'.repeat(64), previousSha256: headSha256, at: AT });
-  append(third, 'browserSourceBindings', copy(f.binding), 'browser-source-bound', f.project.id);
-  const before = copy(third), fourth = upgrade(third); valid(fourth);
-  const migrations = fourth.events.filter(event => event.kind === 'catalog-migrated').map(event => fourth.migrations[event.entityId]);
-  assert.deepEqual(migrations.map(value => [value.fromSchemaVersion, value.toSchemaVersion]), [[1, 2], [2, 3], [3, 4]]);
-  assert.equal(new Set([...migrations.map(value => value.fromGenerationId), fourth.generationId]).size, 4);
-  for (const [key, migration] of Object.entries(before.migrations)) assert.deepEqual(fourth.migrations[key], migration);
-  assert.deepEqual(fourth.events.slice(0, before.revision), before.events);
-});
-
 test('migration gates reject early Browser candidate events and retain the V3 source-binding gate in V4', () => {
   const f = metadataFixture({ version: 3, candidate: false }), migrated = upgrade(f.catalog);
   append(migrated, 'browserCandidates', copy(f.candidate), 'browser-candidate-created', f.project.id); valid(migrated);
@@ -218,22 +183,6 @@ test('V4 capacities include candidate count, exact entity bytes and migration co
   valid(upgrade(old, { limits: { migrations: 1, browserCandidates: 0 } }));
   assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.browserCandidates, 1024);
   assert.equal(schema.ACCEPTANCE_CATALOG_LIMITS.browserCandidateBytes, 8192);
-});
-
-test('the real 1024 candidate boundary accepts complete histories and rejects the next entity', () => {
-  const f = metadataFixture();
-  const addPair = index => {
-    const binding = copy(f.binding); binding.id = uid('ax', 1000 + index); binding.source.runId = uid('ac', 1000 + index);
-    resealSource(binding); append(f.catalog, 'browserSourceBindings', binding, 'browser-source-bound', f.project.id);
-    const candidate = { ...copy(f.candidate), id: uid('bc', 1000 + index), sourceBindingId: binding.id,
-      sourceContentDigest: binding.sourceContentDigest,
-      organizationContextDigest: organizedHash('organization-context', { project: f.project, release: f.release, sourceBinding: binding }) };
-    candidate.contentDigest = organizedHash('content', candidateContent(candidate));
-    append(f.catalog, 'browserCandidates', candidate, 'browser-candidate-created', f.project.id);
-  };
-  for (let index = 1; index < 1024; index++) addPair(index);
-  assert.equal(Object.keys(f.catalog.browserCandidates).length, 1024); valid(f.catalog);
-  addPair(1024); assert.equal(Object.keys(f.catalog.browserCandidates).length, 1025); reject(f.catalog);
 });
 
 test('V4 retains independent Browser baseline attribution and both legacy target binding orders', () => {

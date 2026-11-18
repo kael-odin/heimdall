@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync, symlinkSync, unlinkSync, realpathSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir, hostname } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -16,20 +16,6 @@ const record = overrides => ({ schemaVersion: 1, pid: process.pid, hostname: hos
 const unavailable = error => error?.status === 503 && error.code === 'ACCEPTANCE_OWNER_UNAVAILABLE'
   && !error.message.includes(tmpdir()) && !error.message.includes('heimdall-owner-');
 const esrch = () => { throw Object.assign(new Error('fixture dead'), { code: 'ESRCH' }); };
-
-test('one owner per real root, explicit release and re-acquire', () => temporary(root => {
-  const owner = acquireAcceptanceOwner({ root });
-  assert.equal(owner.root, realpathSync(root));
-  assert.equal(owner.assertOwned(), true);
-  assert.match(owner.nonce, /^[a-f0-9]{64}$/);
-  assert.throws(() => acquireAcceptanceOwner({ root }), unavailable);
-  assert.equal(owner.release(), true);
-  assert.equal(owner.release(), false);
-  assert.throws(() => owner.assertOwned(), { code: 'ACCEPTANCE_OWNER_LOST', status: 503 });
-  const next = acquireAcceptanceOwner({ root });
-  assert.notEqual(next.nonce, owner.nonce);
-  assert.equal(next.release(), true);
-}));
 
 test('junction/symlink aliases share ownership and retargeting loses ownership', () => temporary(parent => {
   const root = join(parent, 'real'), alias = join(parent, 'alias'), other = join(parent, 'other');

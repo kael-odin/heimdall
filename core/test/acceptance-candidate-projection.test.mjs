@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright';
 import { projectSpecBaselineCandidate, SPEC_CANDIDATE_LIMITS_V1, SUPPORTED_SPEC_VERIFIERS_V1 } from '../src/acceptance/candidate-projection.mjs';
-import { AcceptanceCatalogError, candidateProjectionOf } from '../src/acceptance/catalog-schema.mjs';
+import { AcceptanceCatalogError } from '../src/acceptance/catalog-schema.mjs';
 import { hashAcceptanceValue } from '../src/acceptance/identity.mjs';
 import { normalizeSpecPlan } from '../src/acceptance/spec-schema.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
@@ -15,8 +15,6 @@ import { createAcceptanceRun, finishAcceptanceRun, readAcceptanceSnapshot, accep
 import { summarizeAcceptanceReport } from '../src/acceptance/report.mjs';
 import { previewOpenApi } from '../src/acceptance/openapi.mjs';
 import { startAcceptanceApiFixture } from './fixtures/acceptance-api.mjs';
-import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs';
-import { requiredDir } from './fixtures/audit-evidence.mjs';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -144,17 +142,6 @@ test('OpenAPI source document is required, current and exactly tied to the norma
   rejects(changed, 'SOURCE_REQUIREMENT_EVIDENCE_MISMATCH');
 });
 
-test('extra unreferenced evidence index is not hashed as verified evidence', async t => {
-  const source = await materialize(t), context = options(), initial = project(source, context);
-  const extra = cloneSource(source);
-  extra.snapshot.report.evidenceManifest.push({ file: 'unread-extra.json', bytes: 999, sha256: 'a'.repeat(64) });
-  seal(extra);
-  const result = project(extra, context);
-  assert.equal(result.projection.evidenceManifestDigest, initial.projection.evidenceManifestDigest);
-  assert.equal(result.projection.oracleManifestKey, initial.projection.oracleManifestKey);
-  assert.notEqual(result.projection.sourceReportDigest, initial.projection.sourceReportDigest);
-});
-
 test('raw report/manifest and every referenced evidence are independently revalidated', async t => {
   const source = await materialize(t);
   const cases = [
@@ -228,21 +215,6 @@ test('saved plan uses legacy insertion-order hash while runner source/contracts 
   const wrongLegacy = cloneSource(reordered);
   wrongLegacy.snapshot.report.planFingerprint = hashAcceptanceValue(wrongLegacy.snapshot.manifest.plan); seal(wrongLegacy);
   rejects(wrongLegacy, 'SOURCE_PLAN_DIGEST_MISMATCH');
-});
-
-test('reviewed LF and CRLF verifier hashes preserve exact legacy provenance and unknown versions fail', async t => {
-  const source = await materialize(t), context = options();
-  const initial = project(source, context);
-  assert.ok(SUPPORTED_SPEC_VERIFIERS_V1.includes(source.snapshot.report.verifierFingerprint));
-  for (const verifierFingerprint of SUPPORTED_SPEC_VERIFIERS_V1) {
-    const changed = cloneSource(source); changed.snapshot.report.verifierFingerprint = verifierFingerprint; seal(changed);
-    const result = project(changed, context);
-    assert.equal(result.projection.verifierFingerprint, verifierFingerprint);
-    assert.equal(result.projection.oracleManifestKey, initial.projection.oracleManifestKey);
-    assert.equal(result.projection.ruleManifestKey, initial.projection.ruleManifestKey);
-  }
-  const changed = cloneSource(source); changed.snapshot.report.verifierFingerprint = '0'.repeat(64); seal(changed);
-  rejects(changed, 'SOURCE_VERIFIER_UNSUPPORTED');
 });
 
 test('verifier support is an exact reviewed set and real current completion retains its byte-based provenance', async t => {
@@ -341,76 +313,4 @@ test('human approval preview is complete or explicitly rejected when full expect
   const source = await materialize(t, manualPlan({}, { checks }));
   assert.ok(Buffer.byteLength(JSON.stringify(source.snapshot.manifest.plan)) < SPEC_CANDIDATE_LIMITS_V1.jsonBytes);
   rejects(source, 'SOURCE_PREVIEW_BUDGET');
-});
-
-test('archived real passing/BUG runs project through the source reader with every source byte unchanged and no request', async () => {
-  const root = requiredDir('2026-10-16/evidence/acceptance-catalog/console/run-evidence');
-  const runIds = ['ac-2424d160-cf8e-4991-8fba-c972a84becd1', 'ac-4a58013b-af7f-498a-a9bb-258c81bd9b6d',
-    'ac-5494a1d9-c1bc-4b1c-ad1b-144f8591f743'];
-  const tree = async (dir, prefix = '') => {
-    const result = [];
-    for (const entry of (await readdir(dir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
-      const name = prefix + entry.name, path = join(dir, entry.name);
-      if (entry.isDirectory()) result.push(...await tree(path, name + '/'));
-      else result.push([name, sha(await readFile(path))]);
-    }
-    return result;
-  };
-  const before = await tree(root), originalFetch = globalThis.fetch;
-  const owner = { root: await realpath(root), assertOwned() { return true; } };
-  let requests = 0;
-  globalThis.fetch = () => { requests++; throw new Error('projector must never request'); };
-  try {
-    for (const [index, runId] of runIds.entries()) {
-      const source = readSpecCandidateSource(runId, { root, owner }), result = project(source);
-      assert.equal(result.projection.source.runId, runId);
-      assert.equal(result.preview.sourceGate, index === 2 ? 'failed' : 'passed');
-      assert.equal(result.preview.sourceStatus, 'completed');
-      assert.equal(result.preview.sourceSpecApproved, true);
-      assert.equal(result.preview.checks[0].expect.json[0].value, 0);
-      assert.equal(result.projection.sourceReportDigest, sha(source.files.get('report.json')));
-      assert.equal(source.files.size, 5);
-    }
-  } finally { globalThis.fetch = originalFetch; }
-  assert.equal(requests, 0);
-  assert.deepEqual(await tree(root), before);
-});
-
-test('archived B2.1 draft and BUG candidates retain their golden projection and all 14 original files', async () => {
-  const archive = requiredDir('2026-10-16/evidence/acceptance-baseline/console');
-  const root = join(archive, 'run-evidence'), catalogBytes = await readFile(join(archive, 'catalog-storage.json'));
-  const catalog = JSON.parse(catalogBytes), archivedDigests = JSON.parse(await readFile(join(archive, 'run-file-digests.json')));
-  const cases = [
-    { runId: 'ac-1897dc22-0d21-4b6f-95c3-4dd72201063d', approved: false, gate: 'blocked', fileCount: 5,
-      contentDigest: '9f7a0548eed717bd4603062f4c15ab4676228a23e9b8bfebfd09fee64ff61c8d' },
-    { runId: 'ac-10afe248-c3f9-4b86-b3db-373a55025c05', approved: true, gate: 'failed', fileCount: 9,
-      contentDigest: 'cbf10096861b5b95f2c03a749f1184b29f4b4cd9bb86a02d2d23e3ec1ad7c965' },
-  ];
-  const digests = async () => Object.fromEntries(await Promise.all(cases.map(async ({ runId }) => [runId,
-    Object.fromEntries(await Promise.all((await readdir(join(root, runId))).sort().map(async name =>
-      [name, sha(await readFile(join(root, runId, name)))])))])));
-  assert.deepEqual(await digests(), archivedDigests);
-  assert.equal(Object.values(archivedDigests).reduce((total, files) => total + Object.keys(files).length, 0), 14);
-  const owner = { root: await realpath(root), assertOwned() { return true; } }, originalFetch = globalThis.fetch;
-  let requests = 0;
-  globalThis.fetch = () => { requests++; throw new Error('historical projection must never request'); };
-  try {
-    for (const expected of cases) {
-      const candidate = Object.values(catalog.candidates).find(item => item.source.runId === expected.runId);
-      assert.ok(candidate);
-      const source = readSpecCandidateSource(expected.runId, { root, owner });
-      const result = project(source, { projectId: candidate.projectId, releaseId: candidate.source.releaseId, sourceSide: 'source' });
-      assert.deepEqual(result.projection, candidateProjectionOf(candidate));
-      assert.equal(result.projection.contentDigest, expected.contentDigest);
-      assert.equal(result.projection.verifierFingerprint, '8d8be9db16df0c5e021f13dcb474edf6629688b804ab523a6e7d415b6538703d');
-      assert.equal(result.preview.sourceSpecApproved, expected.approved);
-      assert.equal(result.preview.sourceGate, expected.gate);
-      assert.equal(result.preview.projectedSlots, 2);
-      assert.equal(result.preview.executionReady, false);
-      assert.equal(Object.keys(archivedDigests[expected.runId]).length, expected.fileCount);
-    }
-  } finally { globalThis.fetch = originalFetch; }
-  assert.equal(requests, 0);
-  assert.deepEqual(await digests(), archivedDigests);
-  assert.deepEqual(await readFile(join(archive, 'catalog-storage.json')), catalogBytes);
 });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
@@ -10,7 +10,6 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { createAcceptanceRun, readAcceptanceRun, updateAcceptanceRun, finishAcceptanceRun, listAcceptanceRuns,
   readAcceptanceSnapshot, acceptanceArtifact, saveAcceptanceTriage, readAcceptanceTriage, recoverAcceptanceRuns } from '../src/acceptance/store.mjs';
-import { createManagedSpecDispatchReadContext } from '../src/acceptance/managed-dispatch-reader.mjs';
 import { readSpecCandidateSource } from '../src/acceptance/candidate-source.mjs';
 import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
 import { required } from './fixtures/audit-evidence.mjs';
@@ -85,15 +84,6 @@ test('prepared records without a run remain unstarted and never create manifests
   assert.deepEqual(tree(root), before); assert.equal(existsSync(join(root, prepared.runId)), false);
 });
 
-test('legacy relative roots retain create/read/list/snapshot compatibility and share absolute read contexts', async t => {
-  const { root } = fixture(t), relativeRoot = relative(process.cwd(), root);
-  const run = await completed(relativeRoot); publish(root);
-  const context = createManagedSpecDispatchReadContext({ root });
-  assert.equal(readAcceptanceRun(run.runId, { root: relativeRoot, managedRead: context }).runId, run.runId);
-  assert.equal(listAcceptanceRuns({ root: relativeRoot, managedRead: context })[0].runId, run.runId);
-  assert.equal(readAcceptanceSnapshot(run.runId, { root: relativeRoot, managedRead: context }).integrity.valid, true);
-});
-
 for (const location of ['manifest', 'report']) test(`${location}-only managed markers quarantine otherwise ordinary completed facts`, async t => {
   const { root } = fixture(t), run = await completed(root), dir = join(root, run.runId);
   assert.equal(readAcceptanceSnapshot(run.runId, { root }).integrity.valid, true);
@@ -119,19 +109,6 @@ test('reserved ordinary input and patch fields fail before creating or rewriting
     assert.throws(() => mutate(run.runId, { managed: undefined }, { root: absent }), errorIs('INVALID_INPUT'));
   }
   assert.deepEqual(tree(absent), before); assert.deepEqual(tree(root), {});
-});
-
-test('ordinary legacy runs remain readable with a valid namespace and a shared context; stale or wrong contexts block', async t => {
-  const { root } = fixture(t), run = await completed(root); publish(root);
-  const context = createManagedSpecDispatchReadContext({ root });
-  assert.equal(readAcceptanceRun(run.runId, { root, managedRead: context }).runId, run.runId);
-  assert.equal(readAcceptanceSnapshot(run.runId, { root, managedRead: context }).integrity.valid, true);
-  assert.equal(listAcceptanceRuns({ root, managedRead: context })[0].runId, run.runId);
-  const other = fixture(t).root, wrong = createManagedSpecDispatchReadContext({ root: other });
-  assert.throws(() => readAcceptanceRun(run.runId, { root, managedRead: wrong }), errorIs('MANAGED_RUN_INTEGRITY_FAILED'));
-  const file = join(root, 'managed-spec-dispatches', 'v1', prepared.operationId + '.json'); writeFileSync(file, '{}');
-  assert.throws(() => listAcceptanceRuns({ root, managedRead: context }), errorIs('MANAGED_RUN_INTEGRITY_FAILED'));
-  assert.equal(readAcceptanceSnapshot(run.runId, { root, managedRead: context }).integrity.valid, false);
 });
 
 test('damaged published namespace blocks list, creation and recovery without promoting or repairing files', t => {

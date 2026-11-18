@@ -275,15 +275,6 @@ test('Browser binding, event and serialized-byte capacities reject before any ca
   });
 });
 
-test('all actual references including the other side and diff remain mandatory even for a healthy selected side', async t => {
-  for (const role of ['targetScreenshot', 'baselineScreenshot', 'diff']) await t.test(role, async t => {
-    const f = await fixture(t, 'matrix'), report = parse(join(f.dir, 'report.json'));
-    const file = report.checks.map(check => check.evidence[role]).find(Boolean); assert.ok(file);
-    writeFileSync(join(f.dir, file), Buffer.from('deliberately damaged evidence'));
-    await unchanged(f, () => f.store.bindBrowserSource(f.project.id, input(f)), 'SOURCE_INTEGRITY_FAILED');
-  });
-});
-
 test('initial ineligible, unfinished, managed and unsupported-verifier sources never create Browser facts', async t => {
   const edits = [
     ['spec', f => { const path = join(f.dir, 'manifest.json'), manifest = parse(path); manifest.mode = 'spec'; put(path, manifest); }, 'SOURCE_NOT_ELIGIBLE'],

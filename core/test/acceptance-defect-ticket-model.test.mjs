@@ -195,16 +195,6 @@ test('limited capture, unstable masks, incomplete steps and policy never become 
   }
 });
 
-test('check display IDs and row order may change; stable registered identities select exact members', () => {
-  const source = operation(1, ['failed', 'failed']), after = operation(2, ['passed', 'passed'], { renamed: true });
-  after.report.checks.reverse(); after.observation.observations.reverse(); finishOperation(after);
-  const { records } = start([source]), current = facts([after, source]);
-  const preview = previewDefectTicketClose({ records, facts: current, afterOperationId: after.operationId });
-  assert.equal(preview.closeEligible, true);
-  assert.deepEqual(preview.results.map(row => row.afterCheckId), ['renamed-desktop', 'renamed-mobile']);
-  assert.equal(projectDefectTicket({ records: [...records, record(close(records, current, after.operationId))], facts: current }).processingStatus, 'closed');
-});
-
 test('late registration follows accepted order, then recordedAt, then operation ID', () => {
   const source = operation(1, ['failed', 'failed']), after = operation(4), { records } = start([source]);
   const current = facts([source, after]); records.push(record(close(records, current, after.operationId)));
@@ -276,18 +266,4 @@ test('source or historical close proof changes block verification while immutabl
     assert.equal(projected.closeEligible, false); assert.equal(projected.history.length, 2);
   }
   assert.deepEqual(records, before);
-});
-
-test('malicious model arguments reject without executing hooks, and projections are deterministic and read only', () => {
-  let hooks = 0;
-  const getter = {}; Object.defineProperty(getter, 'records', { enumerable: true, get() { hooks++; return []; } });
-  const proxy = new Proxy({}, { ownKeys() { hooks++; return []; }, getPrototypeOf() { hooks++; return Object.prototype; } });
-  for (const raw of [getter, proxy, { toJSON() { hooks++; return {}; } }]) for (const fn of [createDefectTicketEvent,
-    projectDefectTicket, previewDefectTicketClose, closeDefectTicketEvent]) assert.throws(() => fn(raw));
-  assert.equal(hooks, 0);
-  const source = operation(1, ['failed', 'failed']), { records } = start([source]), current = facts([source, operation(2)]);
-  const original = copy({ records, facts: current }), a = projectDefectTicket({ records, facts: current }), b = projectDefectTicket({ records, facts: current });
-  assert.deepEqual(a, b); assert.deepEqual({ records, facts: current }, original);
-  a.members[0].evidence[0].file = 'caller-change.png';
-  assert.deepEqual(projectDefectTicket({ records, facts: current }), b);
 });

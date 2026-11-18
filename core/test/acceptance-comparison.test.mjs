@@ -33,16 +33,6 @@ function snapshot(runId, checks, patch = {}) {
 const compare = (beforeChecks, afterChecks, beforePatch, afterPatch) => compareAcceptanceSnapshots(
   snapshot('ac-before', beforeChecks, beforePatch), snapshot('ac-after', afterChecks, afterPatch));
 
-test('a damaged report cannot overwrite the saved original gate in comparison metadata', () => {
-  const before = snapshot('ac-before', [bug()]), after = snapshot('ac-after', [bug()]);
-  after.report.gate = 'passed';
-  after.integrity = { valid: false, evidenceVerified: false, errors: [{ code: 'REPORT_DIGEST_MISMATCH' }] };
-  const result = compareAcceptanceSnapshots(before, after);
-  assert.equal(result.after.gate, 'failed');
-  assert.equal(result.status, 'blocked');
-  assert.equal(result.summary.verifiedPassed, 0);
-});
-
 test('a complete identical contract must reliably pass before a failure can be called new', () => {
   const result = compare([check()], [bug()]);
   assert.equal(result.checks[0].relation, 'new_failure');
@@ -63,13 +53,6 @@ test('known failed and passed facts give still_failed, verified_passed and uncha
   assert.equal(result.summary.verifiedPassed, 1);
   assert.equal(result.summary.unchangedPassed, 1);
   assert.equal(result.after.gate, 'failed');
-});
-
-test('an independent new defect does not erase reliable retest evidence for another contract', () => {
-  const result = compare([bug('fixed'), check('other')], [check('fixed'), bug('other')]);
-  assert.equal(result.after.gate, 'failed');
-  assert.equal(result.summary.verifiedPassed, 1);
-  assert.equal(result.summary.newFailure, 1);
 });
 
 test('reordered routes, viewport labels, titles and display IDs do not change semantic matching', () => {
@@ -99,16 +82,6 @@ test('actual viewport, route and method metadata cannot be hidden behind equal h
     assert.equal(result.summary.verifiedPassed, 0);
     assert.equal(result.checks[0].relation, 'incomparable');
   }
-});
-
-test('passing desktop alone leaves the failed phone occurrence unverified', () => {
-  const desktop = patch => check('menu', { id: 'desktop-menu', ...patch, identity: {
-    contextKey: hash('menu:1440x900'), viewport: { width: 1440, height: 900 }, ...patch?.identity,
-  } });
-  const result = compare([bug(), desktop({ status: 'failed', verdict: 'bug' })], [desktop()]);
-  assert.equal(result.summary.verifiedPassed, 1);
-  assert.equal(result.summary.unverified, 1);
-  assert.equal(result.checks.find(row => row.before?.checkId === 'menu').relation, 'unverified');
 });
 
 test('deleted route or assertion coverage cannot turn the missing failure into a fix', () => {
@@ -197,18 +170,6 @@ test('currently tampered or missing report/evidence never inherits the historica
   assert.equal(JSON.stringify(unavailable).includes('PRIVATE_FILE_PATH'), false);
 });
 
-test('blocked, baseline failure and needs_review do not close an earlier bug', () => {
-  for (const state of [
-    { status: 'blocked', verdict: 'environment' },
-    { status: 'blocked', verdict: 'baseline_failed' },
-    { status: 'needs_review', verdict: 'needs_review' },
-  ]) {
-    const result = compare([bug()], [check('menu', state)]);
-    assert.equal(result.checks[0].relation, 'unverified');
-    assert.equal(result.summary.verifiedPassed, 0);
-  }
-});
-
 test('reported pass with budget, capture, masks, policy or execution limits cannot retest', () => {
   const observations = [
     { evaluationLimited: true }, { requested: false }, { eligible: false }, { captureLimited: true },
@@ -224,12 +185,6 @@ test('reported pass with budget, capture, masks, policy or execution limits cann
     assert.equal(result.checks[0].relation, 'unverified', JSON.stringify(actual));
     assert.ok(result.checks[0].reasons.some(item => item.code === 'evaluation-limited'));
   }
-});
-
-test('a previous limited pass cannot justify a claim of new regression', () => {
-  const result = compare([check('menu', { actual: { evaluationLimited: true } })], [bug()]);
-  assert.equal(result.checks[0].relation, 'observed_failure');
-  assert.equal(result.summary.newFailure, 0);
 });
 
 test('hashing only the references that exist cannot prove a pass with omitted required evidence', () => {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { prepareManagedSpecContract } from '../src/acceptance/managed-spec-plan.mjs';
@@ -52,12 +52,6 @@ function fails(action, code, reason) {
 function inputState(f) {
   return { snapshot: copy(f.material.snapshot), candidate: copy(f.candidate), targetRelease: copy(f.targetRelease),
     files: [...f.material.files].map(([name, data]) => [name, data.length, sha(data)]) };
-}
-function treeBytes(dir, prefix = '') {
-  return readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).flatMap(entry => {
-    const name = prefix + entry.name, path = join(dir, entry.name);
-    return entry.isDirectory() ? treeBytes(path, name + '/') : [[name, sha(readFileSync(path))]];
-  });
 }
 function sealReport(material) {
   material.files.set('report.json', jsonBytes(material.snapshot.report));
@@ -207,18 +201,6 @@ test('full source validation rejects changed raw bytes, unverified snapshots and
   });
 });
 
-test('coherently regenerated source with new expectations cannot match the old candidate', async t => {
-  const f = fixture(), plan = copy(f.material.snapshot.manifest.plan);
-  plan.spec.checks[0].expect.json[0].value = 999;
-  const changed = await materializeDraft(t, normalizeSpecPlan(plan), f.material);
-  const projected = projectSpecBaselineCandidate(changed, { projectId: f.candidate.projectId,
-    releaseId: f.candidate.source.releaseId, sourceSide: 'source' });
-  assert.notEqual(projected.projection.contentDigest, f.candidate.contentDigest);
-  assert.equal(changed.snapshot.manifest.runId, f.material.snapshot.manifest.runId);
-  fails(() => prepareManagedSpecContract(changed, { candidate: f.candidate, targetRelease: f.targetRelease }),
-    'BASELINE_CHANGED', 'CANDIDATE_SOURCE_CHANGED');
-});
-
 test('OpenAPI document, source metadata, schema and nondefault budgets survive as independent copies', async t => {
   const document = { openapi: '3.1.1', info: { title: '完整 OpenAPI 需求', version: '3.0.0' }, paths: {
     '/healthy': { get: { responses: { 200: { description: 'OK', content: { 'application/json': {
@@ -265,33 +247,6 @@ test('accessors, proxies, symbols and hidden fields are rejected without invokin
   fails(() => prepareManagedSpecContract({ snapshot, files: f.material.files },
     { candidate: f.candidate, targetRelease: f.targetRelease }), 'SOURCE_NOT_ELIGIBLE');
   assert.equal(reads, 0);
-});
-
-test('result does not alias source snapshots, candidate projection or raw byte buffers', () => {
-  const f = fixture(), before = inputState(f), result = prepare(f);
-  result.plan.spec.checks[0].expect.json[0].value = 999;
-  result.plan.spec.source.title = 'result only'; result.plan.spec.omissions.push({ reason: 'result only' });
-  result.sourceProjection.source.runId = BUG;
-  assert.deepEqual(inputState(f), before);
-  const fresh = prepare(f);
-  f.material.snapshot.manifest.plan.spec.checks[0].expect.json[0].value = 777;
-  f.candidate.source.releaseId = TARGET;
-  f.material.files.get('spec-1-QUOTA-contract.json').fill(0);
-  assert.equal(fresh.plan.spec.checks[0].expect.json[0].value, 0);
-  assert.notEqual(fresh.sourceProjection.source.releaseId, TARGET);
-});
-
-test('preparation is deterministic without requests or clock reads and archived bytes remain unchanged', () => {
-  const f = fixture(), before = treeBytes(archiveRoot), inputBefore = inputState(f);
-  const originalFetch = globalThis.fetch, originalNow = Date.now;
-  let requests = 0, clockReads = 0, first, second;
-  globalThis.fetch = () => { requests++; throw new Error('no HTTP permitted'); };
-  Date.now = () => { clockReads++; throw new Error('no clock permitted'); };
-  try { first = prepare(f); second = prepare(f); }
-  finally { globalThis.fetch = originalFetch; Date.now = originalNow; }
-  assert.equal(requests, 0); assert.equal(clockReads, 0); assert.deepEqual(first, second);
-  assert.deepEqual(inputState(f), inputBefore);
-  assert.deepEqual(treeBytes(archiveRoot), before);
 });
 
 test('generated names are bounded and do not split surrogate pairs; public projector remains unchanged', () => {

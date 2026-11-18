@@ -101,12 +101,6 @@ test('strict names, options, bounds and expected tokens reject without invoking 
   assert.equal(getters, 0); assert.deepEqual(fs.readFileSync(f.file), original); assert.deepEqual(temporaryNames(f), []);
 });
 
-test('publication captures caller input before a business hook can mutate its bytes', t => {
-  const f = fixture(t), input = Buffer.from(original), context = createManagedRunFileContext(f.options);
-  const token = context.publish('manifest.json', input, { expected: null, beforePublish() { input.fill(0); } });
-  assert.deepEqual(token.bytes, original); assert.deepEqual(fs.readFileSync(f.file), original); assert.equal(input.every(byte => byte === 0), true);
-});
-
 test('lowered byte limit accepts its exact boundary and short reads/writes complete', t => {
   const f = fixture(t), context = createManagedRunFileContext({ ...f.options, limits: { jsonBytes: original.length }, io: {
     readSync: (fd, bytes, offset, count, position) => fs.readSync(fd, bytes, offset, Math.min(count, 3), position),
@@ -303,17 +297,6 @@ test('temporary symlink replacements after writer close are preserved and never 
   assert.equal(fs.lstatSync(temporary).isSymbolicLink(), true); assert.deepEqual(fs.readFileSync(unrelated), original); assert.equal(fs.existsSync(f.file), false);
 });
 
-test('lost writable fence after a write preserves partial temporary material and never publishes', t => {
-  const f = fixture(t); let valid = true, writes = 0, links = 0;
-  const context = createManagedRunFileContext({ ...f.options, assertWritable: () => { if (!valid) throw busy('ELOCK'); }, io: {
-    writeSync(...args) { writes++; const result = fs.writeSync(...args); valid = false; return result; },
-    linkSync() { links++; assert.fail('lost owner published'); },
-  } });
-  assert.throws(() => context.publish('manifest.json', original, { expected: null }), rejected('WRITABLE_FENCE_FAILED'));
-  assert.equal(writes, 1); assert.equal(links, 0); assert.equal(fs.existsSync(f.file), false);
-  assert.equal(temporaryNames(f).length, 1); valid = true; assert.throws(() => context.assertCurrent(), rejected('WRITABLE_FENCE_FAILED'));
-});
-
 test('exclusive link failures distinguish before-commit and commit-then-throw without rollback', t => {
   for (const commit of [false, true]) {
     const f = fixture(t), context = createManagedRunFileContext({ ...f.options, io: {
@@ -490,14 +473,6 @@ test('non-Windows and permanent rename failures are never retried', t => {
     assert.throws(() => context.publish('manifest.json', updated, { expected: context.read('manifest.json') }), rejected('FILESYSTEM_FAILURE'));
     assert.equal(calls, 1); assert.deepEqual(fs.readFileSync(f.file), original);
   }
-});
-
-test('Windows retry rechecks lost authority and keeps the untouched target and temporary', t => {
-  const f = fixture(t, { manifest: true }); let valid = true, calls = 0;
-  const context = createManagedRunFileContext({ ...f.options, platform: 'win32', assertWritable: () => { if (!valid) throw Error('lost'); },
-    now: () => 0, sleep: () => { valid = false; }, io: { renameSync() { calls++; throw busy('EBUSY'); } } });
-  assert.throws(() => context.publish('manifest.json', updated, { expected: context.read('manifest.json') }), rejected('WRITABLE_FENCE_FAILED', true));
-  assert.equal(calls, 1); assert.deepEqual(fs.readFileSync(f.file), original); assert.equal(temporaryNames(f).length, 1);
 });
 
 test('Windows retry rejects run or temporary replacement before a second attempt', t => {

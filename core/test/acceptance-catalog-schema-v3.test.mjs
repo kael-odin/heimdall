@@ -80,18 +80,6 @@ function reindexMigrations(catalog) {
   rehashMigrations(catalog);
 }
 
-test('fresh V3 requires its Browser binding map and still validates ordinary history', () => {
-  const catalog = empty(3);
-  assert.equal(schema.validateAcceptanceCatalogV3(catalog), catalog);
-  assert.equal(schema.validateAcceptanceCatalog(catalog), catalog);
-  organization(catalog); withSpecHistory(catalog);
-  assert.deepEqual(catalog.browserSourceBindings, {});
-  assert.deepEqual(catalog.migrations, {});
-  schema.validateAcceptanceCatalogV3(catalog);
-  const nullMap = empty(3); nullMap.browserSourceBindings = Object.create(null);
-  schema.validateAcceptanceCatalogV3(nullMap);
-});
-
 test('V1 and V2 stay independently strict when V3 fields or transitions are supplied', () => {
   const old = nativeV2();
   for (const validate of [schema.validateAcceptanceCatalog, schema.validateAcceptanceCatalogV2]) {
@@ -107,46 +95,6 @@ test('V1 and V2 stay independently strict when V3 fields or transitions are supp
   assert.throws(() => schema.validateAcceptanceCatalogV2(extraMigration, { limits: { migrations: 10 } }), unavailable);
   const unsupported = migratedV2(); Object.values(unsupported.migrations)[0].toSchemaVersion = 3;
   rehashMigrations(unsupported); reject(unsupported);
-});
-
-test('V2 to V3 appends one migration without changing any complete Spec entity, digest or event', () => {
-  for (const old of [nativeV2({ spec: true }), migratedV2({ spec: true })]) {
-    const saved = copy(old), value = upgrade(old), projectId = Object.keys(old.projects)[0];
-    assert.deepEqual(old, saved);
-    assert.notEqual(value, old); assert.equal(value.schemaVersion, 3);
-    assert.notEqual(value.generationId, old.generationId); assert.equal(value.revision, old.revision + 1);
-    assert.deepEqual(value.browserSourceBindings, {});
-    for (const map of ['projects', 'releases', 'runBindings', 'candidates', 'approvals', 'selections']) {
-      assert.deepEqual(value[map], old[map]); assert.notEqual(value[map], old[map]);
-      for (const key of Object.keys(old[map])) {
-        assert.equal(hashAcceptanceValue(value[map][key]), hashAcceptanceValue(old[map][key]));
-        assert.notEqual(value[map][key], old[map][key]);
-      }
-    }
-    for (const [key, migration] of Object.entries(old.migrations)) assert.deepEqual(value.migrations[key], migration);
-    assert.deepEqual(value.events.slice(0, old.revision), old.events);
-    assert.deepEqual(schema.currentSelectionsOf(value, projectId), schema.currentSelectionsOf(old, projectId));
-    const event = value.events.at(-1), migration = value.migrations[event.entityId];
-    assert.deepEqual(Object.keys(migration).sort(), ['id', 'fromSchemaVersion', 'toSchemaVersion', 'fromGenerationId', 'fromRevision',
-      'sourceHeadSha256', 'sourcePreviousSha256', 'createdAt', 'actor'].sort());
-    assert.equal(migration.fromSchemaVersion, 2); assert.equal(migration.toSchemaVersion, 3);
-    assert.equal(migration.fromGenerationId, old.generationId); assert.equal(migration.fromRevision, old.revision);
-    assert.equal(migration.sourceHeadSha256, headSha256); assert.equal(migration.sourcePreviousSha256, previousSha256);
-    assert.equal(event.entityDigest, hashAcceptanceValue(migration)); assert.equal(event.revision, value.revision);
-    assert.equal(Object.hasOwn(event, 'projectId'), false);
-    schema.validateAcceptanceCatalogV3(value);
-  }
-});
-
-test('two-step V1 to V2 to V3 retains the old migration and has three distinct generations', () => {
-  const second = migratedV2(), firstMigration = copy(Object.values(second.migrations)[0]);
-  const value = upgrade(second, { previousSha256: null });
-  const ordered = value.events.filter(event => event.kind === 'catalog-migrated').map(event => value.migrations[event.entityId]);
-  assert.deepEqual(ordered[0], firstMigration);
-  assert.deepEqual(ordered.map(item => [item.fromSchemaVersion, item.toSchemaVersion]), [[1, 2], [2, 3]]);
-  assert.equal(new Set([...ordered.map(item => item.fromGenerationId), value.generationId]).size, 3);
-  assert.equal(ordered[1].sourcePreviousSha256, null);
-  assert.equal(Object.keys(value.migrations).length, 2);
 });
 
 test('V3 rejects malformed Browser maps, entries and event references without invoking accessors', () => {
@@ -168,27 +116,6 @@ test('V3 rejects malformed Browser maps, entries and event references without in
   assert.equal(reads, 0);
   const unsupportedEvent = empty(3); organization(unsupportedEvent);
   unsupportedEvent.events.at(-1).kind = 'browser-source-bound'; reject(unsupportedEvent);
-});
-
-test('V3 migration chain rejects missing, duplicate, skipped, reversed and incomplete stages', () => {
-  const old = migratedV2(), incomplete = { ...copy(old), schemaVersion: 3, generationId: uid('ag'), browserSourceBindings: {} };
-  reject(incomplete);
-  for (const mutate of [
-    catalog => { Object.values(catalog.migrations).find(item => item.toSchemaVersion === 3).fromSchemaVersion = 1; },
-    catalog => { Object.values(catalog.migrations).find(item => item.toSchemaVersion === 3).toSchemaVersion = 4; },
-    catalog => { Object.values(catalog.migrations).find(item => item.fromSchemaVersion === 1).fromSchemaVersion = 2; },
-    catalog => { Object.values(catalog.migrations).find(item => item.fromSchemaVersion === 1).toSchemaVersion = 3; },
-    catalog => {
-      const events = catalog.events.filter(event => event.kind === 'catalog-migrated');
-      const first = catalog.events.indexOf(events[0]), second = catalog.events.indexOf(events[1]);
-      [catalog.events[first], catalog.events[second]] = [catalog.events[second], catalog.events[first]];
-      reindexMigrations(catalog);
-    },
-    catalog => { delete catalog.migrations[catalog.events.at(-1).entityId]; },
-    catalog => { catalog.events.pop(); catalog.revision--; },
-  ]) {
-    const catalog = upgrade(old); mutate(catalog); rehashMigrations(catalog); reject(catalog);
-  }
 });
 
 test('V3 migration generation cannot reuse current, source or intermediate identities even after rehash', () => {

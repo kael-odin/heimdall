@@ -133,18 +133,6 @@ test('real HTTP healthy, BUG, timeout, body budget, HEAD, header and syntax evid
   });
 });
 
-test('real complete OpenAPI healthy/schema BUG bind source bytes and redacted schema failures', async t => {
-  const f = await fixture(t, true); assert.equal(validate(f), true);
-  const bug = f.raw.checks.find(check => check.verdict === 'bug'); assert.ok(bug.actual.schemaFailures.length > 0);
-  assert.ok(bug.actual.schemaFailures.some(failure => failure.actual.type === 'object'));
-  assert.equal(f.requests.length, 2);
-  for (const mutate of [value => { value.document.info.version = '2'; }, value => { value.source.id = 'other'; }]) {
-    const files = cloneFiles(f.files); changeFile(files, 'requirement-source.json', mutate); rejected(() => validate(f, f.raw, files));
-  }
-  const files = cloneFiles(f.files); changeFile(files, bug.evidence.response, value => { value.schemaFailures[0].actual = 'changed'; }); rejected(() => validate(f, f.raw, files));
-  const raw = copy(f.raw); raw.checks.find(check => check.verdict === 'bug').verdict = 'match'; raw.checks.find(check => check.status === 'failed').status = 'passed'; rejected(() => validate(f, raw));
-});
-
 test('strict facts and opaque Map byte captures reject hooks, aliases and over-budget input without executing getters', async t => {
   const f = await fixture(t, true); let hooks = 0;
   const hook = () => { hooks++; throw Error('SECRET C:\\private'); };

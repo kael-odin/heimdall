@@ -23,21 +23,6 @@ test('atomic writes replace the destination with a complete file and leave no te
   assert.deepEqual(readdirSync(directory), ['manifest.json']);
 });
 
-test('atomic writes flush the temporary file before closing and renaming it', t => {
-  const { file } = fixture(t);
-  const order = [];
-  writeAtomicFileSync(file, '{"status":"new"}', {
-    platform: 'win32',
-    io: {
-      write: (descriptor, data) => { order.push('write'); writeFileSync(descriptor, data); },
-      fsync: descriptor => { order.push('fsync'); fsyncSync(descriptor); },
-      close: descriptor => { order.push('close'); closeSync(descriptor); },
-      rename: (source, destination) => { order.push('rename'); renameSync(source, destination); },
-    },
-  });
-  assert.deepEqual(order, ['write', 'fsync', 'close', 'rename']);
-});
-
 test('POSIX atomic writes flush the parent directory after rename', t => {
   const { file } = fixture(t);
   const order = [];

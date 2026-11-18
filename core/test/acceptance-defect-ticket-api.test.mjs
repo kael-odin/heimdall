@@ -91,20 +91,6 @@ test('Defect-ticket HTTP: literal routes and each explicit service action preser
   assert.deepEqual(f.calls.at(-1).args, [otherProjectId, create({ ticketId: uid('dt', 40), actionId: uid('da', 41) })]);
 });
 
-test('Defect-ticket HTTP: a missing action remains unresolved through repeated reads with zero writes or execution', async t => {
-  const f = await serving(t), path = root + '/actions/' + actionId;
-  for (let index = 0; index < 3; index++) {
-    const result = await f.request(path + '?token=local-auth');
-    assert.equal(result.status, 200); assert.equal(result.payload.outcome, 'unresolved');
-    assert.equal(result.payload.reason, 'ABSENCE_IS_NOT_A_COMMIT_DECISION');
-    assert.equal(Object.hasOwn(result.payload, 'recorded'), false);
-  }
-  assert.deepEqual(f.calls, Array.from({ length: 3 }, () => ({ method: 'action', args: [projectId, actionId] })));
-  const recorded = await serving(t, { action: (project, action) => ({ outcome: 'recorded', projectId: project, actionId: action }) });
-  assert.equal((await recorded.request(path)).payload.outcome, 'recorded');
-  assert.deepEqual(recorded.calls, [{ method: 'action', args: [projectId, actionId] }]);
-});
-
 test('Defect-ticket HTTP: exact methods, Allow headers, malformed IDs, unknown routes and namespaces cannot dispatch', async t => {
   const f = await serving(t), cases = [
     [root, { method: 'PUT' }, 405, 'GET, POST'], [root, { method: 'HEAD' }, 405, 'GET, POST'],
@@ -290,25 +276,6 @@ test('Defect-ticket HTTP: error extraction uses own descriptors without accessor
   assert.equal(inherited.payload.code, 'INTEGRITY_BLOCKED'); assert.equal(inherited.payload.outcomeUnknown, false);
 });
 
-test('Defect-ticket HTTP: uncertain create and close writes preserve outcomeUnknown and only query the original action', async t => {
-  for (const method of ['create', 'close']) {
-    let committed = 0;
-    const f = await serving(t, { [method]: async () => { committed++; await Promise.resolve();
-      throw Object.assign(Error('private write completed but readback failed'), { code: 'INTEGRITY_BLOCKED', writeMayHaveCommitted: true }); } });
-    const path = method === 'create' ? root : root + '/' + ticketId + '/close';
-    const failed = await f.request(path, post(method === 'create' ? create() : close()));
-    assert.equal(failed.status, 503); assert.equal(failed.payload.code, 'INTEGRITY_BLOCKED'); assert.equal(failed.payload.outcomeUnknown, true);
-    assert.equal(failed.bytes.includes(Buffer.from('private')), false); assert.equal(committed, 1);
-    const receipt = await f.request(root + '/actions/' + actionId);
-    assert.equal(receipt.status, 200); assert.equal(receipt.payload.outcome, 'unresolved'); assert.equal(committed, 1);
-    assert.deepEqual(f.calls.map(call => call.method), [method, 'action']);
-    assert.deepEqual(f.calls.at(-1).args, [projectId, actionId]);
-  }
-  const unknown = defectTicketError({ code: 'PRIVATE_WRITE_ERROR', writeMayHaveCommitted: true });
-  assert.equal(unknown.status, 503); assert.equal(unknown.payload.code, 'INTEGRITY_BLOCKED'); assert.equal(unknown.payload.outcomeUnknown, true);
-  assert.equal(defectTicketError({ code: 'INTEGRITY_BLOCKED', writeMayHaveCommitted: 'true' }).payload.outcomeUnknown, false);
-});
-
 test('Defect-ticket HTTP: every rejected original POST explicitly states whether its write may have committed', async t => {
   for (const method of ['create', 'close']) for (const [code, status] of [
     ['INVALID_INPUT', 400], ['NOT_FOUND', 404], ['ACTION_CONFLICT', 409], ['SOURCE_NOT_ELIGIBLE', 409], ['STALE_FACTS', 409],
@@ -325,37 +292,6 @@ test('Defect-ticket HTTP: every rejected original POST explicitly states whether
     { code: 'INVALID_INPUT', writeMayHaveCommitted: 'true' }]) {
     assert.equal(defectTicketError(cause).payload.outcomeUnknown, false);
   }
-});
-
-test('Defect-ticket HTTP: replayed writer receipts retain the service status and original recorded fact', async t => {
-  const receipt = { outcome: 'recorded', ticketId, actionId, replayed: true, eventSha256: hash };
-  const f = await serving(t, { create: async () => ({ status: 200, payload: receipt }), close: async () => ({ status: 200, payload: receipt }) });
-  assert.deepEqual((await f.request(root, post(create()))).payload, receipt);
-  const replayed = await f.request(root + '/' + ticketId + '/close', post(close()));
-  assert.equal(replayed.status, 200); assert.deepEqual(replayed.payload, receipt);
-  assert.deepEqual(f.calls.map(call => call.method), ['create', 'close']);
-});
-
-test('Defect-ticket HTTP: an actual disconnected create response is reconciled only by its original action read', { timeout: 5000 }, async t => {
-  let committed = 0, announceCommit, releaseResponse;
-  const didCommit = new Promise(resolve => { announceCommit = resolve; });
-  const responseGate = new Promise(resolve => { releaseResponse = resolve; });
-  const receipt = { projectId, ticketId, actionId, outcome: 'recorded', eventSha256: hash };
-  const f = await serving(t, {
-    create: async () => { committed++; announceCommit(); await responseGate; return { status: 201, payload: receipt }; },
-    action: () => receipt,
-  });
-  const client = httpRequest(f.base + root, { method: 'POST', headers: { 'content-type': 'application/json' } });
-  client.on('error', () => {});
-  const disconnected = new Promise(resolve => client.once('close', resolve));
-  t.after(() => { client.destroy(); releaseResponse(); });
-  client.end(JSON.stringify(create()));
-  await didCommit;
-  client.destroy(); await disconnected; releaseResponse();
-  const reconciled = await f.request(root + '/actions/' + actionId);
-  assert.equal(reconciled.status, 200); assert.deepEqual(reconciled.payload, receipt);
-  assert.equal(committed, 1); assert.deepEqual(f.calls.map(call => call.method), ['create', 'action']);
-  assert.deepEqual(f.calls.at(-1).args, [projectId, actionId]);
 });
 
 function confirmation(kind = 'create', raw = kind === 'create' ? create() : close()) {
@@ -423,24 +359,4 @@ test('D6 HTTP denial has its own bounded raw UTF-8 budget and retains the old re
     assert.equal((await f.request(path, { ...post(valid), headers: { 'content-type': mime } })).status, 400);
   }
   assert.equal(f.calls.length, before);
-});
-
-test('D6 HTTP returns both complete decision variants unchanged and marks uncertain denial as unknown', async t => {
-  for (const outcome of ['recorded', 'rejected']) {
-    const payload = { schemaVersion: 1, kind: 'manual-defect-ticket-action', outcome, projectId, ticketId, actionId,
-      requestFingerprint: confirmation().requestFingerprint, replayed: true,
-      ...(outcome === 'recorded' ? { eventSha256: hash, event: { retained: 'accepted original' } }
-        : { rejectionSha256: hash, rejection: { original: confirmation(), retained: 'permanent original' } }) };
-    const f = await serving(t, Object.fromEntries(['create', 'close', 'deny'].map(method => [method, async () => ({ status: 200, payload })])));
-    for (const [path, input] of [[root, create()], [root + '/' + ticketId + '/close', close()],
-      [root + '/actions/' + actionId + '/deny', denyEnvelope(confirmation())]]) {
-      const result = await f.request(path, post(input)); assert.equal(result.status, 200); assert.deepEqual(result.payload, payload);
-    }
-  }
-  const f = await serving(t, { deny: async () => { throw Object.assign(Error('private publication failure'),
-    { code: 'INTEGRITY_BLOCKED', writeMayHaveCommitted: true }); } });
-  const result = await f.request(root + '/actions/' + actionId + '/deny', post(denyEnvelope(confirmation())));
-  assert.equal(result.status, 503); assert.equal(result.payload.outcomeUnknown, true);
-  assert.equal(result.bytes.includes(Buffer.from('private')), false);
-  assert.deepEqual(f.calls.map(call => call.method), ['deny']);
 });

@@ -3,8 +3,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash, webcrypto } from 'node:crypto';
 import { buildAcceptanceIdentity, canonicalAcceptanceJson } from '../src/acceptance/identity.mjs';
-import { defectTicketDigest, defectTicketRequestFingerprint, defectTicketEventBytes, defectTicketRejectionBytes,
-  validateDefectTicketCreateRequest, validateDefectTicketCloseRequest, validateDefectTicketDenyRequest } from '../src/acceptance/defect-ticket-schema.mjs';
+import { defectTicketDigest, defectTicketEventBytes, defectTicketRejectionBytes,
+  validateDefectTicketCreateRequest, validateDefectTicketDenyRequest } from '../src/acceptance/defect-ticket-schema.mjs';
 import { createDefectTicketEvent, closeDefectTicketEvent, projectDefectTicket,
   previewDefectTicketClose, listDefectTicketSources } from '../src/acceptance/defect-ticket-model.mjs';
 import { renderDefectTicketExport } from '../src/acceptance/defect-ticket-report.mjs';
@@ -102,22 +102,6 @@ function deferred() { let resolve, reject; const promise = new Promise((yes, no)
 const receiptsFor = (storage = memoryStorage(), locks = memoryLocks(), selectedProjectId = projectId) =>
   createDefectTicketReceipts({ projectId: selectedProjectId, origin, storage, locks });
 
-test('create/close inputs and WebCrypto fingerprints match the Core request contract exactly', async () => {
-  const input = createRequest(), before = clone(input), checked = defectTicketCreateInput(input);
-  assert.deepEqual(checked, validateDefectTicketCreateRequest(input)); assert.deepEqual(input, before);
-  const close = closeRequest(); assert.deepEqual(defectTicketCloseInput(close), validateDefectTicketCloseRequest(close));
-  for (const [kind, request, selectedTicketId] of [['create', input, input.ticketId], ['close', close, ticketId]]) {
-    const confirmed = await confirmation(request, kind, selectedTicketId);
-    assert.deepEqual(confirmed, { version: 1, projectId, ticketId: selectedTicketId, kind, actionId: request.actionId,
-      requestFingerprint: defectTicketRequestFingerprint({ projectId, ticketId: selectedTicketId, kind, request }),
-      request: kind === 'create' ? validateDefectTicketCreateRequest(request) : validateDefectTicketCloseRequest(request) });
-  }
-  const unicode = { ...input, memberCheckIds: ['界面', '😀', 'é', 'a'], title: '菜单与\u2028分页', description: '路径 /?token=原文 仍作为纯文本。' };
-  const confirmed = await confirmation(unicode);
-  assert.equal(confirmed.requestFingerprint, defectTicketRequestFingerprint({ projectId, ticketId, kind: 'create', request: unicode }));
-  assert.deepEqual(confirmed.request.memberCheckIds, validateDefectTicketCreateRequest(unicode).memberCheckIds);
-});
-
 test('input selectors and explicit close confirmation reject extra facts, duplicates and bounds', () => {
   for (const patch of [{ passed: true }, { candidateId }, { sourceOperationId: '../source' }, { title: '' },
     { description: 'x'.repeat(4001) }, { memberCheckIds: [] }, { memberCheckIds: ['desktop', 'desktop'] },
@@ -126,21 +110,6 @@ test('input selectors and explicit close confirmation reject extra facts, duplic
   for (const patch of [{ confirmed: false }, { confirmed: 'true' }, { resolution: '' }, { expectedRevision: -1 },
     { previewDigest: 'bad' }, { state: 'closed' }])
     assert.throws(() => defectTicketCloseInput({ ...closeRequest(), ...patch }), invalidResponse);
-});
-
-test('DTO/input copies reject accessors, toJSON and cycles before executing hooks', async () => {
-  let hooks = 0; const getter = {};
-  Object.defineProperty(getter, 'ticketId', { enumerable: true, get() { hooks++; return ticketId; } });
-  const toJSON = { toJSON() { hooks++; return createRequest(); } }, cyclic = {}; cyclic.self = cyclic;
-  for (const raw of [getter, toJSON, cyclic]) {
-    for (const fn of [defectTicketCreateInput, defectTicketCloseInput, defectTicketDenyInput]) assert.throws(() => fn(raw), invalidResponse);
-    assert.throws(() => defectTicketSources(raw, projectId, candidateId, contentDigest), invalidResponse);
-    assert.throws(() => defectTicketList(raw, projectId), invalidResponse);
-    assert.throws(() => defectTicketDetail(raw, projectId, ticketId), invalidResponse);
-    assert.throws(() => defectTicketPreview(raw, projectId, ticketId, healthy.operationId), invalidResponse);
-    await assert.rejects(defectTicketConfirmation(raw, { crypto: webcrypto }), invalidResponse);
-  }
-  assert.equal(hooks, 0);
 });
 
 test('sources, list, detail and preview accept real model DTOs without mutating them', () => {
@@ -364,22 +333,6 @@ test('two receipts managers sharing storage and Web Locks permit exactly one pen
   assert.notEqual(receiptsFor(storage, locks, otherProjectId).key, a.key);
 });
 
-test('a changed read epoch while awaiting Web Locks cancels only this client unsent claim', async () => {
-  const storage = memoryStorage(), waiting = deferred(), release = deferred(), inner = memoryLocks();
-  const locks = { request(name, options, action) { waiting.resolve(); return inner.request(name, options, async () => {
-    await release.promise; return action();
-  }); } };
-  const receipts = receiptsFor(storage, locks), guard = createDefectTicketReadGuard(), epoch = guard.begin('submit-context');
-  const confirmed = await confirmation(); let posts = 0;
-  const workflow = (async () => {
-    if (!await receipts.claimForSubmit(confirmed)) return 'occupied';
-    if (!guard.current(epoch)) { await receipts.cancelUnsent(confirmed); return 'unsent-cancelled'; }
-    receipts.markDispatched(confirmed); posts++; return 'dispatched';
-  })();
-  await waiting.promise; guard.reset(); release.resolve();
-  assert.equal(await workflow, 'unsent-cancelled'); assert.equal(posts, 0); assert.deepEqual(receipts.read(), []);
-});
-
 test('unsent cancellation requires the exact original client capability and becomes impossible after dispatch', async () => {
   const storage = memoryStorage(), locks = memoryLocks(), receipts = receiptsFor(storage, locks), confirmed = await confirmation();
   await receipts.claimForSubmit(confirmed);
@@ -424,35 +377,12 @@ test('stored confirmation sets must be complete, unique, in scope and descriptor
   await assert.rejects(receiptsFor().claimForSubmit({ ...one, requestFingerprint: sha('changed') }), invalidResponse);
 });
 
-test('only branded exact action success clears its matching durable confirmation', async () => {
-  const confirmed = await confirmation(), storage = memoryStorage(), receipts = receiptsFor(storage);
-  await receipts.claimForSubmit(confirmed);
-  for (const forged of [actionResponse(), { outcome: 'recorded' }, clone(confirmed), undefined]) {
-    await assert.rejects(async () => receipts.resolveExact(confirmed, forged), invalidResponse); assert.deepEqual(receipts.read(), [confirmed]);
-  }
-  const another = await confirmation(createRequest(2)), proof = await defectTicketAction(actionResponse(), confirmed, { crypto: webcrypto });
-  await assert.rejects(async () => receipts.resolveExact(another, proof), invalidResponse); assert.deepEqual(receipts.read(), [confirmed]);
-  await receipts.resolveExact(confirmed, proof); assert.deepEqual(receipts.read(), []);
-});
-
 test('resolution verifies the entire remaining collection after storage write', async () => {
   const one = await confirmation(), two = await confirmation(createRequest(2)), storage = memoryStorage();
   const receipts = receiptsFor(storage), proof = await defectTicketAction(actionResponse(), one, { crypto: webcrypto });
   storage.values.set(receipts.key, JSON.stringify([one, two]));
   storage.setItem = (key, _value) => storage.values.set(key, '[]');
   await assert.rejects(receipts.resolveExact(one, proof), invalidResponse);
-});
-
-test('GET unresolved and all unbranded or uncertain errors keep the pending confirmation', async () => {
-  const confirmed = await confirmation(), receipts = receiptsFor(); await receipts.claimForSubmit(confirmed);
-  const unresolved = { schemaVersion: 1, kind: 'manual-defect-ticket-action', projectId, actionId: confirmed.actionId,
-    outcome: 'unresolved', reason: 'ABSENCE_IS_NOT_A_COMMIT_DECISION' };
-  const returned = await requestDefectTickets(projectId, '/actions/' + confirmed.actionId, requestOptions({ fetcher: async () => jsonResponse(unresolved) }));
-  await assert.rejects(async () => receipts.resolveExact(confirmed, returned), invalidResponse);
-  for (const error of [Object.assign(new Error('forged'), { code: 'STALE_FACTS', status: 409, outcomeUnknown: false }),
-    { code: 'INVALID_INPUT', status: 400, outcomeUnknown: false }, unresolved])
-    await assert.rejects(async () => receipts.releaseRejected(confirmed, error), invalidResponse);
-  assert.deepEqual(receipts.read(), [confirmed]);
 });
 
 test('an exact explicit safe POST rejection alone can release its confirmation', async () => {
@@ -544,14 +474,6 @@ test('read reset aborts a pending GET without granting any mutation-release proo
   const pending = requestDefectTickets(projectId, '/' + ticketId, requestOptions({ signal: selected.signal,
     fetcher: () => new Promise(() => {}) }));
   guard.reset(); await assert.rejects(pending, { name: 'AbortError' }); assert.equal(guard.current(selected), false);
-});
-
-test('bounded JSON transport cancels overflow instead of returning a partial success', async () => {
-  const confirmed = await confirmation(); let cancelled = false;
-  const stream = new ReadableStream({ start(controller) { controller.enqueue(Buffer.alloc(32 * 1024 * 1024 + 1, 32)); }, cancel() { cancelled = true; } });
-  await assert.rejects(requestDefectTickets(projectId, '', requestOptions({ method: 'POST', body: confirmed.request,
-    fetcher: async () => new Response(stream, { headers: { 'content-type': 'application/json' } }) })), error => error.outcomeUnknown === true);
-  assert.equal(cancelled, true);
 });
 
 test('exports return exact bounded model artifacts only after response identity and MIME checks', async () => {

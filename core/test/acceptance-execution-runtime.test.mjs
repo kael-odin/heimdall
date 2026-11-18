@@ -54,35 +54,6 @@ test('execution runtime: equivalent copies, proxies, primitives and foreign-runt
   runtime.release(lease); other.release(foreign);
 });
 
-test('execution runtime: release is exact and once; stale mutations cannot affect the next lease', () => {
-  const runtime = createAcceptanceExecutionRuntime();
-  const old = runtime.reserve({ kind: 'legacy' });
-  runtime.release(old);
-  const next = runtime.reserve({ kind: 'managed' });
-  const nextSignal = runtime.signalOf(next);
-  for (const call of [() => runtime.release(old), () => runtime.stop(old, 'CANCELLED'), () => runtime.bind(old, binding)]) {
-    assert.throws(call, error('EXECUTION_LEASE_INVALID'));
-  }
-  assert.equal(runtime.assertActive(next), true);
-  assert.equal(nextSignal.aborted, false);
-  runtime.release(next);
-  assert.throws(() => runtime.release(next), error('EXECUTION_LEASE_INVALID'));
-});
-
-test('execution runtime: safe binding is visible without operation, callback, signal or lease data', () => {
-  const runtime = createAcceptanceExecutionRuntime();
-  const lease = runtime.reserve({ kind: 'managed', operationId });
-  runtime.bind(lease, binding);
-  const state = runtime.state();
-  assert.deepEqual(state, { ...initial, busy: true, kind: 'managed', runId, taskId });
-  assert.ok(Object.isFrozen(state));
-  assert.equal(JSON.stringify(state).includes(operationId), false);
-  assert.throws(() => { state.runId = 'secret'; }, TypeError);
-  runtime.release(lease);
-  assert.deepEqual(runtime.state(), initial);
-  assert.equal(state.runId, runId, 'previous snapshots cannot be rewritten by release');
-});
-
 test('execution runtime: stop aborts synchronously, notifies once and keeps the first reason', () => {
   const runtime = createAcceptanceExecutionRuntime();
   const lease = runtime.reserve({ kind: 'managed' }), signal = runtime.signalOf(lease);
@@ -121,17 +92,6 @@ test('execution runtime: binding after stop observes it immediately and exactly 
   assert.throws(() => runtime.bind(lease, { ...binding, onStop() {} }), error('EXECUTION_INVALID_INPUT'));
   assert.throws(() => runtime.bind(lease, { ...binding, taskId: 'a-00000000-0000-4000-8000-000000000002' }), error('EXECUTION_INVALID_INPUT'));
   assert.equal(runtime.state().taskId, taskId);
-  runtime.release(lease);
-});
-
-test('execution runtime: reentrant bind cannot multiply stop side effects', () => {
-  const runtime = createAcceptanceExecutionRuntime();
-  const lease = runtime.reserve({ kind: 'managed' });
-  let calls = 0;
-  const onStop = () => { calls++; runtime.bind(lease, { ...binding, onStop }); };
-  runtime.bind(lease, { ...binding, onStop });
-  runtime.stop(lease, 'CANCELLED');
-  assert.equal(calls, 1);
   runtime.release(lease);
 });
 

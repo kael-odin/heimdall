@@ -123,28 +123,6 @@ test('empty namespace and a missing version directory remain physically absent',
   assert.deepEqual(empty.inventory(), []); assert.equal(empty.assertCurrent(), true);
 });
 
-test('unrelated root/ancestor entries do not invalidate the bound namespace', async t => {
-  const f = await fixture(t), context = createManagedSpecDispatchReadContext({ root: f.root });
-  fs.mkdirSync(join(f.root, uuid('ac'))); fs.writeFileSync(join(f.root, 'unrelated'), 'ordinary root activity');
-  fs.mkdirSync(join(f.parent, 'v2'));
-  assert.equal(context.assertCurrent(), true); assert.deepEqual(context.read(f.envelope.operationId), f.record);
-});
-
-test('returned bytes, envelopes and inventory cannot poison private cached facts', async t => {
-  const f = await fixture(t), context = createManagedSpecDispatchReadContext({ root: f.root });
-  for (const record of [context.read(f.envelope.operationId), context.findByRunId(f.envelope.runId), context.reread(f.envelope.operationId, f.record.sha256)]) {
-    record.bytes.fill(0); record.envelope.runId = uuid('ac'); record.envelope.plan.targetUrl = 'http://127.0.0.1:3/poison'; record.sha256 = 'f'.repeat(64);
-    assert.deepEqual(context.read(f.envelope.operationId), f.record);
-  }
-  const inventory = context.inventory(); assert.equal(Object.isFrozen(inventory), true); assert.equal(Object.isFrozen(inventory[0]), true);
-  assert.throws(() => inventory.push({}), TypeError); assert.throws(() => { inventory[0].runId = uuid('ac'); }, TypeError);
-  assert.deepEqual(context.findByRunId(f.envelope.runId), f.record);
-  const batch = context.captureRecords();
-  assert.equal(Object.isFrozen(batch), true);
-  batch[0].bytes.fill(0); batch[0].envelope.runId = uuid('ac'); batch[0].sha256 = 'b'.repeat(64);
-  assert.deepEqual(context.captureRecords(), [f.record]);
-});
-
 test('record batch performs one full namespace fence instead of one per record', async t => {
   const f = await fixture(t);
   for (let index = 0; index < 5; index++) f.store.publish(another(f));

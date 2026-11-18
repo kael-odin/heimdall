@@ -69,17 +69,6 @@ test('receipts isolate engine origins and projects and reject conflicts or corru
   assert.equal(storage.values.get(key), '{broken');
 });
 
-test('receipt writes and resolution require the entire expected collection to survive readback', async () => {
-  const storage = memoryStorage(), receipts = createBrowserExecutionReceipts({ projectId, origin, storage, locks });
-  const first = request(), second = request(); await receipts.save(first);
-  storage.setItem = (key, value) => { storage.values.set(key, JSON.stringify(JSON.parse(value).slice(-1))); };
-  await assert.rejects(receipts.save(second), invalid, 'Keeping only the newest receipt must not hide earlier unknown operations.');
-  storage.values.clear(); storage.setItem = (key, value) => { storage.values.set(key, value); };
-  await receipts.save(first); await receipts.save(second);
-  storage.setItem = (key, _value) => { storage.values.set(key, '[]'); };
-  await assert.rejects(receipts.resolveExact(first), invalid, 'Resolving one receipt must preserve every other receipt.');
-});
-
 test('read guards cancel superseded channels and reject ABA reads after an epoch reset', () => {
   const guard = createBrowserExecutionReadGuard(), a1 = guard.begin('review'), b1 = guard.begin('report'), a2 = guard.begin('review');
   assert.equal(a1.signal.aborted, true); assert.equal(guard.current(a1), false);
@@ -202,27 +191,6 @@ test('POST transport ambiguity retains the original operation without retrying t
     assert.equal(calls, 1); assert.deepEqual(receipts.read(), [body]);
   }
   await assert.rejects(requestBrowserExecution(path, { method: 'POST', body, fetcher: async () => new Response(JSON.stringify({ error: 'Stale version', code: 'STALE_CATALOG' }), { status: 409 }) }), error => error.status === 409 && error.outcomeUnknown === false);
-});
-
-test('unfinished POST fetch reaches its independent deadline once and retains the original receipt', async () => {
-  const input = request(), storage = memoryStorage(), receipts = createBrowserExecutionReceipts({ projectId, origin, storage, locks });
-  await receipts.save(input); const reads = createBrowserExecutionReadGuard(); reads.begin('list');
-  let calls = 0, submittedSignal;
-  const pending = requestBrowserExecution(`/${projectId}/browser-executions`, { method: 'POST', body: input, timeoutMs: 15,
-    fetcher: async (_url, options) => { calls++; submittedSignal = options.signal; return new Promise(() => {}); } });
-  reads.reset(); // A project/version read epoch change must not cancel or repeat the POST.
-  assert.equal(submittedSignal.aborted, false);
-  await assert.rejects(pending, error => error.code === 'BROWSER_REQUEST_TIMEOUT' && error.outcomeUnknown === true);
-  assert.equal(calls, 1); assert.equal(submittedSignal.aborted, true); assert.deepEqual(receipts.read(), [input]);
-});
-
-test('unfinished POST response body shares the fetch deadline and retains the original receipt', async () => {
-  const input = request(), storage = memoryStorage(), receipts = createBrowserExecutionReceipts({ projectId, origin, storage, locks });
-  await receipts.save(input); let calls = 0, bodies = 0, submittedSignal;
-  await assert.rejects(requestBrowserExecution(`/${projectId}/browser-executions`, { method: 'POST', body: input, timeoutMs: 15,
-    fetcher: async (_url, options) => { calls++; submittedSignal = options.signal; return { ok: true, status: 202,
-      json: async () => { bodies++; return new Promise(() => {}); } }; } }), error => error.code === 'BROWSER_REQUEST_TIMEOUT' && error.outcomeUnknown === true);
-  assert.equal(calls, 1); assert.equal(bodies, 1); assert.equal(submittedSignal.aborted, true); assert.deepEqual(receipts.read(), [input]);
 });
 
 test('settled POSTs detach external abort listeners and clear the independent deadline', async () => {

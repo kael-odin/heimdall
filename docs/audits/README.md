@@ -77,3 +77,4 @@ node --input-type=module -e "import {readFileSync,writeFileSync} from 'node:fs';
 - 报告的结论已回写进 [STATUS](../STATUS.md)、[ROADMAP](../ROADMAP.md)、[RISKS](../../RISKS.md) 与对应代码注释；
 - 需要追溯时按上表日期到外部归档或 git 历史里取，不影响当前验证。
 | 2026-11-17 | **[真实站点横扫：QA 判定、SEO/GEO 选页与抓取准入、克隆地址与契约](2026-11-17/real-site-sweep.md)** | the-internet 12 页 2 视口中三种植入缺陷从「可容忍」改为可提单，401 入口不再算坏链；七个公开站点的 SEO/GEO 暴露选页偏科、审计自造跳转、别名重复、抽样孤儿页；quotes.toscrape.com 侦察因补斜杠跳转丢掉 45/51 页、契约 0 端点，修复后 5 页克隆、4/5 三视口 100%；契约默认仍不采集带查询的 GET 接口，但会报出被拦下的 3 次请求，按 `read-data-plan.json` 放行后为 B1。strict 离线导出仍阻断 |
+| 2026-11-18 | **[验收测试减量：逐条覆盖 + 缺陷注入](2026-11-18/acceptance-test-slimming.md)** | 按批准删 107 个顶层验收测试（37 个文件、1,443 行）：逐条 V8 覆盖先圈出 346 个“覆盖冗余”，2 万个内存植入缺陷加两套独立留出缺陷集把清单压到 107；留下的测试仍执行全部源码字符，留出集上检出力损失 0，冻结源文件未动 |

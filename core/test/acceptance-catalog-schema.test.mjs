@@ -60,30 +60,6 @@ test('schema dispatch rejects malformed roots and proxies without reading access
   const eventProxy = v1(); eventProxy.events = new Proxy(eventProxy.events, { get() { reads++; throw new Error('event trap'); } });
   reject(eventProxy); assert.equal(reads, 0);
 });
-test('migration preserves every old entity and event and returns a distinct generation with one global event', () => {
-  const old = v1(), saved = copy(old), value = migrate(old);
-  assert.deepEqual(old, saved); assert.equal(value.schemaVersion, 2); assert.notEqual(value.generationId, old.generationId);
-  assert.equal(value.revision, 4); assert.deepEqual(value.events.slice(0, 3), old.events);
-  for (const key of ['projects', 'releases', 'runBindings']) { assert.deepEqual(value[key], old[key]); assert.notEqual(value[key], old[key]); }
-  for (const key of ['candidates', 'approvals', 'selections']) assert.deepEqual(value[key], {});
-  const [migration] = Object.values(value.migrations), event = value.events.at(-1);
-  assert.equal(migration.fromRevision, 3); assert.equal(migration.fromGenerationId, old.generationId);
-  assert.equal(migration.sourceHeadSha256, digest); assert.equal(migration.sourcePreviousSha256, previous);
-  assert.equal(event.entityDigest, hashAcceptanceValue(migration)); assert.equal(Object.hasOwn(event, 'projectId'), false);
-  schema.validateAcceptanceCatalog(value); schema.validateAcceptanceCatalogV2(value);
-});
-test('fresh schema2 needs no migration and both fresh and migrated catalogs accept later B1 events', () => {
-  const fresh = { schemaVersion: 2, generationId: uid('ag'), revision: 0, projects: {}, releases: {}, runBindings: {},
-    candidates: {}, approvals: {}, selections: {}, migrations: {}, events: [] };
-  schema.validateAcceptanceCatalog(fresh);
-  for (const value of [fresh, migrate(v1())]) {
-    const project = { id: uid('ap'), name: 'new project', createdAt: at };
-    add(value, 'projects', project, 'project-created', project.id); schema.validateAcceptanceCatalog(value);
-  }
-  const empty = { schemaVersion: 1, generationId: uid('ag'), revision: 0, projects: {}, releases: {}, runBindings: {}, events: [] };
-  const migrated = schema.buildCatalogMigration(empty, { headSha256: digest, at });
-  assert.equal(migrated.revision, 1); assert.equal(Object.values(migrated.migrations)[0].sourcePreviousSha256, null);
-});
 test('strict v2 rejects invalid or unsupported migration facts even after their event digest is recalculated', () => {
   const value = migrate(v1());
   for (const mutate of [
@@ -105,12 +81,6 @@ test('strict v2 rejects invalid or unsupported migration facts even after their 
     item => { item.current = {}; },
     item => { delete item.candidates; },
   ]) { const bad = copy(value); mutate(bad); rehashMigration(bad); reject(bad); }
-});
-test('migration event cannot move before its B1 prefix or manufacture unsupported events', () => {
-  const bad = migrate(v1()), event = bad.events.pop(); bad.events.unshift(event);
-  bad.events.forEach((event, index) => { event.revision = index + 1; }); reject(bad);
-  const unsupported = migrate(v1()); unsupported.events[0].kind = 'baseline-approved'; reject(unsupported);
-  const duplicated = migrate(v1()); duplicated.events[1].entityId = duplicated.events[0].entityId; reject(duplicated);
 });
 test('all historical B1 entities require one ordered event with current immutable contents', () => {
   for (const base of [v1(), migrate(v1())]) {

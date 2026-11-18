@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  acceptanceEvidenceEntries, acceptanceEvidenceFilename, acceptanceScore, acceptanceViewport,
+  acceptanceEvidenceEntries, acceptanceScore, acceptanceViewport,
   buildAcceptanceInput, filterAcceptanceChecks,
   acceptanceSpecFingerprint, buildOpenApiPreviewInput, SPEC_CHECK_EXAMPLE,
   acceptanceComparisonQuery, filterAcceptanceComparison,
@@ -97,14 +97,6 @@ test('attention filters preserve baseline and review findings without classifyin
   assert.deepEqual(filterAcceptanceChecks(checks, { verdict: 'all', query: '/products' }).map(x => x.id), ['review']);
   assert.equal(filterAcceptanceChecks(checks, { verdict: 'all' }).length, 4);
   assert.equal(checks.length, 4);
-});
-
-test('evidence accepts only flat PNG/JSON files from the acceptance API', () => {
-  assert.equal(acceptanceEvidenceFilename('run-1.desktop-target.png'), 'run-1.desktop-target.png');
-  assert.equal(acceptanceEvidenceFilename('details.json'), 'details.json');
-  for (const value of ['https://remote.test/a.png', '../a.png', '/a.png', 'nested/a.png', 'nested\\a.png', 'a.svg', 'a.png?token=secret', '..', null, { filename: 'a.png' }]) {
-    assert.equal(acceptanceEvidenceFilename(value), '');
-  }
 });
 
 test('unmeasured values remain unmeasured in report presentation', () => {

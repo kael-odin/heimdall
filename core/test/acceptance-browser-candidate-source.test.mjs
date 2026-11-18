@@ -345,17 +345,6 @@ test('default head JSON complexity and UTF-8 bounds are enforced before recursiv
   });
 });
 
-test('unreferenced evidence and handoff files do not become captured provenance', t => {
-  const item = fixture(t), initial = read(item);
-  fs.writeFileSync(join(item.dir, 'integrity.json'), 'corrupt untrusted handoff');
-  editReport(item, report => { report.evidenceManifest.push({ file: 'unread-extra.json', bytes: 999, sha256: 'a'.repeat(64) }); });
-  const material = read(item);
-  assert.equal(material.files.has('unread-extra.json'), false);
-  assert.equal(material.files.has('integrity.json'), false);
-  assert.equal(material.snapshot.integrity.verifiedFiles, initial.snapshot.integrity.verifiedFiles);
-  assert.equal(material.snapshot.integrity.verifiedBytes, initial.snapshot.integrity.verifiedBytes);
-});
-
 test('returned snapshots, Map entries and Buffers are isolated from the source and later captures', t => {
   const item = fixture(t), before = tree(item.root), first = read(item), second = read(item);
   first.snapshot.report.checks[0].title = 'caller mutation'; first.snapshot.manifest.plan.name = 'caller plan mutation';

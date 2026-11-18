@@ -69,27 +69,6 @@ test('Markdown treats HTML, links, table delimiters, headings and fences as quot
   assert.match(text, /当前证据未核验/);
 });
 
-test('both formats omit quoted credential keys and complete escaped string values in manual text', () => {
-  const keys = ['token', 'password', 'secret', 'api_key', 'api-key', 'access_token', 'refresh-token', 'Authorization', 'Cookie'];
-  for (const key of keys) {
-    const value = 'JSON_SECRET_' + key.replaceAll('-', '_') + '_WITH_"_QUOTE';
-    const input = JSON.stringify({ [key]: value });
-    assert.equal(redactDefectTicketExportText(input).includes('JSON_SECRET_'), false, key);
-    for (const field of ['description', 'reproduction']) {
-      const f = fixture({ [field]: input + '\n' + "{'" + key + "': 'SINGLE_QUOTED_SECRET'}" });
-      const original = JSON.stringify(f);
-      for (const format of ['md', 'json']) {
-        const text = renderDefectTicketExport({ ...f, format }).bytes.toString('utf8');
-        assert.equal(text.includes('JSON_SECRET_'), false, key + ':' + field + ':' + format);
-        assert.equal(text.includes('SINGLE_QUOTED_SECRET'), false, key + ':' + field + ':' + format);
-        assert.equal(text.includes('QUOTE'), false, 'escaped quotes must not leave the secret suffix');
-      }
-      assert.equal(JSON.stringify(f), original);
-    }
-  }
-  assert.match(redactDefectTicketExportText('{"token":"FIRST_SECRET","password":"SECOND_SECRET"}'), /token=\[omitted\],password=\[omitted\]/);
-});
-
 test('exports reject mismatched ticket revisions, unsupported formats and malformed dates', () => {
   const f = fixture();
   assert.throws(() => renderDefectTicketExport({ ...f, projection: { ...f.projection, headSha256: sha('other') }, format: 'md' }),

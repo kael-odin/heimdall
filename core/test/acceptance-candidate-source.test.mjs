@@ -1,15 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync, readdirSync, cpSync,
+import { mkdtempSync, mkdirSync, rmSync, readFileSync, writeFileSync, cpSync,
   renameSync, symlinkSync, unlinkSync, realpathSync, lstatSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { readSpecCandidateSource, SPEC_CANDIDATE_SOURCE_LIMITS } from '../src/acceptance/candidate-source.mjs';
-import { acquireAcceptanceOwner } from '../src/acceptance/owner.mjs';
-import { createAcceptanceRun, acceptanceRunDir, finishAcceptanceRun, readAcceptanceSnapshot } from '../src/acceptance/store.mjs';
-import { runSpecAcceptance } from '../src/acceptance/spec-runner.mjs';
-import { previewOpenApi } from '../src/acceptance/openapi.mjs';
 import { requiredDir } from './fixtures/audit-evidence.mjs';
 
 const archiveRoot = requiredDir('2026-10-16/evidence/acceptance-catalog/console/run-evidence');
@@ -44,17 +40,6 @@ function fixture(t, runId = archivedRuns[0]) {
   return { parent, root, dir, runId, owner: facade(root) };
 }
 const read = (fixture, overrides = {}) => readSpecCandidateSource(fixture.runId, { root: fixture.root, owner: fixture.owner, ...overrides });
-function treeBytes(root) {
-  const result = {};
-  function visit(dir, prefix = '') {
-    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      const name = prefix + entry.name, path = join(dir, entry.name);
-      if (entry.isDirectory()) visit(path, name + '/');
-      else result[name] = sha256(readFileSync(path));
-    }
-  }
-  visit(root); return result;
-}
 function editReport(fixture, edit) {
   const path = join(fixture.dir, 'report.json'), report = parse(path);
   edit(report); json(path, report);
@@ -64,87 +49,6 @@ function editReport(fixture, edit) {
 function replaceByte(path) {
   const bytes = readFileSync(path); bytes[bytes.length - 1] ^= 1; writeFileSync(path, bytes);
 }
-
-test('archived passed and failed Spec sources capture every original referenced byte without writing or networking', () => {
-  const before = treeBytes(archiveRoot), owner = facade(archiveRoot), originalFetch = globalThis.fetch;
-  let network = 0;
-  globalThis.fetch = () => { network++; throw new Error('source reader must not request targets'); };
-  try {
-    for (const [index, runId] of archivedRuns.entries()) {
-      const { snapshot, files } = readSpecCandidateSource(runId, { root: archiveRoot, owner });
-      assert.equal(snapshot.integrity.valid, true);
-      assert.equal(snapshot.integrity.evidenceVerified, true);
-      assert.deepEqual(snapshot, readAcceptanceSnapshot(runId, { root: archiveRoot }));
-      assert.equal(snapshot.report.gate, index === 2 ? 'failed' : 'passed');
-      assert.equal(files.size, 5);
-      assert.deepEqual([...files.keys()], ['manifest.json', 'report.json', 'spec-1-QUOTA-contract.json', 'spec-1-QUOTA-request.json', 'spec-1-QUOTA-response.json']);
-      for (const [name, bytes] of files) {
-        assert.equal(Buffer.isBuffer(bytes), true);
-        assert.deepEqual(bytes, readFileSync(join(archiveRoot, runId, name)));
-      }
-      assert.equal(sha256(files.get('report.json')), snapshot.integrity.reportSha256);
-      assert.deepEqual(JSON.parse(files.get('manifest.json')), snapshot.manifest);
-      assert.deepEqual(JSON.parse(files.get('report.json')), snapshot.report);
-      assert.equal(Object.hasOwn(snapshot, 'files'), false);
-      assert.equal(Object.hasOwn(snapshot, 'bytes'), false);
-      assert.equal(JSON.stringify(snapshot).includes('"type":"Buffer"'), false);
-      assert.equal(files.has('report.md'), false);
-    }
-  } finally { globalThis.fetch = originalFetch; }
-  assert.equal(network, 0);
-  assert.deepEqual(treeBytes(archiveRoot), before);
-});
-
-test('already acquired real owner is used without changing any run or lock bytes', t => {
-  const item = fixture(t), owner = acquireAcceptanceOwner({ root: item.root });
-  t.after(() => owner.release());
-  const before = treeBytes(item.root);
-  assert.equal(read(item, { owner }).files.size, 5);
-  assert.deepEqual(treeBytes(item.root), before);
-  assert.equal(owner.assertOwned(), true);
-});
-
-test('unapproved OpenAPI run captures the source document and contract without requesting a target', async t => {
-  const root = temporary(t), originalFetch = globalThis.fetch;
-  const document = { openapi: '3.1.1', info: { title: 'Private source', version: 'v1' }, paths: {
-    '/quota': { get: { responses: { 200: { description: 'Success', content: { 'application/json': { schema: { type: 'object' } } } } } } },
-  } };
-  const { plan } = previewOpenApi(document, { targetUrl: 'http://127.0.0.1:1/no-network?tenant=private' });
-  let network = 0;
-  globalThis.fetch = () => { network++; throw new Error('unapproved candidate must not request a target'); };
-  try {
-    const manifest = createAcceptanceRun(plan, { root });
-    const raw = await runSpecAcceptance(plan, { runId: manifest.runId, outputDir: acceptanceRunDir(manifest.runId, root) });
-    finishAcceptanceRun(manifest.runId, raw, { root });
-    const before = treeBytes(root);
-    const { snapshot, files } = readSpecCandidateSource(manifest.runId, { root, owner: facade(root) });
-    assert.equal(snapshot.report.gate, 'blocked');
-    assert.equal(snapshot.manifest.plan.spec.approved, false);
-    assert.equal(files.size, 4);
-    assert.deepEqual(JSON.parse(files.get('requirement-source.json')).document, document);
-    assert.equal(files.has(snapshot.report.checks[0].evidence.contract), true);
-    assert.equal(Object.hasOwn(snapshot.report.checks[0].evidence, 'response'), false);
-    assert.deepEqual(treeBytes(root), before);
-  } finally { globalThis.fetch = originalFetch; }
-  assert.equal(network, 0);
-});
-
-test('raw PNG and non-object JSON references are preserved as bytes under evidence budgets', t => {
-  const item = fixture(t);
-  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 255, 0]);
-  const raw = Buffer.from('null\n');
-  writeFileSync(join(item.dir, 'raw-capture.png'), png);
-  writeFileSync(join(item.dir, 'raw-null.json'), raw);
-  editReport(item, report => {
-    report.checks[0].evidence.capture = 'raw-capture.png';
-    report.checks[0].evidence.raw = 'raw-null.json';
-    report.evidenceManifest.push(...[['raw-capture.png', png], ['raw-null.json', raw]].map(([file, bytes]) => ({ file, bytes: bytes.length, sha256: sha256(bytes) })));
-  });
-  const { files } = read(item);
-  assert.equal(files.size, 7);
-  assert.deepEqual(files.get('raw-capture.png'), png);
-  assert.deepEqual(files.get('raw-null.json'), raw);
-});
 
 test('evidence is bounded separately from head JSON and exact byte/count budgets are accepted', t => {
   const item = fixture(t), response = 'spec-1-QUOTA-response.json';
@@ -161,22 +65,6 @@ test('evidence is bounded separately from head JSON and exact byte/count budgets
     evidenceFileBytes: bytes.length, evidenceBytes: report.evidenceManifest.reduce((sum, entry) => sum + entry.bytes, 0), checks: 1 };
   assert.deepEqual(read(item, { limits }).files.get(response), bytes);
   for (const key of Object.keys(limits)) assert.throws(() => read(item, { limits: { ...limits, [key]: limits[key] - 1 } }), safeError());
-});
-
-test('contract/source role semantics remain the projector responsibility', t => {
-  const item = fixture(t);
-  editReport(item, report => { report.checks[0].evidence = {}; report.evidenceManifest = []; });
-  const result = read(item);
-  assert.equal(result.snapshot.integrity.valid, true);
-  assert.deepEqual([...result.files.keys()], ['manifest.json', 'report.json']);
-});
-
-test('legacy archived reports without report digests remain rejected and unchanged', () => {
-  const before = treeBytes(legacyRoot), owner = facade(legacyRoot);
-  for (const runId of ['ac-5210041a-cc04-48e8-b02b-702fddd5c8a8', 'ac-7b5a7528-617c-4032-b887-4e9d546fab66']) {
-    assert.throws(() => readSpecCandidateSource(runId, { root: legacyRoot, owner }), safeError('SOURCE_INTEGRITY_FAILED', 'SOURCE_SNAPSHOT_INVALID'));
-  }
-  assert.deepEqual(treeBytes(legacyRoot), before);
 });
 
 test('every referenced role rejects same-length corruption and missing files', async t => {
