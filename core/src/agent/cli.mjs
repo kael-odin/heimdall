@@ -28,7 +28,6 @@ export const CLI_ONLY = Object.freeze({
   gate: { usage: 'gate baseline <siteId> <page> [--viewport 1440] | gate report [--project .] [--level bronze|silver|gold]', desc: '正式基线供给与体检（E7-19）；六维门禁报告（E7-06），未通过退出码 1' },
   bench: { usage: 'bench score --site S --page P --candidate 标签=目录,… | bench run --site S --page P --project D --arm a1|a2|a3 [--feedback full|targeted] [--edit rewrite|surgical] --iterations N | bench sections --site S --page P --project D | bench summary --site S --page P', desc: 'Heimdall-Bench：测量候选、跑模型消融臂、按分段循环、汇总重复测量（E14-01~03）' },
   mcp: { usage: 'mcp [--http <port>] [--legacy]', desc: 'MCP 服务：默认 v2（stdio）；--legacy 起旧的 13 工具服务器' },
-  qa: { usage: 'qa init | login <登录档> | status | run [站点] | findings | show <F编号> | similar "标题" | submit <文件> | verdict <F编号> <裁决> "理由" [--pattern] | rules', desc: '测试工作区：带登录态测试、按以往裁决过滤、只出该提单的问题' },
 });
 
 const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -55,7 +54,6 @@ export function argsFor(id, { flags, positional }) {
     case 'site': set('siteId', positional[0] ?? flags['site-id']); set('view', flags.view); set('limit', num(flags.limit)); set('cursor', num(flags.cursor)); break;
     case 'site_assessment':
       set('siteId', positional[0] ?? flags['site-id']);
-      set('qaWorkspace', flags['qa-workspace'] ? resolve(String(flags['qa-workspace'])) : undefined);
       set('limit', num(flags.limit));
       break;
     case 'brief':
@@ -86,49 +84,6 @@ export function argsFor(id, { flags, positional }) {
       set('reuse', flags.reuse); set('idempotencyKey', flags['idempotency-key']);
       break;
     case 'doctor': set('checks', list(flags.checks)); if (flags.fix) a.fix = true; break;
-    case 'qa_status': set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined); break;
-    case 'qa_run':
-      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
-      set('site', positional[0] ?? flags.site); set('pages', sitePaths(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
-      set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
-      if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
-      if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;
-      set('exploreMax', num(flags['explore-max'])); set('exploreBudgetMs', num(flags['explore-budget']));
-      break;
-    case 'qa_ci':
-      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
-      set('site', positional[0] ?? flags.site); set('pages', sitePaths(flags.pages)); set('viewports', list(flags.viewports)?.map(Number));
-      set('checksFile', flags.checks ? resolve(String(flags.checks)) : undefined); set('login', flags.login); set('label', flags.label);
-      if (flags['no-links']) a.linkCheck = false; if (flags.texts) a.collectTexts = true;
-      if (flags.explore) a.explore = true; if (flags['no-baseline']) a.baseline = false; if (flags['no-detect']) a.detect = false;
-      set('exploreMax', num(flags['explore-max'])); set('exploreBudgetMs', num(flags['explore-budget']));
-      set('failOn', flags['fail-on']);
-      set('maxFindings', num(flags['max-findings']));
-      if (flags['require-baseline']) a.requireBaseline = true;
-      if (flags.github) a.github = true;
-      if (flags['no-github']) a.github = false;
-      break;
-    case 'qa_metrics':
-      set('file', flags.file ? resolve(String(flags.file)) : undefined);
-      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
-      set('site', flags.site);
-      set('limit', num(flags.limit));
-      break;
-    case 'public_case_summary':
-      set('casePath', positional[0] ?? (flags['case-path'] ? String(flags['case-path']) : undefined));
-      break;
-    case 'qa_findings': {
-      set('workspace', flags.workspace ? resolve(String(flags.workspace)) : undefined);
-      set('action', flags.action); set('runId', flags.run); set('id', flags.id); set('status', flags.status); set('limit', num(flags.limit));
-      set('title', flags.title); set('path', flags.path); set('verdict', flags.verdict); set('reason', flags.reason);
-      set('until', flags.until); set('reopenIf', flags['reopen-if']); set('ruleId', flags['rule-id']);
-      if (flags.pattern) a.pattern = true;
-      if (flags.file) {
-        const data = JSON.parse(readFileSync(resolve(String(flags.file)), 'utf8'));
-        a.findings = Array.isArray(data) ? data : data.findings;
-      }
-      break;
-    }
     case 'seo_audit':
       set('url', positional[0] ?? flags.url);
       set('maxPages', num(flags['max-pages'] ?? flags.max));
@@ -170,7 +125,7 @@ function human(env, id, quiet) {
   if (id === 'site' && env.ok && env.result.pages) lines.push('', ...env.result.pages.map(p => `${p.page.padEnd(40)} ${p.mirror ? '镜像✓' : '      '} ${p.score ? p.score.grade + ' ' + p.score.total : ''}`));
   if (id === 'site_assessment' && env.ok) {
     const r = env.result;
-    lines.push(`镜像：${r.clone.mirrors}/${r.clone.pages}；多视口验证：${r.clone.verified ?? 0}；SEO：${r.seo.status}；API：${r.api.status}；QA：${r.qa.status}`);
+    lines.push(`镜像：${r.clone.mirrors}/${r.clone.pages}；多视口验证：${r.clone.verified ?? 0}；SEO：${r.seo.status}；API：${r.api.status}`);
     if (r.deliveryPlan) lines.push(`交付计划：${r.deliveryPlan.decision.stage}；开放 ${r.deliveryPlan.counts.open}；阻塞 ${r.deliveryPlan.counts.blocked}；未知 ${r.deliveryPlan.counts.unknown}`);
     if (r.unknowns?.length) lines.push(`未知项：${r.unknowns.slice(0, 8).map(item => item.id).join('、')}`);
   }
@@ -188,12 +143,6 @@ function human(env, id, quiet) {
   if (id === 'site_watch' && env.ok && env.result?.result) {
     const r = env.result.result;
     lines.push(`变化：新增 ${r.changes?.added ?? 0} / 删除 ${r.changes?.removed ?? 0} / 修改 ${r.changes?.changed ?? 0}`, `报告：${r.reports?.html ?? '-'}`);
-  }
-  if (id === 'qa_ci' && env.result?.ci) {
-    const r = env.result;
-    lines.push(`CI：${r.ci.status === 'passed' ? '通过' : r.ci.status === 'incomplete' ? '未完成' : '失败'}；门槛 ${r.ci.failOn}；达到门槛 ${r.ci.findings?.length ?? 0} 条`,
-      `报告：${r.ci.report ?? '-'}`, `摘要：${r.ci.files?.markdown ?? '-'}`);
-    if (r.ci.annotations) lines.push('', r.ci.annotations);
   }
   if ((id === 'jobs' || id === 'clone') && env.ok && env.result?.jobs) lines.push('', ...env.result.jobs.map(j => `${j.jobId} ${j.capability} ${j.status} ${j.createdAt}`));
   const next = (env.nextActions ?? []).slice(0, 3);

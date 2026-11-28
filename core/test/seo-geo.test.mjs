@@ -204,13 +204,3 @@ test('GEO 未解析上下文与受限字段不能变成缺陷或通过，已观�
   assert.equal(check(limited, 'geo-citation-freshness').status, 'pass');
   assert.equal(check(limited, 'geo-citation-attribution').status, 'unknown');
 });
-
-test('Xspark 脱敏 SEO 证据可以离线生成带页面和复测方式的 GEO 待办', () => {
-  const saved = JSON.parse(readFileSync(new URL('../../docs/cases/xspark/2026-11-04/evidence/seo.json', import.meta.url), 'utf8'));
-  const result = evaluateGeoSite({ pages: saved.pages });
-  assert.equal(result.coverage.pages, 5);
-  assert.ok(result.actionPlan.some(item => item.id === 'geo-extract-structure'));
-  assert.ok(result.actionPlan.every(item => item.affectedPages.length > 0));
-  assert.ok(result.actionPlan.every(item => item.validation.expectedStatus === 'pass'));
-  assert.doesNotMatch(JSON.stringify(result.actionPlan), /eyJ[a-zA-Z0-9_-]{20,}/);
-});

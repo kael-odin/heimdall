@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, readdirSync, renameSync, open
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
-import { writeAtomicFileSync } from '../src/acceptance/atomic-file.mjs';
+import { writeAtomicFileSync } from '../src/atomic-file.mjs';
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'acceptance-atomic-file-'));

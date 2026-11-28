@@ -90,14 +90,11 @@ async function formal(flags) {
     const level = String(flags.level ?? cfg.gate?.level ?? 'silver');
     const r = await formalGate({
       siteId: cfg.siteId, page, projectDir: dir, level,
-      ...(flags.engine ? { engine: String(flags.engine) } : {}),
       timeoutMs: Math.max(30, Number(flags.timeout ?? 480)) * 1000,
       onProgress: (p) => process.stderr.write(`… ${p.message}\n`),
     });
     const lines = [`正式门禁 ${level}：${r.status} · ${cfg.siteId}/${page}`];
     for (const d of r.gate?.dimensions ?? []) lines.push(` ${d.status === 'pass' ? '✓' : d.status === 'fail' ? '✗' : '—'} ${d.id.padEnd(11)} ${d.detail ?? ''}`);
-    if (r.acceptance?.runId) lines.push(` 验收任务：${r.acceptance.runId}（${r.acceptance.gate}）`);
-    else if (r.acceptance?.runIds?.length) lines.push(` 验收任务：${r.acceptance.runIds.join('、')}（${r.acceptance.gate}）`);
     if (r.reportPath) lines.push(`报告：${r.reportPath}`);
     return ok({ ...r }, {
       summary: lines.join('\n'),
@@ -107,9 +104,6 @@ async function formal(flags) {
       ...(r.status === 'passed' ? {} : { warnings: [{ code: 'gate_not_passed', message: r.status === 'incomplete' ? '正式门禁未完成或证据不足，不能判定通过或失败' : `正式门禁未通过：${r.status}` }] }),
     });
   } catch (error) {
-    if (error?.code === 'engine_unreachable') {
-      return fail('engine_unreachable', error.message, { hint: '先起引擎：`heimdall serve 8900`（或 `pnpm dev:core`），再重跑正式门禁' });
-    }
     return fromError(error);
   }
 }

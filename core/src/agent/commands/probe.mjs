@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { WORKSPACE } from '../../paths.mjs';
-import { writeAtomicFileSync } from '../../acceptance/atomic-file.mjs';
+import { writeAtomicFileSync } from '../../atomic-file.mjs';
 import { ok, fromError, exitCodeOf, CapabilityError } from '../envelope.mjs';
 import { parseArgs } from '../cli.mjs';
 import { buildOutline } from '../brief/outline.mjs';

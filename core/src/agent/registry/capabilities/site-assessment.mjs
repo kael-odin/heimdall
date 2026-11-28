@@ -12,16 +12,15 @@ import { summarizeObservedApiContract } from '../../../live/contract.mjs';
 import { ok, nextAction, CapabilityError } from '../../envelope.mjs';
 import { redactText } from '../../redact.mjs';
 import { summarizeGeoReport } from '../../geo-summary.mjs';
-import { qaFindingDigest, safeSummaryText } from '../../qa-finding-summary.mjs';
 import { listPages, pageDir, siteDir } from '../../workspace.mjs';
-import { listRuns, openWorkspace, relPath, runsDir } from '../../../qa/run.mjs';
-import { analyzeQaMetrics } from '../../../qa/metrics.mjs';
-import { qaMetricsDecisionTask } from './qa-metrics.mjs';
-import { qaIncompleteReasons } from '../../../qa/ci.mjs';
 import { readCurrentScore } from '../../../score-status.mjs';
 import { validateDeploymentReport, validateStaticDeploymentReport, verifyBundleChecksums } from '../../../live/deployment-verify.mjs';
 import { SEO_MEASUREMENT_VERSION, SEO_SCORE_METHOD_VERSION } from '../../../seo/method.mjs';
 import { summarizeOutcomeEvidence } from '../../../seo/outcome-evidence.mjs';
+
+function safeSummaryText(value, maxLen = 240) {
+  return redactText(String(value ?? ''), { profile: 'strict' }).text.replace(/\s+/g, ' ').trim().slice(0, maxLen);
+}
 
 const MAX_PUBLIC_REPORT_BYTES = 4 * 1024 * 1024;
 const MAX_BACKEND_TASK_ENDPOINTS = 200;
@@ -803,109 +802,6 @@ function apiSummary(root, siteId, expectedOrigin = null) {
   };
 }
 
-function runSummary(run) {
-  const summary = run?.summary && typeof run.summary === 'object' ? run.summary : null;
-  if (!summary) return null;
-  return Object.fromEntries(['total', 'fileable', 'environment', 'checkNeedsFix', 'tolerable', 'suppressed', 'knownBug', 'reopened']
-    .filter(key => Number.isFinite(summary[key])).map(key => [key, summary[key]]));
-}
-
-function readQaFindingDigest(runDir, run) {
-  const source = readJson(join(runDir, 'findings.json'));
-  const reportedTotal = Number.isSafeInteger(run?.summary?.fileable) && run.summary.fileable >= 0
-    ? run.summary.fileable : null;
-  const digest = qaFindingDigest(source, run.runId, { reportedTotal });
-  const inconsistent = digest.status === 'observed' && reportedTotal !== null && digest.total !== reportedTotal;
-  return {
-    ...digest,
-    ...(reportedTotal !== null ? { reportedTotal } : {}),
-    ...(inconsistent ? { status: 'inconsistent' } : {}),
-  };
-}
-
-function qaSummary(args, ctx, siteId, origin) {
-  if (!args.qaWorkspace) return { status: 'not_configured', latest: null, metrics: null, site: null };
-  let ws;
-  try { ws = openWorkspace(args.qaWorkspace, ctx); } catch { return { status: 'unavailable', latest: null, metrics: null, site: null }; }
-  const sites = Object.values(ws.sites);
-  const legacyOrigin = origin ?? (siteId.includes('--origin-') ? null : originOf(`https://${siteId}`));
-  const qaSite = sites.find(site => site.name === siteId || site.origin === origin || originOf(site.url) === origin || (legacyOrigin && site.origin === legacyOrigin)) ?? null;
-  if (!qaSite) return { status: 'configured', latest: null, metrics: null, site: null };
-  const runs = listRuns(ws, 100).filter(item => item.site === qaSite.name);
-  const run = runs[0] ?? null;
-  if (!run) return { status: 'no_runs', latest: null, metrics: null, site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length } };
-  const runDir = join(runsDir(ws), run.runId);
-  let metrics = null;
-  try { metrics = analyzeQaMetrics({ runs }); } catch { /* malformed run summaries stay unavailable */ }
-  const summary = runSummary(run);
-  const coverage = run.coverage;
-  const pages = Array.isArray(coverage?.pages) ? coverage.pages : [];
-  const checks = Array.isArray(coverage?.checks) ? coverage.checks : [];
-  const reportPath = join(runDir, 'report.md');
-  const bugsPath = join(runDir, 'bugs.md');
-  const incompleteReasons = qaIncompleteReasons({ summary,
-    clientBlocked: pages.reduce((n, p) => n + (p?.counts?.clientBlocked ?? 0), 0) + checks.reduce((n, c) => n + (c?.clientBlocked ?? 0), 0),
-    detection: coverage?.detection, navigation: { failedPages: pages.filter(p => p?.navError) }, baseline: { status: coverage?.baseline?.status },
-  });
-  const safeCoveragePath = value => typeof value === 'string'
-    ? redactText(value, { profile: 'strict' }).text.slice(0, 240) : null;
-  const pageCoverage = pages.map(page => {
-    const path = safeCoveragePath(page?.path);
-    const viewport = typeof page?.viewport === 'string' ? page.viewport.slice(0, 32) : null;
-    if (!path || !viewport) return null;
-    return {
-      path, viewport, navigation: page.navError ? 'failed' : 'observed',
-      clientBlocked: Number.isSafeInteger(page?.counts?.clientBlocked) && page.counts.clientBlocked >= 0 ? page.counts.clientBlocked : 0,
-    };
-  }).filter(Boolean);
-  const checkCoverage = checks.slice(0, 50).map(check => ({
-    id: safeCoveragePath(check?.id) ?? 'unknown',
-    status: check?.pass === true ? 'passed' : check?.pass === false ? 'failed' : 'unknown',
-    clientBlocked: Number.isSafeInteger(check?.clientBlocked) && check.clientBlocked >= 0 ? check.clientBlocked : 0,
-  }));
-  const returnedPages = pageCoverage.slice(0, 50);
-  const returnedChecks = checkCoverage.slice(0, 50);
-  const validBusinessChecks = checks.every(check => typeof check?.id === 'string' && check.id.trim().length > 0
-    && typeof check?.pass === 'boolean');
-  const detection = coverage?.detection && typeof coverage.detection === 'object' && !Array.isArray(coverage.detection)
-    ? {
-      enabled: coverage.detection.enabled === true,
-      pages: Number.isSafeInteger(coverage.detection.pages) && coverage.detection.pages >= 0 ? coverage.detection.pages : null,
-      findings: Number.isSafeInteger(coverage.detection.findings) && coverage.detection.findings >= 0 ? coverage.detection.findings : null,
-      failedPages: Array.isArray(coverage.detection.failedPages) ? coverage.detection.failedPages.length : null,
-      detectors: Array.isArray(coverage.detection.detectors)
-        ? coverage.detection.detectors.filter(value => typeof value === 'string' && /^[A-Za-z0-9_.-]{1,64}$/.test(value)).slice(0, 50)
-        : [],
-    } : null;
-  const coverageSummary = {
-    pages: returnedPages, pagesTotal: pages.length, pagesReturned: returnedPages.length, pagesTruncated: pages.length > 50,
-    pagesMeta: { total: pages.length, valid: pageCoverage.length, returned: returnedPages.length, truncated: pages.length > 50 },
-    checks: returnedChecks, checksTotal: checks.length, checksReturned: returnedChecks.length, checksTruncated: checks.length > 50,
-    checksMeta: { total: checks.length, returned: returnedChecks.length, truncated: checks.length > 50 },
-    businessChecks: { status: checks.length ? (validBusinessChecks ? 'observed' : 'incomplete') : 'not_declared', total: checks.length },
-    detection,
-    baselineStatus: typeof coverage?.baseline?.status === 'string' ? coverage.baseline.status.slice(0, 32) : null,
-  };
-  const known = summary && ['fileable', 'environment', 'checkNeedsFix'].every(key => Number.isInteger(summary[key]) && summary[key] >= 0)
-    && pages.length > 0 && pages.every(p => typeof p?.path === 'string' && typeof p?.viewport === 'string')
-    && Array.isArray(coverage?.checks) && validBusinessChecks;
-  return {
-    status: 'observed',
-    site: { name: qaSite.name, environment: qaSite.environment, pages: qaSite.pages.length },
-    metrics,
-    latest: {
-      runId: run.runId,
-      startedAt: run.startedAt ?? null,
-      summary,
-      completeness: { status: incompleteReasons.length ? 'incomplete' : known ? 'complete' : 'unknown', incompleteReasonCount: incompleteReasons.length },
-      coverage: coverageSummary,
-      findings: readQaFindingDigest(runDir, run),
-      report: existsSync(reportPath) ? relPath(ws, reportPath) : null,
-      bugs: existsSync(bugsPath) ? relPath(ws, bugsPath) : null,
-    },
-  };
-}
-
 function pageSourceOrigin(root, pages) {
   const origins = new Set();
   for (const page of pages) {
@@ -925,7 +821,7 @@ function siteOrigin(root, pages, seo, api, siteId) {
   return seo.origin || api.contract.origin || siteIdOrigin(siteId);
 }
 
-function claimsOf(siteId, clone, seo, api, qa, unknowns) {
+function claimsOf(siteId, clone, seo, api, unknowns) {
   const verified = [];
   const observed = [];
   if (clone.verified > 0) verified.push(`clone.multi_viewport:${clone.verified}`);
@@ -937,7 +833,6 @@ function claimsOf(siteId, clone, seo, api, qa, unknowns) {
   if (api.contract.status === 'observed') observed.push(`api.contract:${api.contract.summary?.endpoints ?? 0}`);
   if (api.adapter.present) observed.push(`api.adapter:${api.adapter.routes ?? 'n/a'} routes`);
   if (api.scaffold?.present) observed.push('api.backend_scaffold:B3');
-  if (qa.status === 'observed') observed.push(`qa.latest_run:${qa.latest.runId}`);
   return { verified, observed, unknown: unknowns.map(item => item.id), siteId };
 }
 
@@ -1033,30 +928,6 @@ function classifyBrowserCapabilitySupport(capabilities, failures, runtimeDataGap
       'supported 只表示当前候选包的已观察页面没有匹配失败，不证明源站语义、交互或业务等价。',
       'degraded 和 unsupported 需要按页面信号修复、人工审核或重新导出后复测。',
     ],
-  };
-}
-
-function qaRepairTask(finding, qa, qaWorkspace) {
-  const id = String(finding?.id ?? finding?.fingerprint ?? 'finding').replace(/[^a-z0-9_-]/gi, '-').slice(0, 64) || 'finding';
-  const target = typeof finding?.target === 'string' && finding.target ? finding.target : finding?.path || '/';
-  const confirmed = finding?.triage === 'known-bug';
-  const evidence = Object.fromEntries([
-    ['findingId', finding?.id], ['fingerprint', finding?.fingerprint], ['runId', qa.latest?.runId],
-    ['kind', finding?.kind], ['basis', finding?.basis], ['tier', finding?.tier], ['path', finding?.path],
-    ['triage', finding?.triage], ['report', qa.latest?.report], ['bugs', qa.latest?.bugs],
-  ].filter(([, value]) => typeof value === 'string' && value));
-  return {
-    id: `repair-qa-${id}`, kind: 'qa-finding-repair', target,
-    status: confirmed ? 'ready_for_fix' : 'blocked_on_human_verdict',
-    instruction: confirmed
-      ? '该问题已经人工确认；修复目标后，用同一站点和检查点重跑 QA。'
-      : '先用 heimdall_qa_findings 确认这是需要修复的真实问题；确认后修复目标，再用同一站点和检查点重跑 QA。',
-    requiresHumanApproval: !confirmed, evidence,
-    verification: {
-      tool: 'heimdall_qa_run',
-      args: { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name },
-      condition: '新的完整 QA 运行中，该 finding fingerprint 不再属于 fileable findings。',
-    },
   };
 }
 
@@ -1260,155 +1131,6 @@ function buildSeoGeoTask(siteId, origin, seo) {
   };
 }
 
-function qaBackendScope(origin, api, backendCompletion) {
-  const gapSummary = backendCompletion?.gapLedger?.summary ?? api.adapter.gapLedger?.summary;
-  const gapKeys = ['uniqueGaps', 'unobservedQueryVariants', 'uncoveredQueryParameters', 'missingResponseBodies', 'unverifiedWrites'];
-  const gapLedger = gapSummary && typeof gapSummary === 'object' ? {
-    status: gapKeys.some(key => Number.isSafeInteger(gapSummary[key]) && gapSummary[key] > 0) ? 'open' : 'observed',
-    ...Object.fromEntries(gapKeys.filter(key => Number.isSafeInteger(gapSummary[key]) && gapSummary[key] >= 0)
-      .map(key => [key, gapSummary[key]])),
-  } : { status: 'missing' };
-  const repairTasks = Array.isArray(backendCompletion?.repairTasks) ? backendCompletion.repairTasks : [];
-  const humanJourneys = Array.isArray(backendCompletion?.humanJourneys) ? backendCompletion.humanJourneys : [];
-  const unknowns = Array.isArray(backendCompletion?.unknowns) ? backendCompletion.unknowns : [];
-  return {
-    origin: origin ?? null,
-    contract: api.contract.status,
-    adapter: api.adapter.status,
-    scaffoldCheck: api.scaffold?.check?.status ?? 'not_run',
-    basis: api.contract.status === 'observed' || api.adapter.present ? 'observed' : 'unknown',
-    completion: {
-      status: backendCompletion?.status ?? 'unknown',
-      currentLevel: backendCompletion?.target?.currentLevel ?? 'unknown',
-      observedEndpoints: Array.isArray(backendCompletion?.observedEndpoints) ? backendCompletion.observedEndpoints.length : 0,
-      gapLedger,
-      businessRules: typeof backendCompletion?.businessRules?.status === 'string'
-        ? backendCompletion.businessRules.status : 'not-tested',
-      businessRuleComparison: typeof backendCompletion?.businessRuleComparison?.overall === 'string'
-        ? backendCompletion.businessRuleComparison.overall
-        : typeof backendCompletion?.businessRuleComparison?.status === 'string'
-          ? backendCompletion.businessRuleComparison.status : 'not_run',
-      adapterEgress: typeof backendCompletion?.adapterEgress?.status === 'string'
-        ? backendCompletion.adapterEgress.status : 'unknown',
-      operationProbe: typeof backendCompletion?.adapterEgress?.operationProbe?.status === 'string'
-        ? backendCompletion.adapterEgress.operationProbe.status : 'not-tested',
-      repairTasks: {
-        total: Number.isSafeInteger(backendCompletion?.repairTasksMeta?.total)
-          ? backendCompletion.repairTasksMeta.total : repairTasks.length,
-        kinds: [...new Set(repairTasks.map(task => task?.kind).filter(kind => typeof kind === 'string'))].slice(0, 12),
-      },
-      humanJourneys: humanJourneys.slice(0, 8).map(journey => ({
-        id: typeof journey?.id === 'string' ? journey.id : 'unknown',
-        status: typeof journey?.status === 'string' ? journey.status : 'unknown',
-      })),
-      unknowns: unknowns.slice(0, 12).map(item => ({
-        id: typeof item?.id === 'string' ? item.id : 'unknown',
-        basis: typeof item?.basis === 'string' ? item.basis : 'unknown',
-      })),
-    },
-  };
-}
-
-function buildQaTask(siteId, origin, qa, api, backendCompletion = null) {
-  const latest = qa.latest;
-  const findings = latest?.findings?.items ?? [];
-  const findingsTotal = Number.isSafeInteger(latest?.findings?.total) && latest.findings.total >= 0
-    ? latest.findings.total : findings.length;
-  const hasFindings = findingsTotal > 0;
-  const findingsObserved = latest?.findings?.status === 'observed';
-  const completeness = latest?.completeness?.status ?? 'unknown';
-  const businessChecks = latest?.coverage?.businessChecks ?? { status: 'unknown', total: null };
-  const observed = qa.status === 'observed';
-  const backendScope = qaBackendScope(origin, api, backendCompletion);
-  const status = !observed || ['not_configured', 'unavailable', 'configured'].includes(qa.status)
-    ? 'blocked_on_qa_evidence'
-    : qa.status === 'no_runs' ? 'blocked_on_observation'
-      : completeness !== 'complete' ? 'blocked_on_complete_run'
-        : !findingsObserved ? 'blocked_on_qa_evidence'
-        : hasFindings ? 'human_review'
-          : qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
-            ? 'ready_for_ai_review' : 'ready';
-  const tasks = observed && latest ? [
-    ...(completeness !== 'complete' ? [{ id: 'complete-qa-run', basis: 'observed', requiresHumanApproval: true, instruction: '补齐环境、导航、检测器和基线证据；没有可提单问题不等于 QA 已完成。' }] : []),
-    ...(!findingsObserved ? [{ id: 'obtain-finding-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先恢复或重新生成脱敏 finding 详情；摘要总量不能替代逐条证据。' }] : []),
-    ...(findingsObserved && hasFindings ? [{ id: 'review-findings', basis: 'observed', requiresHumanApproval: true, instruction: '先用 heimdall_qa_findings 逐条确认 finding；只有人工确认后才修改代码或业务。' }] : []),
-    ...(findings.some(item => item.triage === 'known-bug') ? [{ id: 'fix-confirmed-findings', basis: 'observed', requiresHumanApproval: false, instruction: '修复已经标记为 known-bug 的问题，再用同一站点和检查点重跑 QA。' }] : []),
-    ...(businessChecks.status === 'incomplete' ? [{ id: 'complete-business-checks', basis: 'observed', requiresHumanApproval: true, instruction: '修复缺少 id 或 pass 结果的业务检查点，再用同一站点重跑完整 QA；半截检查点不能证明业务规则。' }] : []),
-    ...(businessChecks.status === 'not_declared' ? [{ id: 'add-business-checks', basis: 'unknown', requiresHumanApproval: true, instruction: '把已确认的 PRD、业务流程和接口响应期望写成声明检查点，再用同一站点重跑 QA；页面 detector 不能替代业务检查。' }] : []),
-    ...(qa.metrics?.decision?.primaryAction && qa.metrics.decision.primaryAction !== 'hold'
-      ? [{ id: 'follow-up-qa-metrics', basis: 'inferred', requiresHumanApproval: true, instruction: '按 QA 指标决策补证据、修已有检测器或增加业务检查点；不以指标不足为由新增通用检测器。' }] : []),
-  ] : [{ id: 'obtain-qa-evidence', basis: 'unknown', requiresHumanApproval: true, instruction: '先准备匹配站点的 QA 工作区并完成一次只读 QA；没有运行证据时不要猜测缺陷。' }];
-  const metrics = qa.metrics?.decision ? {
-    coverage: {
-      runs: Number(qa.metrics.coverage?.runs ?? 0),
-      pageViewportChecks: Number(qa.metrics.coverage?.pageViewportChecks ?? 0),
-      checks: Number(qa.metrics.coverage?.checks ?? 0),
-    },
-    decision: {
-      primaryAction: qa.metrics.decision.primaryAction ?? 'unknown',
-      detectorExpansion: qa.metrics.decision.detectorExpansion ?? 'unknown',
-      secondaryActions: Array.isArray(qa.metrics.decision.secondaryActions) ? qa.metrics.decision.secondaryActions.slice(0, 4) : [],
-    },
-  } : null;
-  return {
-    schema: 'heimdall.qa-bug-ai-task/1', siteId, status,
-    objective: '让 AI 在完整、脱敏的 QA 证据上定位前端和后端缺陷候选，并在人工裁决后用同一检查点复测。',
-    scope: {
-      frontend: { pages: qa.site?.pages ?? null, latestRun: latest?.runId ?? null, basis: observed ? 'observed' : 'unknown' },
-      backend: backendScope,
-    },
-    latest: latest ? {
-      runId: latest.runId, summary: latest.summary, completeness: latest.completeness,
-      coverage: latest.coverage,
-      findings: {
-        status: latest.findings.status,
-        ...(Number.isSafeInteger(latest.findings.reportedTotal) ? { reportedTotal: latest.findings.reportedTotal } : {}),
-        total: latest.findings.total, returned: latest.findings.returned, truncated: latest.findings.truncated, items: findings,
-      },
-    } : null,
-    metrics, tasks,
-    inputs: observed && latest ? [
-      { path: latest.report, role: 'QA report', basis: 'observed', required: true },
-      { path: latest.bugs, role: 'sanitized finding summary', basis: 'observed', required: true },
-    ].filter(input => input.path) : [],
-    guardrails: [
-      'finding 只有在人工裁决后才能作为真实 bug；known-bug 可进入修复，new 或 reopened 先保留人工复核。',
-      '零可提单问题不等于零 bug；运行完整性、覆盖、漏报和未声明业务规则必须单独汇报。',
-      '页面视觉通过不证明 API、认证、权限、状态机、持久化或外部副作用通过。',
-      '不得把原始 HAR、Cookie、令牌、请求体或未脱敏响应交给 AI；复测必须绑定同一站点、检查点和 finding fingerprint。',
-    ],
-    verification: {
-      commands: [
-        ...(qaWorkspaceCommand(siteId, qa) ? [qaWorkspaceCommand(siteId, qa)] : []),
-        `heimdall site-assessment ${siteId} --json`,
-      ],
-      gates: [
-        '匹配站点的 QA 运行完整，环境、导航、检测器和基线证据可解释。',
-        '每条 fileable finding 都有人工 verdict；确认问题修复后同一 fingerprint 从新完整运行中消失。',
-        '后端契约、适配器和业务规则单独核实，不能用页面无报错替代。',
-      ],
-    },
-    prompt: [
-      '先读取 deliveryPlan.qaTask 及其 inputs；再按 tasks 的顺序处理，不要把 finding 数量当准确率。',
-      '先区分 observed、inferred、unknown 和人工 verdict，再决定是否修改前端、后端或 QA 检查。',
-      '先读取 scope.backend.completion 的后端缺口、修复任务和人工旅程，再回读 deliveryPlan.backendCompletion 的完整脱敏证据。',
-      '如果 latest.coverage.pagesMeta 或 latest.coverage.checksMeta 的 truncated 为 true，或 pagesMeta.valid 小于 total，先补齐 QA 覆盖证据。',
-      '读取 latest.coverage.detection 的数量和 detector 列表；检测器发现不能直接当作已确认 bug，仍须读取 finding 证据并完成人工裁决。',
-      '如果 latest.coverage.businessChecks.status 为 not_declared，先补充已确认的业务检查点；页面巡检不能证明后端和业务规则。',
-      '完成修复后用同一站点、检查点和 fingerprint 复测，并分别汇报 verified、observed、inferred、unknown。',
-    ].join('\n'),
-    provenance: {
-      observed: observed && latest ? [latest.report, latest.bugs].filter(Boolean) : [],
-      inferred: ['缺陷处理顺序', 'AI 修复步骤', '复测门禁'],
-      invented: [],
-    },
-    limitations: [
-      'QA 摘要只覆盖声明的页面、检查点和运行范围；不能外推任意站点缺陷检出率。',
-      '后端认证、权限、写入、状态和副作用需要独立授权旅程与业务规则对照。',
-    ],
-  };
-}
-
 function buildCloneTask(siteId, origin, clone, items) {
   const delivery = clone.delivery ?? { status: 'not_recorded' };
   const deployment = delivery.deploymentVerification ?? { status: 'unknown', report: null };
@@ -1593,10 +1315,6 @@ function buildCloneTask(siteId, origin, clone, items) {
       '没有独立断网部署报告时，strict 导出只能作为候选交付证据。',
     ],
   };
-}
-
-function qaWorkspaceCommand(siteId, qa) {
-  return qa?.site?.name ? `heimdall qa run --site ${qa.site.name}` : null;
 }
 
 function repairTasksFromGapLedger(siteId, gapLedger) {
@@ -1816,12 +1534,10 @@ function buildBackendCompletionTask(siteId, api, delivery = null) {
   };
 }
 
-function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace }) {
+function buildDeliveryPlan({ siteId, origin, clone, seo, api }) {
   const items = [];
   const backendCompletion = buildBackendCompletionTask(siteId, api, clone.delivery);
   const seoGeoTask = buildSeoGeoTask(siteId, origin, seo);
-  const qaTask = buildQaTask(siteId, origin, qa, api, backendCompletion);
-  const qaFindingEvidenceUnavailable = qa.status === 'observed' && qa.latest && qa.latest.findings?.status !== 'observed';
   const add = (item) => items.push({
     evidence: [],
     ...(item.action ? { action: item.action } : {}),
@@ -2098,69 +1814,6 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     });
   }
 
-  if (qa.status === 'not_configured' || qa.status === 'unavailable' || qa.status === 'configured') {
-    add({
-      id: 'qa-workspace', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'blocked',
-      title: '没有可用的 QA 工作区', detail: '页面能否打开不等于业务流程和无参照物问题已经检查。',
-      evidence: [], action: plannedAction('heimdall_qa_status', qaWorkspace ? { workspace: qaWorkspace } : null, '先准备 QA 工作区并读取测试须知'),
-      verify: { tool: 'heimdall_qa_status', condition: 'workspace contains matching site and guidance' },
-    });
-  } else if (qa.status === 'no_runs') {
-    add({
-      id: 'qa-first-run', kind: 'qa_business_checkpoint_gap', basis: 'observed', status: 'open',
-      title: 'QA 工作区还没有运行记录', detail: '当前没有巡检、检查点或无参照物检测结果。',
-      evidence: [], action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '运行一次只读 QA'),
-      verify: { tool: 'heimdall_qa_run', condition: 'matching site has a completed run' },
-    });
-  } else if (qa.latest?.completeness?.status !== 'complete') {
-    add({
-      id: 'qa-incomplete', kind: 'qa_business_checkpoint_gap', basis: qa.latest?.completeness?.status === 'incomplete' ? 'observed' : 'unknown', status: 'blocked',
-      title: 'QA 检查未完成或完整性证据不足', detail: '先核实环境、检查点、导航、检测器与基线证据；没有可提单问题不代表检查已完成。',
-      evidence: [qa.latest?.report].filter(Boolean),
-      action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, '修复未完成原因并重跑 QA'),
-      verify: { tool: 'heimdall_qa_run', condition: 'matching run has complete QA evidence' },
-    });
-  }
-  const businessChecksStatus = qa.latest?.coverage?.businessChecks?.status;
-  if (qa.status === 'observed' && (qa.latest?.completeness?.status === 'complete' && businessChecksStatus === 'not_declared'
-    || businessChecksStatus === 'incomplete')) {
-    const incomplete = businessChecksStatus === 'incomplete';
-    add({
-      id: 'qa-business-checks', kind: 'qa_business_checkpoint_gap', basis: incomplete ? 'observed' : 'unknown', status: incomplete ? 'blocked' : 'open',
-      title: incomplete ? '业务检查点记录不完整' : '没有声明业务检查点',
-      detail: incomplete
-        ? '已有业务检查点记录，但至少一条缺少非空 id 或布尔 pass 结果；先修复检查证据，再判断认证、权限、接口响应、状态转换和业务规则。'
-        : '当前运行只覆盖页面导航和无参照物检测；认证、权限、接口响应、状态转换和业务规则仍没有可核对的检查点。',
-      evidence: [qa.latest.report].filter(Boolean),
-      action: plannedAction('heimdall_qa_run', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), site: qa.site?.name }, incomplete ? '修复 checks 结构后重跑完整 QA' : '把已确认的业务流程和接口期望写入 checks 后重跑 QA', { requiresHumanApproval: true }),
-      verify: { tool: 'heimdall_site_assessment', condition: 'qa.latest.coverage.businessChecks.status === "observed"' },
-    });
-  }
-  if (qaFindingEvidenceUnavailable) {
-    const findingsStatus = qa.latest.findings.status;
-    add({
-      id: 'qa-finding-evidence', kind: 'qa_business_checkpoint_gap', basis: 'unknown', status: 'blocked',
-      title: findingsStatus === 'inconsistent' ? 'QA finding 摘要与详情不一致' : 'QA finding 详情不可用',
-      detail: findingsStatus === 'inconsistent'
-        ? '运行摘要的 fileable 数量与脱敏 finding 详情不一致；先恢复完整详情或重新运行 QA。'
-        : '运行摘要无法替代逐条 finding 证据；先恢复脱敏详情或重新运行 QA。',
-      evidence: [qa.latest?.report].filter(Boolean),
-      action: plannedAction('heimdall_qa_findings', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), action: 'show', runId: qa.latest.runId }, '恢复逐条 QA finding 证据'),
-      verify: { tool: 'heimdall_qa_findings', condition: 'qa.latest.findings.status === "observed"' },
-    });
-  }
-  if (qa.latest?.summary?.fileable > 0) {
-    add({
-      id: 'qa-findings', kind: 'qa_business_checkpoint_gap', basis: 'observed', status: 'open',
-      title: 'QA 有待人工复核的问题', detail: `最近一次运行有 ${qa.latest.summary.fileable} 条达到提单门槛的发现。`,
-      evidence: [qa.latest.bugs, qa.latest.report].filter(Boolean),
-      action: plannedAction('heimdall_qa_findings', { ...(qaWorkspace ? { workspace: qaWorkspace } : {}), action: 'show', runId: qa.latest.runId }, '逐条复核 QA 建议提单的问题'),
-      verify: { tool: 'heimdall_qa_findings', condition: 'each finding has a human verdict' },
-      repairTasks: qa.latest.findings.items.map(finding => qaRepairTask(finding, qa, qaWorkspace)),
-    });
-  }
-  if (qa.status === 'observed' && qa.metrics?.decision) add(qaMetricsDecisionTask(qa.metrics, { workspace: qaWorkspace, site: qa.site?.name }));
-
   const counts = {
     total: items.length,
     open: items.filter(item => item.status === 'open').length,
@@ -2176,14 +1829,13 @@ function buildDeliveryPlan({ siteId, origin, clone, seo, api, qa, qaWorkspace })
     decision: {
       basis: 'inferred',
       stage: nextStage,
-      reason: nextStage === 'capture' ? '先补齐参考镜像。' : nextStage === 'human_review' ? '存在尚未通过的交付门禁，或需要人工确认的业务与 QA 前置条件。' : counts.open ? '已有足够证据进入 AI 处理，但仍有明确的补证或复核动作。' : '现有摘要覆盖了已声明的交付能力，可进入实现或复测。',
+      reason: nextStage === 'capture' ? '先补齐参考镜像。' : nextStage === 'human_review' ? '存在尚未通过的交付门禁，或需要人工确认的业务前置条件。' : counts.open ? '已有足够证据进入 AI 处理，但仍有明确的补证或复核动作。' : '现有摘要覆盖了已声明的交付能力，可进入实现或复测。',
     },
     counts,
     items,
     cloneTask,
     backendCompletion,
     seoGeoTask,
-    qaTask,
   };
 }
 
@@ -2196,7 +1848,7 @@ function overallForStage(stage) {
   }[stage] ?? 'needs_human_review';
 }
 
-function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
+function buildReadiness({ clone, seo, api, deliveryPlan }) {
   const item = (...ids) => ids.map(id => deliveryPlan.items.find(candidate => candidate.id === id)).find(Boolean);
   const entry = (status, basis, evidence, actionItem) => ({
     status, basis, evidence: evidence.filter(Boolean), nextAction: actionItem?.action ?? null,
@@ -2227,9 +1879,6 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     : seo.geo.status !== 'complete' || sitemapIncomplete || seoMethodIncomplete || seo.geo.actionItems ? 'needs_follow_up' : 'ready';
   const backendObserved = api.contract.status !== 'missing' || api.adapter.present;
   const backendItem = item('api-contract', 'api-adapter', 'backend-scaffold', 'backend-scaffold-check', 'api-adapter-validation', 'api-adapter-gap-ledger', 'api-behavior-unknown');
-  const qaItem = item('qa-workspace', 'qa-first-run', 'qa-incomplete', 'qa-finding-evidence', 'qa-findings', 'qa-metrics-decision');
-  const qaReady = qa.status === 'observed' && qa.latest?.completeness?.status === 'complete'
-    && qa.latest.findings?.status === 'observed' && qa.latest.summary.fileable === 0;
   return {
     schema: 'heimdall.site-readiness/1',
     stage: deliveryPlan.decision.stage,
@@ -2251,27 +1900,23 @@ function buildReadiness({ clone, seo, api, qa, deliveryPlan }) {
     geo: entry(geoStatus, seo.status === 'observed' && seo.geo.status !== 'unknown' ? 'observed' : 'unknown', [seo.reports?.json], seoItem),
     backend: entry(backendObserved ? 'needs_human_review' : 'needs_observation', backendObserved ? 'observed' : 'unknown',
       [api.contract.path, api.adapter.report, api.scaffold?.path], backendItem),
-    qa: entry(qaReady ? 'ready' : qa.status === 'no_runs' ? 'needs_run' : 'needs_human_review',
-      qa.status === 'observed' || qa.status === 'no_runs' ? 'observed' : 'unknown',
-      [qa.latest?.report, qa.latest?.bugs], qaItem),
   };
 }
 
 export default {
   id: 'site_assessment',
   title: '站点评估：证据、能力与下一步',
-  description: 'Read one site workspace and return a conservative assessment for an AI agent: clone coverage and multi-viewport evidence, the latest SEO/GEO report, public API contract and replay-adapter validation, an optional QA workspace run with derived coverage/runtime/failure metrics, and a structured delivery plan. It reads only sanitized public summaries; it never reads raw HAR, sessions, operation plans or adapter source. Verified, observed, inferred and unknown claims stay separate. Read-only and works without the engine.',
+  description: 'Read one site workspace and return a conservative assessment for an AI agent: clone coverage and multi-viewport evidence, the latest SEO/GEO report, public API contract and replay-adapter validation, and a structured delivery plan. It reads only sanitized public summaries; it never reads raw HAR, sessions, operation plans or adapter source. Verified, observed, inferred and unknown claims stay separate. Read-only and works without the engine.',
   effects: ['read'], scope: 'read', idempotent: true, cost: 'cheap',
   input: {
     type: 'object', additionalProperties: false, required: ['siteId'],
     properties: {
       siteId: { type: 'string', minLength: 1, maxLength: 253, description: 'Site id from heimdall_overview or the workspace directory' },
-      qaWorkspace: { type: 'string', minLength: 1, maxLength: 1000, description: 'Optional QA workspace containing .heimdall/qa.json; credentials are never returned' },
       limit: { type: 'integer', minimum: 1, maximum: 50, default: 10, description: 'Maximum sample pages returned' },
     },
   },
-  cli: { usage: 'site-assessment <siteId> [--qa-workspace DIR] [--limit N]', positional: ['siteId'] },
-  async handler(args, ctx) {
+  cli: { usage: 'site-assessment <siteId> [--limit N]', positional: ['siteId'] },
+  async handler(args) {
     const root = siteDir(args.siteId);
     if (!existsSync(root)) throw new CapabilityError('not_found', `没有站点工作区 ${args.siteId}`, { hint: '`heimdall overview` 列出已有站点或先运行 `heimdall clone`' });
     const pages = existsSync(join(root, 'pages')) ? listPages(args.siteId) : [];
@@ -2281,7 +1926,6 @@ export default {
     const seo = seoSummary(args.siteId, root, expectedOrigin);
     const api = apiSummary(root, args.siteId, expectedOrigin);
     const origin = siteOrigin(root, pages, seo, api, args.siteId);
-    const qa = qaSummary(args, ctx, args.siteId, origin);
     const unknowns = [];
     if (!clone.pages) unknowns.push({ id: 'clone-not-captured', detail: '没有页面目录，克隆与多视口验证都未知。' });
     else if (!clone.mirrors) unknowns.push({ id: 'clone-mirror-missing', detail: '发现页面但没有镜像入口。' });
@@ -2315,14 +1959,8 @@ export default {
       }
     }
     for (const id of api.unknowns) unknowns.push({ id, detail: 'API 行为、认证、权限、状态机或副作用仍未被该摘要证明。' });
-    if (qa.status === 'not_configured') unknowns.push({ id: 'qa-not-configured', detail: '没有提供 QA 工作区，最近一次 QA 运行未知。' });
-    if (qa.status === 'no_runs') unknowns.push({ id: 'qa-not-run', detail: 'QA 工作区存在，但还没有匹配站点的运行记录。' });
-    if (qa.status === 'unavailable') unknowns.push({ id: 'qa-workspace-unavailable', detail: '提供的 QA 工作区无法读取。' });
-    if (qa.status === 'observed' && qa.latest.completeness.status !== 'complete') {
-      unknowns.push({ id: 'qa-run-incomplete', detail: '最近一次 QA 运行存在未完成检查，或缺少完整性证据。' });
-    }
-    const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api, qa, qaWorkspace: args.qaWorkspace });
-    const readiness = buildReadiness({ clone, seo, api, qa, deliveryPlan });
+    const deliveryPlan = buildDeliveryPlan({ siteId: args.siteId, origin, clone, seo, api });
+    const readiness = buildReadiness({ clone, seo, api, deliveryPlan });
     const overall = readiness.overall;
     const allNextActions = [...new Map(deliveryPlan.items
       .filter(item => item.action)
@@ -2337,10 +1975,10 @@ export default {
     if (api.contract.path) evidence.push({ kind: 'file', path: api.contract.path });
     if (api.adapter.report) evidence.push({ kind: 'file', path: api.adapter.report });
     if (clone.delivery.report) evidence.push({ kind: 'file', path: clone.delivery.report });
-    return ok({ siteId: args.siteId, origin, overall, readiness, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api, qa,
-      deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, qa, unknowns), unknowns,
+    return ok({ siteId: args.siteId, origin, overall, readiness, clone: { ...clone, samplePages: clone.samplePages.slice(0, args.limit) }, seo, api,
+      deliveryPlan, claims: claimsOf(args.siteId, clone, seo, api, unknowns), unknowns,
       nextActionsMeta: { total: allNextActions.length, returned: nextActions.length, truncated: allNextActions.length > nextActions.length } }, {
-      summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；离线交付 ${clone.delivery.status}；SEO ${seo.status}；API ${api.status}；QA ${qa.status}。`,
+      summary: `${args.siteId}：${clone.mirrors}/${clone.pages} 页有镜像；多视口验证 ${clone.verified ?? 0} 页；离线交付 ${clone.delivery.status}；SEO ${seo.status}；API ${api.status}。`,
       nextActions, evidence,
     });
   },

@@ -15,8 +15,8 @@ import { parseArgs, argsFor } from '../src/agent/cli.mjs';
 
 const CLI = fileURLToPath(new URL('../src/cli.mjs', import.meta.url));
 const EXPECTED = [
-  'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor', 'qa_status', 'qa_run', 'qa_findings',
-  'qa_ci', 'qa_metrics', 'seo_audit', 'seo_matrix', 'seo_outcomes', 'site_watch', 'site_assessment', 'public_case_summary',
+  'overview', 'site', 'brief', 'artifact', 'compare', 'jobs', 'clone', 'doctor',
+  'seo_audit', 'seo_matrix', 'seo_outcomes', 'site_watch', 'site_assessment',
 ];
 
 function tempRoot() {
@@ -45,9 +45,9 @@ test('registry: the core capabilities, in a fixed order, each well formed', () =
 
 test('registry: effects map to MCP annotations (readOnly only for pure read)', () => {
   const a = Object.fromEntries(CAPABILITIES.map(c => [c.id, annotationsOf(c)]));
-  for (const id of ['overview', 'site', 'brief', 'artifact', 'jobs', 'doctor', 'site_assessment', 'qa_metrics']) assert.equal(a[id].readOnlyHint, true, id);
+  for (const id of ['overview', 'site', 'brief', 'artifact', 'jobs', 'doctor', 'site_assessment']) assert.equal(a[id].readOnlyHint, true, id);
   assert.equal(a.compare.readOnlyHint, false);
-  for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch', 'qa_run', 'qa_ci']) {
+  for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch']) {
     assert.equal(a[id].openWorldHint, true, id);
     assert.equal(a[id].destructiveHint, true, id);
     assert.equal(a[id].idempotentHint, false, id);
@@ -83,19 +83,8 @@ test('cli: argument parsing maps flags to capability inputs', () => {
   assert.deepEqual(argsFor('site_watch', parseArgs(['https://example.test/', '--accept', '--max-pages', '5'])), {
     url: 'https://example.test/', accept: true, maxPages: 5,
   });
-  assert.deepEqual(argsFor('site_assessment', parseArgs(['example.test', '--qa-workspace', '.\\qa', '--limit', '5'])), {
-    siteId: 'example.test', qaWorkspace: resolve('.\\qa'), limit: 5,
-  });
-  assert.deepEqual(argsFor('qa_ci', parseArgs(['web', '--fail-on', 'degrade', '--max-findings', '3', '--github'])), {
-    site: 'web', failOn: 'degrade', maxFindings: 3, github: true,
-  });
-  assert.deepEqual(argsFor('qa_run', parseArgs(['web', '--pages', '//a,//b/c,/d'])).pages, ['/a', '/b/c', '/d'], 'the // escape for Git Bash folds back to a site path');
-  assert.throws(() => argsFor('qa_run', parseArgs(['web', '--pages', 'C:/Program Files/Git/a,/b'])), /MSYS_NO_PATHCONV/, 'a path rewritten by Git Bash is explained, not passed on');
-  assert.deepEqual(argsFor('qa_metrics', parseArgs(['--file', 'metrics.json', '--site', 'web', '--limit', '4'])), {
-    file: resolve('metrics.json'), site: 'web', limit: 4,
-  });
-  assert.deepEqual(argsFor('public_case_summary', parseArgs(['--case-path', 'docs/cases/xspark/2026-11-04'])), {
-    casePath: 'docs/cases/xspark/2026-11-04',
+  assert.deepEqual(argsFor('site_assessment', parseArgs(['example.test', '--limit', '5'])), {
+    siteId: 'example.test', limit: 5,
   });
 });
 

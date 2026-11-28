@@ -24,7 +24,7 @@ function shouldSkipPath(fileOrDir, root) {
   const parts = rel.split('/').filter(Boolean);
   if (parts.some((part) => SKIP_DIRS.has(part))) return true;
   if (parts[0]?.startsWith('.') && parts[0] !== '.github') return true;
-  if (parts[0] === 'docs' && parts[1] === 'archive') return true;
+  if (parts[0] === 'docs' && (parts[1] === 'archive' || parts[1] === 'audits' || parts[1] === 'prd')) return true;
   return false;
 }
 

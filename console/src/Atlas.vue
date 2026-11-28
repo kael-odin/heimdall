@@ -35,26 +35,6 @@ import JobsView from './JobsView.vue';
 import PagesView from './PagesView.vue';
 import StorageCard from './StorageCard.vue';
 import AssetTable from './AssetTable.vue';
-/**
- * 验收相关的视图异步加载。
- *
- * Acceptance* 这十个组件加起来约 500KB 源码，原先静态 import 进 Atlas，
- * 于是它们和星图挤在同一个 chunk 里 —— **打开控制台就是为了克隆一个站，
- * 却要先下完一整套验收工作台**。而「项目验收」是一个独立的视图（view === 'acceptance'），
- * 「报告」页里那张验收汇总卡也只是报告页的一部分。
- * 拆成独立 chunk 之后：首屏只下外壳，点进去才拉。Graph3D 当初也是这么处理的。
- *
- * 沿用 Graph3D 的两个细节：120ms 内到货不闪占位；错误给一句人话而不是一片空白。
- */
-const asyncView = (loader, label) => defineAsyncComponent({
-  loader,
-  loadingComponent: { render: () => h('div', { class: 'wv-empty', role: 'status' }, `正在加载${label}…`) },
-  errorComponent: { render: () => h('div', { class: 'wv-empty', role: 'alert' }, `${label}加载失败，请刷新页面重试。`) },
-  delay: 120,
-  timeout: 30000,
-});
-const AcceptanceSummary = asyncView(() => import('./AcceptanceSummary.vue'), '验收汇总');
-const AcceptanceWorkbench = asyncView(() => import('./AcceptanceWorkbench.vue'), '项目验收');
 import DetailDock from './DetailDock.vue';
 import ActivityRail from './ActivityRail.vue';
 import TrashDialog from './TrashDialog.vue';
@@ -284,7 +264,6 @@ const view = ref('atlas');
 const VIEWS = [
   { id: 'atlas', icon: '✦', label: '星图', hint: '全站力导向图：每个行星是一页，连线是站内链接' },
   { id: 'pages', icon: '▤', label: '页面', hint: '逐页清单：克隆状态 / 还原度 / 资产 / 缺口，可搜索筛选批量克隆' },
-  { id: 'acceptance', iconName: 'swap', label: '项目验收', hint: '对照基线与目标项目，验证视觉、结构、交互与运行健康，查看缺陷和复现证据' },
   { id: 'jobs', icon: '◷', label: '任务', hint: '本次会话的任务与持久化历史（引擎重启也在）' },
   { id: 'reports', icon: '▦', label: '报告', hint: '克隆档案 / SEO 审计 / 体检 / 交互镜像 / 对标 / 情报' },
   { id: 'settings', icon: '⚙', label: '设置', hint: '模型服务、引擎地址与 Token、界面偏好' },
@@ -2234,8 +2213,6 @@ onBeforeUnmount(() => {
     @stop="cancelJob"
   />
 
-  <AcceptanceWorkbench v-if="view === 'acceptance'" @close="view = 'atlas'" />
-
   <section class="work-view surface" v-if="view === 'reports'">
     <div class="wv-head">
       <b>报告中心 · {{ host || '未选择站点' }}</b>
@@ -2251,7 +2228,6 @@ onBeforeUnmount(() => {
       <a v-if="hasReport('intel')" :href="reportUrl('intel')" :target="staticBridgeNeeded() ? '_blank' : undefined" :download="staticBridgeNeeded() ? null : ''">情报 Excel</a>
     </nav>
     <div class="reports-scroll">
-    <AcceptanceSummary :host="host" />
     <div class="report-card surface">
       <h3>克隆档案</h3>
       <p v-if="pagesLoading" role="status" aria-live="polite">逐页状态统计中…</p>

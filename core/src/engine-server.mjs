@@ -51,27 +51,6 @@ import { cloneDocFile } from './clone-doc.mjs';
 import { readCloneScope } from './clone-scope.mjs';
 import { scanMeasurementsAsync } from './verify/measurement-status.mjs';
 import { readCurrentScore } from './score-status.mjs';
-import { normalizeAcceptancePlan } from './acceptance/schema.mjs';
-import { assertUnmanagedAcceptanceInput, ManagedAcceptanceRunError } from './acceptance/managed-run-schema.mjs';
-import { createLegacyAcceptanceReadScope } from './acceptance/managed-access.mjs';
-import { previewOpenApi } from './acceptance/openapi.mjs';
-import { createAcceptanceRun, listAcceptanceRuns, readAcceptanceRun, readAcceptanceDisplayRun, updateAcceptanceRun, acceptanceArtifact, readAcceptanceArtifact, readAcceptanceTriage, saveAcceptanceTriage, readAcceptanceLocalization, saveAcceptanceLocalization, readAcceptanceSnapshots } from './acceptance/store.mjs';
-import { recoverOwnedAcceptanceRuns } from './acceptance/recovery.mjs';
-import { acceptanceRunView } from './acceptance/run-view.mjs';
-import { compareAcceptanceSnapshots, comparisonMarkdown } from './acceptance/comparison.mjs';
-import { acquireAcceptanceOwner, ACCEPTANCE_OWNER_FILE } from './acceptance/owner.mjs';
-import { ACCEPTANCE_ROOT } from './acceptance/constants.mjs';
-import { createAcceptanceCatalogStore } from './acceptance/catalog.mjs';
-import { handleAcceptanceCatalogRequest, acceptanceCatalogError } from './acceptance/catalog-api.mjs';
-import { createAcceptanceExecutionRuntime } from './acceptance/execution-runtime.mjs';
-import { createManagedSpecExecutionService } from './acceptance/execution-service.mjs';
-import { handleAcceptanceExecutionRequest, acceptanceExecutionError } from './acceptance/execution-api.mjs';
-import { createBrowserExecutionService } from './acceptance/browser-execution-service.mjs';
-import { handleBrowserExecutionRequest } from './acceptance/browser-execution-api.mjs';
-import { createDefectTicketService } from './acceptance/defect-ticket-service.mjs';
-import { handleDefectTicketRequest } from './acceptance/defect-ticket-api.mjs';
-import { createManagedSpecDispatchReadContext } from './acceptance/managed-dispatch-reader.mjs';
-import { managedRunProvenanceOf } from './acceptance/managed-run-schema.mjs';
 import { explainError } from './errors.mjs';
 // Bifröst（AI 接入层）：HTTP v1 门面与任务门面，只挂新路由，不改旧路由（PRD docs/prd/ai-native 附录 A §6）
 import { createJobManager } from './agent/jobs.mjs';
@@ -79,41 +58,6 @@ import { handleV1 } from './agent/http-v1.mjs';
 import { clearEngineState, writeEngineState } from './agent/engine-client.mjs';
 
 const CONSOLE_DIR = process.env.HEIMDALL_CONSOLE_DIR ?? '';
-let acceptanceOwner;
-try { acceptanceOwner = acquireAcceptanceOwner(); }
-catch (error) {
-  const failure = acceptanceCatalogError(error);
-  console.error(`[acceptance] ${failure.payload.code}: ${failure.payload.error}`);
-  console.error(`[acceptance] 锁文件: ${join(ACCEPTANCE_ROOT, ACCEPTANCE_OWNER_FILE)}`);
-  console.error('[acceptance] 先确认没有其他 Heimdall 引擎在运行；确认后删除该锁文件再启动。不要删除其他验收数据。');
-  process.exit(1);
-}
-// Registered immediately: failed startup and normal exit release only our nonce.
-process.once('exit', () => acceptanceOwner.release());
-const acceptanceCatalog = createAcceptanceCatalogStore({ root: acceptanceOwner.root, owner: acceptanceOwner });
-let acceptanceCatalogOpened = false;
-try {
-  await acceptanceCatalog.initialize({ createSchemaVersion: 3 });
-  acceptanceCatalogOpened = true;
-}
-catch (error) {
-  const failure = acceptanceCatalogError(error);
-  console.error(`[acceptance] ${failure.payload.code}: ${failure.payload.error}`);
-}
-// A second engine must never recover the live owner's running records.
-acceptanceOwner.assertOwned();
-let acceptanceRecovery;
-try {
-  // Maintenance is explicit. Do not settle run heads while their catalog
-  // cannot be opened, including legacy formats that require operator migration.
-  if (!acceptanceCatalogOpened) throw Object.assign(new Error('项目目录尚未打开，请先完成目录维护。'), { code: 'CATALOG_NOT_OPEN' });
-  const counts = recoverOwnedAcceptanceRuns({ owner: acceptanceOwner });
-  acceptanceRecovery = Object.freeze({ schemaVersion: 1, ready: true, status: 'ready', counts, code: null });
-}
-catch (error) {
-  acceptanceRecovery = Object.freeze({ schemaVersion: 1, ready: false, status: 'blocked', counts: null, code: 'ACCEPTANCE_RECOVERY_BLOCKED' });
-  console.warn(`[acceptance] recovery blocked: ${error.code}: ${error.message}`);
-}
 const execFileAsync = promisify(execFile);
 
 // 任务持久化（node:sqlite；不可用时自动降级 JSON）——重启后历史/事件不丢
@@ -618,11 +562,6 @@ let runningSession = null;
 let runningReclaim = null;
 let runningUpgrade = null;
 let runningClone = null;
-let runningAcceptance = null;
-let runningAcceptanceTriage = null;
-let runningAcceptanceLocalization = null;
-let runningAcceptanceExploration = false;
-const acceptanceRuntime = createAcceptanceExecutionRuntime();
 let shuttingDown = false;
 
 /**
@@ -724,9 +663,6 @@ function killTask(t, reason) {
   t.killed = reason;
   t.error = reason === 'stalled' ? '单页长时间无进展，已熔断' : '单页超出时间上限，已熔断';
   push(t, { kind: 'forge-timeout', reason, message: t.error });
-  if (t.acceptanceLease) {
-    try { acceptanceRuntime.stop(t.acceptanceLease, reason === 'stalled' ? 'WATCHDOG_STALLED' : 'WATCHDOG_TIMEOUT'); } catch {}
-  }
   killTree(t.child);
 }
 
@@ -868,110 +804,9 @@ function spawnTask(t, script, args, opts = {}) {
   return t;
 }
 
-// Jobs and SSE are projections. Only the owned writer may decide a managed
-// run's terminal fact; a broken projection must not trigger a second finish.
-function managedTaskMirror({ lease, record }) {
-  const p = managedRunProvenanceOf(record);
-  const binding = { schemaVersion: 1, operationId: p.operationId, runId: p.runId,
-    taskId: p.taskId, dispatchSha256: p.dispatchSha256, projectId: p.projectId };
-  let t;
-  const attempt = action => { try { action(); } catch { if (t) t.mirrorDegraded = true; } };
-  const persist = () => attempt(() => jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url,
-    status: t.status, createdAt: t.createdAt, endedAt: t.endedAt ?? null,
-    payload: { managedAcceptance: binding }, error: t.error ?? null }));
-  const event = ev => {
-    t.events.push(ev);
-    if (t.events.length > 1000) t.events.splice(0, t.events.length - 1000);
-    attempt(() => jobStore?.appendEvent(t.id, ev));
-    attempt(() => writeSubs(t, `data: ${JSON.stringify(ev)}\n\n`));
-  };
-  return {
-    preflight({ taskId }) {
-      // A failed lookup is never interpreted as absence.
-      if (tasks.has(taskId) || jobStore?.get(taskId)) {
-        throw Object.assign(new Error('reserved task already exists'), { code: 'MANAGED_RUN_CONFLICT', status: 409 });
-      }
-    },
-    register(manifest) {
-      t = { id: p.taskId, kind: 'acceptance', runId: p.runId, url: p.target.targetUrl,
-        label: manifest.name, status: 'running', createdAt: Date.parse(manifest.createdAt),
-        events: [], logs: [], subs: new Set(), child: null, cancelRequested: false,
-        managedAcceptance: true, acceptanceLease: lease, mirrorDegraded: false };
-      t.requestStop = reason => { acceptanceRuntime.stop(lease, reason); };
-      tasks.set(t.id, t); runningAcceptance = t;
-      persist();
-    },
-    event,
-    terminal(result) {
-      if (!t || t.status !== 'running') return;
-      t.status = result.status; t.endedAt = Date.now();
-      t.error = result.code ?? (result.runStatus === 'completed' ? null : result.reasonCode);
-      if (result.runStatus === 'completed') event({ kind: 'acceptance-complete', runId: t.runId,
-        gate: result.gate, summary: result.summary });
-      event({ kind: 'exit', status: t.status, code: result.code ?? null });
-      persist();
-      for (const res of t.subs) attempt(() => res.end());
-      t.subs.clear();
-      if (runningAcceptance?.id === t.id) runningAcceptance = null;
-      bustCaches(); attempt(() => jobStore?.prune());
-      if (tasks.size > MAX_TASKS) {
-        const finished = [...tasks.values()].filter(item => item.status !== 'running').sort((a, b) => a.createdAt - b.createdAt);
-        for (const old of finished.slice(0, tasks.size - MAX_TASKS)) tasks.delete(old.id);
-      }
-    },
-  };
-}
-const acceptanceExecutions = createManagedSpecExecutionService({ owner: acceptanceOwner,
-  catalog: acceptanceCatalog, runtime: acceptanceRuntime, mirrorFactory: managedTaskMirror,
-  assertReady() {
-    acceptanceOwner.assertOwned();
-    if (!acceptanceRecovery.ready || shuttingDown) throw Object.assign(new Error('acceptance admission unavailable'),
-      { code: 'MANAGED_EXECUTION_UNAVAILABLE', status: 503 });
-    return true;
-  } });
-const browserExecutions = createBrowserExecutionService({ owner: acceptanceOwner,
-  catalog: acceptanceCatalog, runtime: acceptanceRuntime,
-  assertReady: () => acceptanceRecovery.ready && !shuttingDown });
-const defectTickets = createDefectTicketService({ owner: acceptanceOwner,
-  assertReady: () => acceptanceRecovery.ready && !shuttingDown });
-try { browserExecutions.recover(); }
-catch { console.warn('[acceptance] Browser operation recovery blocked; original records retained.'); }
-
-// Recover the disposable job projection from verified run facts, never in the
-// other direction. In particular, completed BUG reports still mean task done.
 if (jobStore) {
   try {
-    const jobs = jobStore.list({ limit: 500 });
-    const managed = job => job.payload && Object.hasOwn(job.payload, 'managedAcceptance');
-    for (const job of jobs.filter(managed)) {
-      try {
-        if (!acceptanceRecovery.ready) throw new Error('recovery blocked');
-        acceptanceOwner.assertOwned();
-        const b = job.payload.managedAcceptance;
-        const managedRead = createManagedSpecDispatchReadContext({ root: acceptanceOwner.root });
-        const record = managedRead.reread(b.operationId, b.dispatchSha256), p = managedRunProvenanceOf(record);
-        const expected = { schemaVersion: 1, operationId: p.operationId, runId: p.runId,
-          taskId: p.taskId, dispatchSha256: p.dispatchSha256, projectId: p.projectId };
-        if (!b || Object.keys(b).length !== Object.keys(expected).length
-            || Object.entries(expected).some(([key, value]) => b[key] !== value)
-            || job.id !== p.taskId || job.kind !== 'acceptance' || job.url !== p.target.targetUrl) throw new Error('binding mismatch');
-        const head = readAcceptanceRun(p.runId, { root: acceptanceOwner.root, managedRead });
-        if (!head || Date.parse(head.createdAt) !== job.createdAt || head.status === 'running') throw new Error('unsettled run');
-        if (head.status === 'completed') {
-          const [snapshot] = readAcceptanceSnapshots([p.runId], { root: acceptanceOwner.root, managedRead });
-          if (!snapshot?.integrity?.valid || !snapshot.integrity.evidenceVerified) throw new Error('completed snapshot unavailable');
-        }
-        managedRead.assertCurrent(); acceptanceOwner.assertOwned();
-        const status = head.status === 'completed' ? 'done'
-          : head.reasonCode === 'CANCELLED' ? 'cancelled' : head.status;
-        jobStore.upsert({ ...job, status, endedAt: Date.parse(head.endedAt ?? head.updatedAt),
-          error: head.status === 'completed' ? null : head.reasonCode ?? 'MANAGED_EXECUTION_INTERRUPTED' });
-      } catch {
-        // Unknown is a projection failure, not permission to resume or rewrite.
-        try { jobStore.upsert({ ...job, status: 'failed', endedAt: job.endedAt ?? Date.now(), error: 'MANAGED_MIRROR_UNAVAILABLE' }); } catch {}
-      }
-    }
-    const n = recoverInterrupted({ list: () => jobs.filter(job => !managed(job)), upsert: job => jobStore.upsert(job) });
+    const n = recoverInterrupted(jobStore);
     if (n) console.log(`[jobs] recovered ${n} interrupted task(s)`);
     jobStore.prune();
   } catch { console.warn('[jobs] startup projection reconciliation unavailable'); }
@@ -1357,10 +1192,6 @@ const handleRequest = async (req, res) => {
     });
   }
 
-  if (u.pathname.startsWith('/api/acceptance/')) {
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-  }
   if (!authorized(req, (u.pathname === '/lm' || u.pathname.startsWith('/lm/')) ? null : u, res)
       && (u.pathname.startsWith('/api/') || u.pathname.startsWith('/px/')
         || u.pathname.startsWith('/static/') || u.pathname === '/lm' || u.pathname.startsWith('/lm/'))) {
@@ -1370,219 +1201,6 @@ const handleRequest = async (req, res) => {
   // AI 接入层 HTTP v1（新路由；旧 /api/* 行为不变）
   if (u.pathname.startsWith('/api/v1/')) {
     if (await handleV1(req, res, u, { jobs: agentJobs })) return;
-  }
-
-  // Independent project acceptance: persistent runs, protected evidence, bounded worker.
-  if (u.pathname.startsWith('/api/acceptance/')) {
-    try { acceptanceOwner.assertOwned(); }
-    catch (error) {
-      const failure = acceptanceCatalogError(error);
-      return json(res, failure.status, failure.payload);
-    }
-    if (u.pathname === '/api/acceptance/recovery') {
-      if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
-      return json(res, 200, acceptanceRecovery);
-    }
-    // These exact decision endpoints read an existing immutable fact first.
-    // Their services still require recovery readiness and ownership for new decisions.
-    const browserDecisionRead = req.method === 'POST'
-      && /^\/api\/acceptance\/projects\/ap-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/browser-executions\/bo-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/deny-start$/.test(u.pathname);
-    const defectDecisionRead = req.method === 'POST'
-      && /^\/api\/acceptance\/projects\/ap-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/defect-tickets\/actions\/da-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/deny$/.test(u.pathname);
-    if (!acceptanceRecovery.ready && !['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !browserDecisionRead && !defectDecisionRead) {
-      return json(res, 503, { code: 'ACCEPTANCE_RECOVERY_BLOCKED', error: '启动恢复未完成，验收写入暂不可用；请检查运行现场后重启引擎。' });
-    }
-  }
-  if (await handleAcceptanceExecutionRequest(req, res, u, { service: acceptanceExecutions, json })) return;
-  if (await handleBrowserExecutionRequest(req, res, u, { service: browserExecutions, json })) return;
-  if (await handleDefectTicketRequest(req, res, u, { service: defectTickets, json })) return;
-  if (await handleAcceptanceCatalogRequest(req, res, u, { catalog: acceptanceCatalog, json })) return;
-  if (u.pathname === '/api/acceptance/comparisons') {
-    if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
-    if ([...u.searchParams.keys()].some(key => !['before', 'after', 'format'].includes(key))
-      || ['before', 'after', 'format'].some(key => u.searchParams.getAll(key).length > 1)) {
-      return json(res, 400, { code: 'INVALID_INPUT', error: '对比参数只支持 before、after 和 format，不能重复。' });
-    }
-    const beforeId = u.searchParams.get('before');
-    const afterId = u.searchParams.get('after');
-    const format = u.searchParams.get('format') ?? 'json';
-    if (!beforeId || !afterId || !['json', 'md'].includes(format)) return json(res, 400, { code: 'INVALID_INPUT', error: '请明确选择两次不同的运行，格式支持 json 或 md。' });
-    try {
-      if (beforeId === afterId) return json(res, 400, { code: 'SAME_RUN', error: '此前运行与本次运行不能相同。' });
-      const [before, after] = readAcceptanceSnapshots([beforeId, afterId]);
-      if (!before || !after) return json(res, 404, { code: 'RUN_NOT_FOUND', error: '所选运行不存在。' });
-      const beforeTime = Date.parse(before.manifest?.createdAt);
-      const afterTime = Date.parse(after.manifest?.createdAt);
-      if (Number.isFinite(beforeTime) && Number.isFinite(afterTime) && beforeTime > afterTime) {
-        return json(res, 400, { code: 'RUN_ORDER', error: '此前运行的创建时间晚于本次运行，请核对选择。' });
-      }
-      const comparison = compareAcceptanceSnapshots(before, after);
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      if (format === 'md') {
-        res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8', 'Content-Disposition': 'attachment; filename="acceptance-comparison.md"' });
-        return res.end(comparisonMarkdown(comparison));
-      }
-      return json(res, 200, comparison);
-    } catch (error) {
-      return json(res, 400, { code: error.code ?? 'COMPARISON_UNAVAILABLE', error: '无法对比所选运行，请核对运行身份、报告和证据是否可用。' });
-    }
-  }
-  if (u.pathname === '/api/acceptance/openapi/preview') {
-    if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
-    return readJsonBody(req, res, input => {
-      try {
-        const preview = previewOpenApi(input.document, { targetUrl: input.targetUrl, name: input.name });
-        preview.plan = normalizeAcceptancePlan(preview.plan);
-        return json(res, 200, preview);
-      } catch (error) { return json(res, 400, { error: String(error.message).slice(0, 500) }); }
-    }, 4 * 1024 * 1024 + 16 * 1024);
-  }
-  if (u.pathname === '/api/acceptance/explore') {
-    if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
-    // Reserve before the body is read so two uploads cannot both start a browser; the response always releases it.
-    if (runningAcceptanceExploration) return json(res, 409, { error: '正在探索另一个基线页面，请稍后重试。' });
-    runningAcceptanceExploration = true;
-    res.once('finish', () => { runningAcceptanceExploration = false; });
-    res.once('close', () => { runningAcceptanceExploration = false; });
-    return readJsonBody(req, res, async input => {
-      try {
-        assertUnmanagedAcceptanceInput(input);
-        const { exploreAcceptanceBaseline } = await import('./acceptance/explore.mjs');
-        const exploration = await exploreAcceptanceBaseline(input);
-        return json(res, 200, exploration);
-      } catch (error) { return json(res, 400, { error: String(error?.message ?? error).slice(0, 500) }); }
-    }, 256 * 1024);
-  }
-  if (u.pathname === '/api/acceptance/runs') {
-    if (req.method === 'GET') {
-      try { return json(res, 200, { runs: listAcceptanceRuns() }); }
-      catch (error) {
-        if (!(error instanceof ManagedAcceptanceRunError)) throw error;
-        return json(res, error.status, { code: error.code, error: error.message });
-      }
-    }
-    if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
-    return readJsonBody(req, res, input => {
-      let plan;
-      try {
-        assertUnmanagedAcceptanceInput(input);
-        plan = normalizeAcceptancePlan(input);
-        createLegacyAcceptanceReadScope(acceptanceOwner.root).assertCurrent();
-      } catch (error) {
-        if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
-        return json(res, 400, { error: error.message });
-      }
-      let lease, t, manifest, finalized = false;
-      const finalize = () => {
-        if (finalized) return;
-        finalized = true;
-        if (runningAcceptance?.id === t?.id) runningAcceptance = null;
-        try {
-          acceptanceOwner.assertOwned();
-          if (manifest) {
-            const current = readAcceptanceRun(manifest.runId);
-            if (current?.status === 'running') updateAcceptanceRun(manifest.runId, {
-              status: t.cancelRequested ? 'interrupted' : 'failed', gate: 'blocked',
-              endedAt: new Date().toISOString(), error: t.cancelRequested ? '验收任务已取消，请重新运行。' : '验收进程未完成；已保留现场，请重新运行。',
-            });
-          }
-        } catch { acceptanceRuntime.block(); }
-        finally { if (lease) { try { acceptanceRuntime.release(lease); } catch {} } }
-      };
-      try {
-        acceptanceOwner.assertOwned();
-        lease = acceptanceRuntime.reserve({ kind: 'legacy' });
-        t = makeTask('acceptance', plan.targetUrl);
-        manifest = createAcceptanceRun(plan, { taskId: t.id });
-        t.runId = manifest.runId; t.label = plan.name; t.acceptanceLease = lease;
-        t.requestStop = reason => { acceptanceRuntime.stop(lease, reason); };
-        acceptanceRuntime.bind(lease, { runId: t.runId, taskId: t.id, onStop(reason) {
-          if (['CANCELLED', 'ENGINE_SHUTDOWN'].includes(reason)) t.cancelRequested = true;
-          killTree(t.child, 'SIGTERM');
-        } });
-        acceptanceRuntime.assertActive(lease);
-        runningAcceptance = t;
-        spawnTask(t, join('src', 'acceptance', 'cli.mjs'), ['--run', manifest.runId], { timeoutMs: 360000, stallMs: 65000 });
-        t.child.once('exit', finalize);
-        t.child.once('error', () => {
-          t.watchdog?.stop(); t.status = 'failed'; t.endedAt = Date.now();
-          t.error = '验收进程未能启动。'; finalize();
-          try { jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status,
-            createdAt: t.createdAt, endedAt: t.endedAt, error: t.error }); } catch {}
-        });
-        return json(res, 202, { runId: manifest.runId, taskId: t.id });
-      } catch (error) {
-        if (t) {
-          t.status = 'failed'; t.endedAt = Date.now(); t.error = '无法创建验收记录。';
-          try { jobStore?.upsert({ id: t.id, kind: t.kind, url: t.url, status: t.status,
-            createdAt: t.createdAt, endedAt: t.endedAt, error: t.error }); } catch {}
-        }
-        finalize();
-        const failure = acceptanceExecutionError(error);
-        return json(res, failure.status, failure.payload);
-      }
-    }, 7 * 1024 * 1024);
-  }
-  if (u.pathname.startsWith('/api/acceptance/runs/')) {
-    const segments = u.pathname.slice('/api/acceptance/runs/'.length).split('/');
-    const [runId, kind, name] = segments;
-    try {
-      const manifest = segments.length === 1 && req.method === 'GET'
-        ? readAcceptanceDisplayRun(runId) : readAcceptanceRun(runId);
-      if (!manifest) return json(res, 404, { error: '验收任务不存在' });
-      if (segments.length === 2 && kind === 'triage') {
-        if (req.method === 'GET') {
-          const saved = readAcceptanceTriage(runId);
-          return saved ? json(res, 200, saved) : json(res, 404, { error: '尚未生成 AI 解读' });
-        }
-        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
-        if (runningAcceptanceTriage) return json(res, 409, { error: 'AI 正在解读另一份验收报告，请稍后重试。' });
-        const reportFile = acceptanceArtifact(runId, 'report.json');
-        if (!reportFile) return json(res, 409, { error: '请等待验收完成后再生成 AI 解读。' });
-        runningAcceptanceTriage = runId;
-        try {
-          const { triageAcceptanceReport } = await import('./acceptance/triage.mjs');
-          const triage = await triageAcceptanceReport(JSON.parse(readFileSync(reportFile, 'utf8')));
-          saveAcceptanceTriage(runId, triage);
-          return json(res, 200, triage);
-        } finally { runningAcceptanceTriage = null; }
-      }
-      if (segments.length === 2 && kind === 'localization') {
-        if (req.method === 'GET') {
-          const saved = readAcceptanceLocalization(runId);
-          return saved ? json(res, 200, saved) : json(res, 404, { error: '尚未生成元素定位' });
-        }
-        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
-        if (runningAcceptanceLocalization) return json(res, 409, { error: '正在为另一份验收报告生成元素定位，请稍后重试。' });
-        const reportFile = acceptanceArtifact(runId, 'report.json');
-        if (!reportFile) return json(res, 409, { error: '请等待验收完成后再生成元素定位。' });
-        runningAcceptanceLocalization = runId;
-        try {
-          // Re-renders both sides under the read-only profile; only the localization.json sidecar is added, the report and evidence stay as the run left them.
-          const { localizeAcceptanceRun } = await import('./acceptance/localize.mjs');
-          const localization = await localizeAcceptanceRun(dirname(reportFile));
-          saveAcceptanceLocalization(runId, localization);
-          return json(res, 200, localization);
-        } finally { runningAcceptanceLocalization = null; }
-      }
-      if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' });
-      if (segments.length === 1) return json(res, 200, acceptanceRunView(manifest, { includePlan: true }));
-      let fileName;
-      if (segments.length === 2 && kind === 'report') fileName = 'report.json';
-      else if (segments.length === 2 && kind === 'report.md') fileName = 'report.md';
-      else if (segments.length === 3 && kind === 'evidence') fileName = decodeURIComponent(name);
-      else return json(res, 404, { error: 'unknown acceptance endpoint' });
-      const artifact = readAcceptanceArtifact(runId, fileName);
-      if (!artifact) return json(res, manifest.status === 'running' ? 409 : 404, { error: '报告或证据尚不可用' });
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('Content-Type', artifact.contentType);
-      return res.end(artifact.bytes);
-    } catch (error) {
-      if (error instanceof ManagedAcceptanceRunError) return json(res, error.status, { code: error.code, error: error.message });
-      return json(res, 400, { error: String(error.message).slice(0, 300) });
-    }
   }
 
   if (req.method === 'GET' && u.pathname === '/api/llm/status') {
@@ -1660,13 +1278,8 @@ const handleRequest = async (req, res) => {
     const t = tasks.get(id);
     if (!t) return json(res, 404, { error: 'no such task' });
     if (t.status === 'running') {
-      try {
-        const cancelled = cancelTaskTree(t, 'CANCELLED');
-        return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested, cancelledTaskIds: cancelled });
-      } catch (cause) {
-        const failure = acceptanceExecutionError(cause);
-        return json(res, failure.status, failure.payload);
-      }
+      const cancelled = cancelTaskTree(t, 'CANCELLED');
+      return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested, cancelledTaskIds: cancelled });
     }
     return json(res, 200, { id, status: t.status, cancelRequested: t.cancelRequested, cancelledTaskIds: [] });
   }
@@ -2321,7 +1934,6 @@ const handleRequest = async (req, res) => {
       assets: runningAssets ? { id: runningAssets.id, url: runningAssets.url } : null,
       matrix: runningMatrix ? { id: runningMatrix.id, url: runningMatrix.url } : null,
       verify: runningVerify ? { id: runningVerify.id, host: runningVerify.host } : null,
-      acceptance: runningAcceptance ? { id: runningAcceptance.id, runId: runningAcceptance.runId } : null,
       live: runningLive ? { id: runningLive.id, host: runningLive.host } : null,
       session: runningSession ? { id: runningSession.id, host: runningSession.host } : null,
       upgrade: runningUpgrade ? { id: runningUpgrade.id, host: runningUpgrade.host } : null,
@@ -2608,7 +2220,6 @@ server.listen(PORT, BIND, () => {
 const shutdown = async () => {
   if (shuttingDown) return;
   shuttingDown = true;
-  try { acceptanceRuntime.close(); } catch { acceptanceRuntime.block(); }
   server.close();
   const running = [...tasks.values()].filter(t => t.status === 'running' && t.child && t.child.exitCode === null);
   const children = Promise.all(running.map(t => new Promise(resolve => {
@@ -2622,8 +2233,7 @@ const shutdown = async () => {
     t.child.once('exit', () => clearTimeout(forceKill));
   })));
   let grace;
-  await Promise.race([Promise.allSettled([children, acceptanceExecutions.drain(), browserExecutions.drain()]),
-    new Promise(resolve => { grace = setTimeout(resolve, 2500); })]);
+  await Promise.race([children, new Promise(resolve => { grace = setTimeout(resolve, 2500); })]);
   clearTimeout(grace);
   try { jobStore?.close(); } catch {}
   clearEngineState(process.pid);

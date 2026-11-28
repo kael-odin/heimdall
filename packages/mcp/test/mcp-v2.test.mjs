@@ -3,11 +3,10 @@
  * 两个协议时代（2025 握手 / 钉死 2026-07-28）都要通。
  *
  * 协议测试覆盖工具、参数校验、信封、资源和提示词。
- * 直连 QA 集成测试另用真实 Chromium 和本地夹具，不需要常驻引擎。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, statSync, utimesSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -15,14 +14,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { loadWorkspace } from '../../../core/src/qa/workspace.mjs';
-import { baselineFile, writeBaseline } from '../../../core/src/qa/baseline.mjs';
 
 const BIN = fileURLToPath(new URL('../bin/heimdall-mcp.mjs', import.meta.url));
 const CORE = fileURLToPath(new URL('../../../core/', import.meta.url));
-const PUBLIC_CASE = join(CORE, '..', 'docs', 'cases', 'xspark', '2026-11-04');
 const EXPECTED = ['heimdall_overview', 'heimdall_site', 'heimdall_brief', 'heimdall_artifact', 'heimdall_compare', 'heimdall_jobs', 'heimdall_clone', 'heimdall_doctor',
-  'heimdall_qa_status', 'heimdall_qa_run', 'heimdall_qa_findings', 'heimdall_qa_ci', 'heimdall_qa_metrics', 'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_seo_outcomes', 'heimdall_site_watch', 'heimdall_site_assessment', 'heimdall_public_case_summary'];
+  'heimdall_seo_audit', 'heimdall_seo_matrix', 'heimdall_seo_outcomes', 'heimdall_site_watch', 'heimdall_site_assessment'];
 
 function fixtureRoot() {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-mcp-'));
@@ -127,7 +123,7 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       const byName = Object.fromEntries(tools.map(t => [t.name, t]));
       assert.equal(byName.heimdall_overview.annotations.readOnlyHint, true);
       assert.equal(byName.heimdall_compare.annotations.readOnlyHint, false);
-      for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch', 'qa_run', 'qa_ci']) {
+      for (const id of ['clone', 'seo_audit', 'seo_matrix', 'site_watch']) {
         const tool = byName[`heimdall_${id}`];
         assert.equal(tool.annotations.openWorldHint, true, id);
         assert.equal(tool.annotations.destructiveHint, true, id);
@@ -141,24 +137,9 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       assert.equal(overview.isError, false);
       assert.equal(overview.structuredContent.ok, true);
       assert.deepEqual(overview.structuredContent.result.sites.map(s => s.siteId), ['example.test']);
-      // 开发机上 8900 常开着一台用自己数据目录的引擎：隔离数据根看到的是 data_root_mismatch，同样是「没有可用引擎」
       assert.ok(['unreachable', 'data_root_mismatch'].includes(overview.structuredContent.result.engine.status));
       assert.ok(Array.isArray(overview.structuredContent.nextActions));
       assert.match(overview.content[0].text, /站点/);
-
-      const metrics = await client.callTool({ name: 'heimdall_qa_metrics', arguments: {
-        data: { labels: { truePositive: 1, falsePositive: 1, unknown: 0 }, runs: [{ runId: 'r1', elapsedMs: 1000 }] },
-      } });
-      assert.equal(metrics.isError, false);
-      assert.equal(metrics.structuredContent.result.alarms.falseDiscoveryRate.percent, 50);
-
-      const publicCase = await client.callTool({ name: 'heimdall_public_case_summary', arguments: { casePath: PUBLIC_CASE } });
-      assert.equal(publicCase.isError, false);
-      assert.equal(publicCase.structuredContent.result.case.id, 'xspark-public-web-qa');
-      assert.equal(publicCase.structuredContent.result.qa.baseline.gate, 'passed');
-      assert.equal(publicCase.structuredContent.result.seo.score, 90.8);
-      assert.equal(publicCase.structuredContent.result.integrity.status, 'consistent');
-      assert.equal(JSON.stringify(publicCase).includes('network.har'), false);
 
       const bad = await client.callTool({ name: 'heimdall_brief', arguments: { siteId: 'example.test', page: 'home', detail: 'everything' } });
       assert.equal(bad.isError, true, 'schema violations are tool errors, not protocol crashes');
@@ -187,7 +168,7 @@ for (const [label, mode] of [['2025 handshake', undefined], ['2026-07-28 pinned'
       assert.equal(matrix.structuredContent.result.json.sites[0].host, 'https://a.test');
 
       const { prompts } = await client.listPrompts();
-      assert.deepEqual(prompts.map(p => p.name), ['clone', 'rebuild', 'seo', 'watch', 'qa']);
+      assert.deepEqual(prompts.map(p => p.name), ['clone', 'rebuild', 'seo', 'watch']);
       const rebuild = await client.getPrompt({ name: 'rebuild', arguments: { url: 'https://example.test/' } });
       assert.match(rebuild.messages[0].content.text, /heimdall_compare/);
       assert.match(rebuild.messages[0].content.text, /不是指令/);
@@ -217,149 +198,5 @@ test('mcp proxy fallback keeps the complete tool surface while the engine is off
     assert.match(doctor.structuredContent.summary, /引擎没在跑/);
   } finally {
     await client.close().catch(() => {});
-  }
-});
-
-test('fresh direct MCP enforces exact QA query rules without an available engine', { timeout: 60_000 }, async () => {
-  const root = fixtureRoot();
-  const hits = [];
-  const fixture = createServer((req, res) => {
-    hits.push({ method: req.method, path: req.url });
-    if (req.url === '/rows') {
-      res.writeHead(200, { 'content-type': 'text/html' });
-      return res.end('<title>Rows</title><div id="ready">Ready</div><span class="date" hidden>measure</span><span class="date">2026-11-08</span><span class="date">bad</span>');
-    }
-    if (req.url === '/response') {
-      res.writeHead(200, { 'content-type': 'text/html' });
-      return res.end('<title>Response</title><div id="ready" hidden>Ready</div><script>fetch("/api/query", {method:"POST"}).then(() => { document.querySelector("#ready").hidden = false; })</script>');
-    }
-    if (req.url === '/api/query' && req.method === 'POST') {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      return res.end(JSON.stringify({ code: 0, private: 'mcp-fixture-private-do-not-record' }));
-    }
-    if (req.url === '/') {
-      res.writeHead(200, { 'content-type': 'text/html' });
-      return res.end(`<title>Fixture</title><script>
-        fetch('/api/query', {method:'POST'}).catch(()=>{});
-        fetch('/api/query/delete', {method:'POST'}).catch(()=>{});
-        fetch('/api/query', {method:'DELETE'}).catch(()=>{});
-      </script>`);
-    }
-    res.writeHead(204); res.end();
-  });
-  await new Promise(done => fixture.listen(0, '127.0.0.1', done));
-  const origin = `http://127.0.0.1:${fixture.address().port}`;
-  const rule = { method: 'POST', origin, path: '/api/query' };
-  const config = { sites: { web: { url: origin, writes: { allow: [rule] } } }, defaults: { settleMs: 100, timeoutMs: 15000 } };
-  const file = join(root, '.heimdall', 'qa.json');
-  mkdirSync(join(root, '.heimdall'), { recursive: true });
-  writeFileSync(file, JSON.stringify(config));
-  let client;
-  try {
-    client = await connect(root);
-    const overview = await client.callTool({ name: 'heimdall_overview', arguments: { include: ['engine'] } });
-    assert.ok(['unreachable', 'data_root_mismatch'].includes(overview.structuredContent.result.engine.status));
-    const status = await client.callTool({ name: 'heimdall_qa_status', arguments: { workspace: root, guidance: false } });
-    assert.equal(status.isError, false);
-    assert.deepEqual(status.structuredContent.result.sites[0].writeAllow, [rule]);
-    const run = await client.callTool({ name: 'heimdall_qa_run', arguments: { workspace: root, site: 'web', viewports: [1280],
-      linkCheck: false, detect: false, baseline: false } });
-    assert.equal(run.isError, false, JSON.stringify(run.structuredContent.error));
-    assert.deepEqual(run.structuredContent.result.navigation.failedPages, []);
-    assert.deepEqual(hits.filter(hit => hit.method !== 'GET'), [{ method: 'POST', path: '/api/query' }]);
-    assert.equal(existsSync(join(root, 'agent', 'engine.json')), false, 'the QA run did not start an engine for this data root');
-
-    const dateCheck = { id: 'rows', title: 'Check all rows', path: '/rows', steps: [{ action: 'waitFor', selector: '#ready' }],
-      expect: [{ kind: 'text', selector: '.date', scope: 'all-visible', minMatches: 2, matches: '^\\d{4}-\\d{2}-\\d{2}$' }] };
-    const rows = await client.callTool({ name: 'heimdall_qa_run', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
-      linkCheck: false, detect: false, baseline: false, checks: [dateCheck] } });
-    assert.equal(rows.isError, false, JSON.stringify(rows.structuredContent.error));
-    assert.equal(rows.structuredContent.result.checks[0].pass, false);
-    assert.deepEqual(rows.structuredContent.result.checks[0].assertions[0], { scope: 'all-visible', selector: '.date', matched: 2, failed: 1 });
-    const missing = { ...dateCheck, id: 'missing-rows', title: 'Missing rows', expect: [{ ...dateCheck.expect[0], selector: '.missing' }] };
-    const incomplete = await client.callTool({ name: 'heimdall_qa_ci', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
-      linkCheck: false, detect: false, baseline: false, checks: [missing], failOn: 'none' } });
-    assert.equal(incomplete.isError, true);
-    assert.equal(incomplete.structuredContent.error.code, 'qa_incomplete');
-    assert.equal(incomplete.structuredContent.result.ci.status, 'incomplete');
-
-    const responseCheck = { id: 'response', title: 'Check response', path: '/response',
-      steps: [{ action: 'waitFor', selector: '#ready' }], expect: [{ kind: 'visible', selector: '#ready' }],
-      responses: [{ method: 'POST', origin, path: '/api/query', status: 200, json: { path: ['code'], equals: 0 } }] };
-    const responseArgs = { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280], linkCheck: false, detect: false, baseline: false };
-    const beforeResponse = hits.filter(hit => hit.method === 'POST' && hit.path === '/api/query').length;
-    const responseOk = await client.callTool({ name: 'heimdall_qa_run', arguments: { ...responseArgs, checks: [responseCheck] } });
-    assert.equal(responseOk.isError, false, JSON.stringify(responseOk.structuredContent.error));
-    assert.equal(responseOk.structuredContent.result.checks[0].responses[0].state, 'matched');
-    assert.doesNotMatch(JSON.stringify(responseOk.structuredContent), /mcp-fixture-private-do-not-record/);
-    const responseMismatch = { ...responseCheck, responses: [{ ...responseCheck.responses[0], json: { path: ['code'], equals: 1 } }] };
-    const responseCi = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...responseArgs, checks: [responseMismatch], failOn: 'none' } });
-    assert.equal(responseCi.isError, true);
-    assert.equal(responseCi.structuredContent.error.code, 'qa_incomplete');
-    assert.equal(responseCi.structuredContent.result.checks[0].responses[0].state, 'json-mismatch');
-    assert.equal(hits.filter(hit => hit.method === 'POST' && hit.path === '/api/query').length - beforeResponse, 2);
-
-    const invalidSelector = { id: 'invalid-selector', title: 'Invalid hidden selector', path: '/rows',
-      expect: [{ kind: 'hidden', selector: '[' }] };
-    const invalidHidden = await client.callTool({ name: 'heimdall_qa_ci', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
-      linkCheck: false, detect: false, baseline: false, checks: [invalidSelector], failOn: 'none' } });
-    assert.equal(invalidHidden.isError, true);
-    assert.equal(invalidHidden.structuredContent.error.code, 'qa_incomplete');
-    assert.equal(invalidHidden.structuredContent.result.ci.status, 'incomplete');
-
-    const overlong = { ...dateCheck, id: 'oversized', expect: [
-      ...Array.from({ length: 20 }, () => ({ kind: 'title', contains: 'Rows' })),
-      { kind: 'title', contains: 'must not be skipped' },
-    ] };
-    writeFileSync(join(root, 'oversized-checks.json'), JSON.stringify({ checks: [overlong] }));
-    const hitCount = hits.length;
-    const oversized = await client.callTool({ name: 'heimdall_qa_ci', arguments: { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280],
-      linkCheck: false, detect: false, baseline: false, checksFile: 'oversized-checks.json', failOn: 'all' } });
-    assert.equal(oversized.isError, true);
-    assert.equal(oversized.structuredContent.error.code, 'invalid_args');
-    assert.equal(hits.length, hitCount, 'invalid file is rejected before browser traffic');
-
-    const ws = loadWorkspace(root);
-    const recorded = JSON.parse(readFileSync(join(root, rows.structuredContent.result.runDir, 'run.json'), 'utf8'));
-    const baseline = writeBaseline(ws, recorded, recorded.coverage.pages);
-    const visualArgs = { workspace: root, site: 'web', pages: ['/rows'], viewports: [1280], linkCheck: false, detect: false, failOn: 'none' };
-    const strictVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, requireBaseline: true } });
-    assert.equal(strictVisual.isError, false);
-    assert.equal(strictVisual.structuredContent.result.baseline.compared, 1);
-    assert.equal(strictVisual.structuredContent.result.ci.requireBaseline, true);
-    rmSync(join(ws.dataDir, 'runs', baseline.runId, baseline.pages[0].screenshot));
-    const missingVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: visualArgs });
-    assert.equal(missingVisual.isError, true);
-    assert.equal(missingVisual.structuredContent.error.code, 'qa_incomplete');
-    assert.match(missingVisual.structuredContent.result.ci.markdown, /基线截图缺失/);
-    const disabledVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, baseline: false } });
-    assert.equal(disabledVisual.isError, false);
-    assert.equal(disabledVisual.structuredContent.result.baseline.status, 'disabled');
-    writeFileSync(baselineFile(ws), '{invalid-json');
-    const corruptVisual = await client.callTool({ name: 'heimdall_qa_ci', arguments: visualArgs });
-    assert.equal(corruptVisual.isError, true);
-    assert.equal(corruptVisual.structuredContent.error.code, 'qa_incomplete');
-    assert.equal(corruptVisual.structuredContent.result.ci.status, 'incomplete');
-    rmSync(baselineFile(ws));
-    const requiredMissing = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, requireBaseline: true } });
-    assert.equal(requiredMissing.isError, true);
-    assert.equal(requiredMissing.structuredContent.error.code, 'qa_incomplete');
-    assert.equal(requiredMissing.structuredContent.result.baseline.status, 'unconfigured');
-    const contradictory = await client.callTool({ name: 'heimdall_qa_ci', arguments: { ...visualArgs, baseline: false, requireBaseline: true } });
-    assert.equal(contradictory.isError, true);
-    assert.equal(contradictory.structuredContent.error.code, 'invalid_args');
-
-    config.sites.web.writes.allow = ['/api/query'];
-    writeFileSync(file, JSON.stringify(config));
-    const before = readFileSync(file, 'utf8');
-    const legacy = await client.callTool({ name: 'heimdall_qa_status', arguments: { workspace: root, guidance: false } });
-    assert.equal(legacy.isError, true);
-    assert.equal(legacy.structuredContent.error.code, 'invalid_args');
-    assert.match(legacy.structuredContent.error.hint, /保留原工作区/);
-    assert.equal(readFileSync(file, 'utf8'), before);
-  } finally {
-    await client?.close().catch(() => {});
-    fixture.close();
-    rmSync(root, { recursive: true, force: true });
   }
 });

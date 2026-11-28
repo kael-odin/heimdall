@@ -22,7 +22,7 @@ export async function engineSummary() {
     if (p.unauthorized) return { status: 'unauthorized', base };
     if (!p.sameRoot) { mismatch = { status: 'data_root_mismatch', base, engineDataRoot: p.dataRoot }; continue; }
     const s = p.status;
-    const running = Object.fromEntries(['recon', 'audit', 'watch', 'assets', 'matrix', 'verify', 'acceptance', 'live', 'session', 'upgrade', 'clone']
+    const running = Object.fromEntries(['recon', 'audit', 'watch', 'assets', 'matrix', 'verify', 'live', 'session', 'upgrade', 'clone']
       .filter(k => s[k]).map(k => [k, s[k]]));
     return { status: 'ok', base: p.base, version: VERSION, dataRoot: s.dataRoot, bind: s.bind, auth: !!s.auth, jobsStore: s.jobsStore,
       forge: s.forge, running };

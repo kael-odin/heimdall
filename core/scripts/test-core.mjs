@@ -20,17 +20,11 @@ function main() {
   if (!files.length) throw new Error('No maintained core tests found.');
   const args = normalizeTestCoreArgs(process.argv.slice(2));
   const fast = args.includes('--fast');
-  const onlyAcceptance = args.includes('--acceptance');
   const listFast = args.includes('--list-fast');
   const browserish = /(from|require\()\s*['"]playwright|chromium\.launch|engine-server\.mjs|spawn\([^)]*engine/;
-  const slowName = /^(console-e2e|live-deployment|engine-boundary|acceptance-browser|acceptance-console|browser-)/;
-  if (onlyAcceptance) {
-    files = files.filter(file => file.startsWith('test/acceptance-'));
-  } else if (fast || listFast) {
-    // Fast tier = unit/store/flow tests only. Acceptance suites allocate real
-    // engines and hashed evidence stores, so they get their own command.
+  const slowName = /^(console-e2e|live-deployment|engine-boundary|browser-)/;
+  if (fast || listFast) {
     files = files.filter(file => {
-      if (file.startsWith('test/acceptance-')) return false;
       if (slowName.test(file.replace('test/', ''))) return false;
       return !browserish.test(readFileSync(new URL('../' + file, import.meta.url), 'utf8'));
     });
@@ -40,11 +34,7 @@ function main() {
     process.exitCode = 0;
     return;
   }
-  const passed = args.filter(arg => arg !== '--fast' && arg !== '--acceptance');
-  // Browser and filesystem suites allocate real engines. Large desktop CPU
-  // counts must not turn the default into dozens of competing engine workers.
-  // Two-core CI runners need both workers so the full suite leaves time for
-  // the serial browser smokes within the existing job deadline.
+  const passed = args.filter(arg => arg !== '--fast');
   const parallelism = availableParallelism();
   const concurrency = passed.some(arg => arg === '--test-concurrency' || arg.startsWith('--test-concurrency='))
     ? [] : ['--test-concurrency=' + Math.max(1, Math.min(4, parallelism === 2 ? 2 : parallelism - 1))];

@@ -255,12 +255,9 @@ SEO 审计、竞品 SEO 矩阵和站点变更监控。完整控制台能力仍�
 | Claude Code 未登录 | 交互式登录；无头模式需要 API Key | 先交互登录，或用 `ANTHROPIC_API_KEY` |
 | Desktop 改完没反应 | 是否完全退出并重启 | 托盘退出后重开；确认 JSON 合法 |
 | `rebuild init` 报目录非空 | 上一次运行留下的工作区 | 换新目录；评测重置才用 `--force` |
-| 验收目录 `MIGRATION_REQUIRED` | Schema1/2 旧目录 | 按 [Schema4 指南](../competition/acceptance-catalog-schema4.md) 停引擎后显式迁移 |
-| 引擎启动报验收锁被占用 | 是否还有另一个引擎 | 按提示确认后删除 `.acceptance-owner.json`，不要删其他验收数据 |
 
 ---
 
 ## 7. 这一步通过之后
 
-把记录表与证据路径回写到 [PRD 10 §3](../prd/ai-native/10-roadmap-risks.md) 的 A-3 行，
-并把 [DEMO-SCRIPT](../../DEMO-SCRIPT.md) 第 2 幕从「回放」改成「现场运行」。
+把记录表与证据路径回写到 [PRD 10 §3](../prd/ai-native/10-roadmap-risks.md) 的 A-3 行。

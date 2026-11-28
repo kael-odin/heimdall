@@ -16,181 +16,6 @@ function put(file, value) {
   writeFileSync(file, typeof value === 'string' ? value : JSON.stringify(value, null, 2));
 }
 
-test('site-assessment: zero fileable findings do not hide incomplete QA evidence', () => {
-  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-'));
-  const qa = join(root, 'qa-project');
-  const summary = { total: 0, fileable: 0, environment: 0, checkNeedsFix: 0 };
-  const coverage = {
-    pages: [{ path: '/', viewport: '1440x900', counts: {} }], checks: [],
-    detection: { enabled: true, pages: 1, findings: 2, failedPages: [], detectors: ['a11y-heading'] },
-    baseline: { status: 'disabled' },
-  };
-  try {
-    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
-    put(join(qa, '.heimdall', 'qa.json'), { sites: { web: { url: 'https://example.test/', pages: ['/'] } } });
-    const runId = 'qa-20261113-120000-abcd';
-    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'report.md'), '# QA report');
-    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'bugs.md'), '# QA findings');
-    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'findings.json'), []);
-    for (const [name, patch, status] of [
-      ['unverified check', { summary: { ...summary, checkNeedsFix: 1 } }, 'incomplete'],
-      ['complete', {}, 'complete'],
-      ['environment', { summary: { ...summary, environment: 1 } }, 'incomplete'],
-      ['page request blocked', { coverage: { ...coverage, pages: [{ counts: { clientBlocked: 1 } }] } }, 'incomplete'],
-      ['check request blocked', { coverage: { ...coverage, checks: [{ clientBlocked: 1 }] } }, 'incomplete'],
-      ['navigation failed', { coverage: { ...coverage, pages: [{ navError: 'assessment-private-marker' }] } }, 'incomplete'],
-      ['detector failed', { coverage: { ...coverage, detection: { failedPages: [{}] } } }, 'incomplete'],
-      ['baseline unavailable', { coverage: { ...coverage, baseline: { status: 'incomplete', skipped: [{ incomplete: true, reason: 'assessment-private-marker' }] } } }, 'incomplete'],
-      ['bounded coverage', { coverage: {
-        ...coverage,
-        pages: Array.from({ length: 51 }, (_, index) => ({ path: `/page-${index}`, viewport: '1440x900', counts: {} })),
-        checks: Array.from({ length: 51 }, (_, index) => ({ id: `check-${index}`, pass: true, clientBlocked: 0 })),
-      } }, 'complete'],
-      ['malformed business check', { coverage: { ...coverage, checks: [{ id: 'checkout', pass: 'yes' }] } }, 'unknown'],
-      ['summary only', { coverage: undefined }, 'unknown'],
-      ['malformed coverage', { coverage: { ...coverage, pages: [null] } }, 'unknown'],
-      ['missing counters', { summary: { fileable: 0 } }, 'unknown'],
-      ['negative counter', { summary: { ...summary, environment: -1 } }, 'unknown'],
-      ['findings and incomplete', { summary: { ...summary, fileable: 1, checkNeedsFix: 1 } }, 'incomplete'],
-    ]) {
-      put(join(qa, '.heimdall', 'qa', 'runs', runId, 'run.json'), { runId, site: 'web', summary, coverage, ...patch });
-      const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
-        cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
-      });
-      assert.equal(run.status, 0, run.stderr + run.stdout);
-      const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
-      assert.ok(existsSync(join(qa, result.qa.latest.report)), 'QA report reference must resolve');
-      assert.ok(existsSync(join(qa, result.qa.latest.bugs)), 'QA findings reference must resolve');
-      assert.equal(result.readiness.qa.status, status === 'complete' ? 'ready' : 'needs_human_review', name);
-      assert.equal(result.qa.latest.completeness.status, status, name);
-      assert.equal(result.deliveryPlan.items.some(item => item.id === 'qa-incomplete' && item.status === 'blocked'), status !== 'complete', name);
-      if (name === 'complete') {
-        assert.deepEqual(result.qa.latest.coverage.detection, {
-          enabled: true, pages: 1, findings: 2, failedPages: 0, detectors: ['a11y-heading'],
-        });
-        assert.deepEqual(result.qa.latest.coverage.businessChecks, { status: 'not_declared', total: 0 });
-        assert.match(result.deliveryPlan.qaTask.prompt, /latest\.coverage\.detection/);
-        assert.match(result.deliveryPlan.qaTask.prompt, /latest\.coverage\.businessChecks/);
-        assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'add-business-checks'));
-        assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-business-checks' && item.status === 'open'));
-      }
-      if (name === 'bounded coverage') {
-        assert.equal(result.qa.latest.coverage.pages.length, 50);
-        assert.equal(result.qa.latest.coverage.pagesTotal, 51);
-        assert.deepEqual(result.qa.latest.coverage.pagesMeta, { total: 51, valid: 51, returned: 50, truncated: true });
-        assert.equal(result.qa.latest.coverage.checks.length, 50);
-        assert.deepEqual(result.qa.latest.coverage.checksMeta, { total: 51, returned: 50, truncated: true });
-        assert.match(result.deliveryPlan.qaTask.prompt, /pagesMeta/);
-      }
-      if (name === 'malformed business check') {
-        assert.deepEqual(result.qa.latest.coverage.businessChecks, { status: 'incomplete', total: 1 });
-        assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'complete-qa-run'));
-        assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'complete-business-checks'));
-        assert.equal(result.deliveryPlan.items.find(item => item.id === 'qa-business-checks').status, 'blocked');
-      }
-      if (name === 'findings and incomplete') assert.ok(result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
-      assert.doesNotMatch(run.stdout, /assessment-private-marker/);
-    }
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('site-assessment: does not borrow QA evidence from an unrelated workspace site', () => {
-  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-scope-'));
-  const qa = join(root, 'qa-project');
-  try {
-    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
-    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
-    put(join(qa, '.heimdall', 'qa.json'), {
-      sites: { unrelated: { url: 'https://unrelated.test/', pages: ['/'] } },
-    });
-    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-unrelated-20261115-abcd', 'run.json'), {
-      runId: 'qa-unrelated-20261115-abcd', site: 'unrelated', startedAt: '2026-11-15T00:00:00.000Z',
-      summary: { total: 1, fileable: 0, environment: 0, checkNeedsFix: 0 },
-      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [] },
-    });
-
-    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
-      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
-    });
-    assert.equal(run.status, 0, run.stderr + run.stdout);
-    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
-    assert.equal(result.qa.status, 'configured');
-    assert.equal(result.qa.site, null);
-    assert.equal(result.qa.latest, null);
-    assert.equal(result.readiness.qa.status, 'needs_human_review');
-    assert.equal(result.deliveryPlan.items.find(item => item.id === 'qa-workspace').status, 'blocked');
-    assert.doesNotMatch(run.stdout, /qa-unrelated-20261115-abcd|unrelated\.test/);
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
-test('site-assessment: blocks QA readiness when finding details are unavailable', () => {
-  const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-qa-finding-summary-'));
-  const qa = join(root, 'qa-project');
-  const runPath = join(qa, '.heimdall', 'qa', 'runs', 'qa-summary-20261115-abcd', 'run.json');
-  try {
-    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
-    put(join(root, 'workspace', 'example.test', 'pages', 'home', 'manifest.json'), { target: 'https://example.test/' });
-    put(join(qa, '.heimdall', 'qa.json'), {
-      sites: { web: { url: 'https://example.test/', pages: ['/'] } },
-    });
-    put(runPath, {
-      runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
-      summary: { total: 1, fileable: 1, environment: 0, checkNeedsFix: 0 },
-      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
-    });
-
-    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
-      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
-    });
-    assert.equal(run.status, 0, run.stderr + run.stdout);
-    const { result } = JSON.parse(run.stdout.trim().split(/\r?\n/).at(-1));
-    assert.equal(result.qa.latest.completeness.status, 'complete');
-    assert.equal(result.qa.latest.findings.status, 'unavailable');
-    assert.equal(result.qa.latest.findings.total, 1);
-    assert.equal(result.qa.latest.report, null);
-    assert.equal(result.qa.latest.bugs, null);
-    assert.equal(result.deliveryPlan.qaTask.latest.findings.status, 'unavailable');
-    assert.deepEqual(result.deliveryPlan.qaTask.inputs, []);
-    assert.equal(result.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
-    assert.ok(result.deliveryPlan.qaTask.tasks.some(item => item.id === 'obtain-finding-evidence'));
-    assert.equal(result.readiness.qa.status, 'needs_human_review');
-    assert.equal(result.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').status, 'blocked');
-
-    put(runPath, {
-      runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
-      summary: { total: 0, fileable: 0, environment: 0, checkNeedsFix: 0 },
-      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
-    });
-
-    const emptySummaryRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
-      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
-    });
-    assert.equal(emptySummaryRun.status, 0, emptySummaryRun.stderr + emptySummaryRun.stdout);
-    const { result: emptySummary } = JSON.parse(emptySummaryRun.stdout.trim().split(/\r?\n/).at(-1));
-    assert.equal(emptySummary.qa.latest.findings.total, 0);
-    assert.equal(emptySummary.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
-    assert.equal(emptySummary.readiness.qa.status, 'needs_human_review');
-    assert.equal(emptySummary.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').status, 'blocked');
-
-    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-summary-20261115-abcd', 'findings.json'), []);
-    put(runPath, {
-      runId: 'qa-summary-20261115-abcd', site: 'web', startedAt: '2026-11-15T00:00:00.000Z',
-      summary: { total: 1, fileable: 1, environment: 0, checkNeedsFix: 0 },
-      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [], detection: { failedPages: [] }, baseline: { status: 'disabled' } },
-    });
-    const inconsistentRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
-      cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
-    });
-    assert.equal(inconsistentRun.status, 0, inconsistentRun.stderr + inconsistentRun.stdout);
-    const { result: inconsistent } = JSON.parse(inconsistentRun.stdout.trim().split(/\r?\n/).at(-1));
-    assert.equal(inconsistent.qa.latest.findings.status, 'inconsistent');
-    assert.equal(inconsistent.qa.latest.findings.reportedTotal, 1);
-    assert.equal(inconsistent.qa.latest.findings.total, 0);
-    assert.equal(inconsistent.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
-    assert.equal(inconsistent.deliveryPlan.items.find(item => item.id === 'qa-finding-evidence').title, 'QA finding 摘要与详情不一致');
-  } finally { rmSync(root, { recursive: true, force: true }); }
-});
-
 test('site-assessment: rejects SEO and API evidence from a different origin', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-origin-scope-'));
   const site = join(root, 'workspace', 'example.test');
@@ -292,8 +117,6 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
   const site = join(root, 'workspace', 'example.test');
-  const qa = join(root, 'qa-project');
-  const runId = 'qa-20261111-120000-abcd';
   try {
     put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
@@ -351,31 +174,8 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     put(join(root, 'deliverable', '.candidate-example.test-Ab1234', 'health.json'), {
       adapter: { serverEgress: 'not-tested', declaredRoutes: 1, exercisedRoutes: 1, untestedRoutes: 0 },
     });
-    put(join(qa, '.heimdall', 'qa.json'), {
-      schema: 'heimdall.qa/1', project: 'assessment-test',
-      sites: { web: { url: 'https://example.test/', pages: ['/'], environment: 'test' } },
-      dataDir: '.heimdall/qa',
-    });
-    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'run.json'), {
-      runId, site: 'web', startedAt: '2026-11-11T01:00:00.000Z', endedAt: '2026-11-11T01:00:12.500Z',
-      coverage: { pages: [{ path: '/', viewport: '1440x900' }], viewports: ['1440x900'], checks: [] },
-      summary: { total: 2, fileable: 2, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 0 },
-    });
-    put(join(qa, '.heimdall', 'qa', 'runs', runId, 'findings.json'), [
-      {
-        id: 'F1', fingerprint: 'fp_qa1', tier: 'wall', basis: 'failed', kind: 'network', path: '/api/items',
-        title: '接口泄露 token=private-value', target: '/api/items?token=private-value',
-        observed: 'Authorization: Bearer abcdefghijkl', confidence: 'observed', source: 'check',
-        triage: { status: 'new' },
-      },
-      {
-        id: 'F2', fingerprint: 'fp_qa2', tier: 'degrade', basis: 'wrong', kind: 'a11y', path: '/checkout',
-        title: '输入框没有标签', target: '#email', observed: '控件缺少可访问名称',
-        confidence: 'observed', source: 'check', triage: { status: 'known-bug', verdict: 'bug', reason: '无障碍问题已确认' },
-      },
-    ]);
 
-    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(run.status, 0, run.stderr + run.stdout);
@@ -384,7 +184,6 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(env.result.overall, 'needs_human_review');
     assert.equal(env.result.readiness.stage, 'human_review');
     assert.equal(env.result.readiness.backend.status, 'needs_human_review');
-    assert.equal(env.result.readiness.qa.status, 'needs_human_review');
     assert.equal(env.result.clone.mirrors, 1);
     assert.equal(env.result.seo.score, 92.8);
     assert.equal(env.result.seo.geo.actionPlan[0].id, 'geo-citation-description');
@@ -416,65 +215,6 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.ok(env.result.deliveryPlan.backendCompletion.unknowns.some(item => item.id === 'adapter-operation-probe'));
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'offline-egress').status, 'blocked');
     assert.equal(env.result.deliveryPlan.backendCompletion.verification.deterministicChecks.find(item => item.id === 'operation-probe').status, 'not-tested');
-    assert.equal(env.result.qa.latest.runId, runId);
-    assert.equal(env.result.qa.latest.findings.status, 'observed');
-    assert.equal(env.result.qa.latest.findings.total, 2);
-    assert.equal(env.result.qa.latest.findings.returned, 2);
-    assert.equal(env.result.qa.latest.findings.items[0].verification.status, 'pending_human_verdict');
-    assert.equal(env.result.qa.latest.findings.items[0].verification.method, 'heimdall_qa_findings');
-    assert.equal(env.result.qa.latest.findings.items[0].target, '/api/items?[sensitive value removed]');
-    const qaRepairTasks = env.result.deliveryPlan.items.find(item => item.id === 'qa-findings').repairTasks;
-    assert.equal(qaRepairTasks.length, 2);
-    assert.equal(qaRepairTasks[0].status, 'blocked_on_human_verdict');
-    assert.equal(qaRepairTasks[0].requiresHumanApproval, true);
-    assert.equal(qaRepairTasks[0].evidence.fingerprint, 'fp_qa1');
-    assert.equal(qaRepairTasks[0].verification.tool, 'heimdall_qa_run');
-    assert.match(qaRepairTasks[0].verification.condition, /fingerprint/);
-    assert.equal(qaRepairTasks[1].status, 'ready_for_fix');
-    assert.equal(qaRepairTasks[1].requiresHumanApproval, false);
-    assert.equal(qaRepairTasks[1].evidence.triage, 'known-bug');
-    assert.equal(env.result.qa.latest.report, null);
-    assert.equal(qaRepairTasks[1].evidence.report, undefined);
-    assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
-    assert.equal(env.result.qa.metrics.coverage.runs, 1);
-    assert.equal(env.result.qa.metrics.coverage.pageViewportChecks, 1);
-    assert.equal(env.result.qa.metrics.runtime.count, 1);
-    assert.equal(env.result.qa.metrics.runtime.p50Ms, 12500);
-    assert.deepEqual(env.result.qa.metrics.failures.byKind, {});
-    assert.equal(env.result.qa.metrics.oracle.status, 'not_provided');
-    assert.equal(env.result.qa.metrics.decision.primaryAction, 'collect-more-evidence');
-    assert.equal(env.result.deliveryPlan.qaTask.schema, 'heimdall.qa-bug-ai-task/1');
-    assert.equal(env.result.deliveryPlan.qaTask.status, 'human_review');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.frontend.pages, 1);
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.contract, 'observed');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.status, 'needs_human_journey');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.currentLevel, 'B1_to_B2_bridge');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.observedEndpoints, 1);
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.gapLedger.uniqueGaps, 1);
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.businessRules, 'not-tested');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.businessRuleComparison, 'not_run');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.adapterEgress, 'not-tested');
-    assert.equal(env.result.deliveryPlan.qaTask.scope.backend.completion.operationProbe, 'not-tested');
-    assert.ok(env.result.deliveryPlan.qaTask.scope.backend.completion.humanJourneys.some(item => item.id === 'authentication-and-permission'));
-    assert.match(env.result.deliveryPlan.qaTask.prompt, /scope\.backend\.completion/);
-    assert.deepEqual(env.result.deliveryPlan.qaTask.latest.coverage.pages, [
-      { path: '/', viewport: '1440x900', navigation: 'observed', clientBlocked: 0 },
-    ]);
-    assert.equal(env.result.deliveryPlan.qaTask.latest.coverage.checksTotal, 0);
-    assert.equal(env.result.deliveryPlan.qaTask.latest.findings.status, 'observed');
-    assert.equal(env.result.deliveryPlan.qaTask.latest.findings.total, 2);
-    assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'review-findings'));
-    assert.ok(env.result.deliveryPlan.qaTask.tasks.some(item => item.id === 'fix-confirmed-findings'));
-    assert.equal(env.result.deliveryPlan.qaTask.provenance.invented.length, 0);
-    assert.match(env.result.deliveryPlan.qaTask.prompt, /不要把 finding 数量当准确率/);
-    assert.doesNotMatch(run.stdout, /private-value|abcdefghijkl/);
-    const qaDecision = env.result.deliveryPlan.items.find(item => item.id === 'qa-metrics-decision');
-    assert.equal(qaDecision.status, 'open');
-    assert.equal(qaDecision.action.tool, 'heimdall_qa_metrics');
-    assert.equal(qaDecision.action.args.site, 'web');
-    assert.equal(qaDecision.verify.tool, 'heimdall_qa_metrics');
-    assert.match(qaDecision.detail, /正常样本|oracle/);
-    assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_findings');
     assert.ok(env.result.claims.verified.includes('api.adapter_holdout:1'));
     assert.ok(env.result.unknowns.some(item => item.id === 'auth-permissions-state-unknown'));
     assert.equal(env.result.deliveryPlan.schema, 'heimdall.site-delivery-plan/1');
@@ -493,7 +233,6 @@ test('site-assessment: aggregates sanitized evidence and keeps unknowns explicit
     assert.equal(seoTask.repairTasks[1].verification.tool, 'heimdall_seo_audit');
     assert.equal(seoTask.repairTasksTruncated, false);
     assert.equal(env.result.deliveryPlan.items.find(item => item.id === 'api-behavior-unknown').status, 'blocked');
-    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-findings'));
     assert.equal(env.result.deliveryPlan.backendCompletion.schema, 'heimdall.backend-completion-task/1');
     assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints[0].path, '/api/items');
     assert.equal(env.result.deliveryPlan.backendCompletion.verifiedResponseShapes.count, 1);
@@ -977,7 +716,7 @@ test('site-assessment: keeps offline delivery outcomes separate from visual and 
     const blocked = blockedEnvelope.result;
     assert.equal(blocked.nextActionsMeta.returned, blockedEnvelope.nextActions.length);
     assert.equal(blocked.nextActionsMeta.truncated, blocked.nextActionsMeta.total > blocked.nextActionsMeta.returned);
-    assert.equal(blocked.nextActionsMeta.truncated, true);
+    assert.equal(blocked.nextActionsMeta.total, 5);
     assert.equal(blocked.clone.delivery.status, 'blocked');
     assert.equal(blocked.clone.delivery.blockingCount, 5);
     assert.equal(blocked.clone.delivery.otherBlockers, 2);
@@ -1081,8 +820,6 @@ test('site-assessment: delivery plan keeps capture and missing evidence separate
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'clone-mirror-coverage' && item.basis === 'observed'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'seo-report' && item.basis === 'unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.basis === 'unknown'));
-    assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'qa-workspace' && item.status === 'blocked'));
-    assert.equal(env.result.deliveryPlan.qaTask.status, 'blocked_on_qa_evidence');
     assert.equal(env.result.deliveryPlan.backendCompletion.status, 'blocked_on_observation');
     assert.equal(env.result.deliveryPlan.backendCompletion.observedEndpoints.length, 0);
     assert.ok(env.result.deliveryPlan.backendCompletion.suggestedLocalFiles.some(item => item.path.endsWith('backend-state-rules.json')));
@@ -1189,7 +926,6 @@ test('site-assessment: exposes a failed deployment attempt without treating it a
 test('site-assessment: exposes AI-ready status when only non-blocking actions remain', () => {
   const root = mkdtempSync(join(tmpdir(), 'heimdall-site-assessment-ai-review-'));
   const page = join(root, 'workspace', 'example.test', 'pages', 'home');
-  const qa = join(root, 'qa-project');
   try {
     put(join(page, 'clone', 'index.html'), '<!doctype html><body>mirror</body>');
     put(join(page, 'manifest.json'), { target: 'https://example.test/' });
@@ -1204,19 +940,8 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     };
     const seoPath = join(root, 'workspace', 'example.test', 'seo', 'seo.json');
     put(seoPath, seoReport);
-    put(join(qa, '.heimdall', 'qa.json'), {
-      schema: 'heimdall.qa/1', project: 'assessment-test',
-      sites: { web: { url: 'https://example.test/', pages: ['/'], environment: 'test' } },
-      dataDir: '.heimdall/qa',
-    });
-    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-20261111-130000-abcd', 'run.json'), {
-      runId: 'qa-20261111-130000-abcd', site: 'web', startedAt: '2026-11-11T02:00:00.000Z',
-      coverage: { pages: [{ path: '/', viewport: '1440x900' }], checks: [] },
-      summary: { total: 1, fileable: 0, environment: 0, checkNeedsFix: 0, tolerable: 0, suppressed: 0 },
-    });
-    put(join(qa, '.heimdall', 'qa', 'runs', 'qa-20261111-130000-abcd', 'findings.json'), []);
 
-    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+    const run = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(run.status, 0, run.stderr + run.stdout);
@@ -1227,8 +952,6 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.equal(env.result.readiness.seo.status, 'ready');
     assert.equal(env.result.readiness.geo.status, 'ready');
     assert.equal(env.result.readiness.backend.status, 'needs_observation');
-    assert.equal(env.result.readiness.qa.status, 'ready');
-    assert.equal(env.result.readiness.qa.nextAction.tool, 'heimdall_qa_metrics');
     assert.equal(env.result.deliveryPlan.seoGeoTask.scores.geoConfidence, 'high');
     assert.deepEqual(env.result.deliveryPlan.seoGeoTask.coverage.geo, {
       pages: 1, pagesScored: 1, pagesUnavailable: 0, observedWeight: 96, totalWeight: 96, ratio: 1, confidence: 'high',
@@ -1241,7 +964,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
     assert.ok(env.result.unknowns.some(item => item.id === 'geo-model-citation-outcome-unknown'));
     assert.ok(env.result.deliveryPlan.items.some(item => item.id === 'api-contract' && item.status === 'open'));
     put(seoPath, { ...seoReport, scoreMethodVersion: SEO_SCORE_METHOD_VERSION - 1 });
-    const staleRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+    const staleRun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(staleRun.status, 0, staleRun.stderr + staleRun.stdout);
@@ -1257,7 +980,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
       { ...seoReport.geo, status: 'unavailable', score: null, coverage: { pages: 1, pagesScored: 0, ratio: 0 } },
     ]) {
       put(seoPath, { ...seoReport, geo });
-      const rerun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+      const rerun = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
         cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
       });
       assert.equal(rerun.status, 0, rerun.stderr + rerun.stdout);
@@ -1274,7 +997,7 @@ test('site-assessment: exposes AI-ready status when only non-blocking actions re
       assert.ok(result.deliveryPlan.items.some(item => item.id === 'seo-geo-follow-up'));
     }
     put(seoPath, { ...seoReport, summary: { ...seoReport.summary, sitemapCoverage: 'partial' }, geo: seoReport.geo });
-    const partialSitemap = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--qa-workspace', qa, '--json'], {
+    const partialSitemap = spawnSync(process.execPath, [BIN, 'site-assessment', 'example.test', '--json'], {
       cwd: root, env: { ...process.env, HEIMDALL_DATA_DIR: root }, encoding: 'utf8', timeout: 30_000,
     });
     assert.equal(partialSitemap.status, 0, partialSitemap.stderr + partialSitemap.stdout);
